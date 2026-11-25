@@ -1,0 +1,38 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Only a few macOS runners are available at a time, so a newer push cancels the previous run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # The app needs the macOS 26 SDK, which only this image carries.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - run: brew install xcodegen
+      - name: backend tests
+        working-directory: backend
+        run: |
+          cargo test --locked
+          cargo clippy --locked --all-targets -- -D warnings
+      - run: xcodegen generate
+      - name: build and test
+        run: >
+          set -o pipefail &&
+          xcodebuild
+          -project AirFlow.xcodeproj
+          -scheme AirFlow
+          -configuration Debug
+          -derivedDataPath dd
+          test | grep -E '^/.*(error|warning):|: error:|Executed [0-9]+ tests|TEST (SUCCEEDED|FAILED)' | grep -v appintentsmetadataprocessor
+      - name: animations are what the script writes
+        run: |
+          python3 scripts/make-animations.py
+          git diff --exit-code -- AirFlow/Resources/Animations

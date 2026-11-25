@@ -1,0 +1,262 @@
+import AppKit
+import SwiftUI
+
+// The design tokens. DESIGN.md describes each one. Change both together.
+
+/// Ant Design's spacing steps, on a 4 point grid.
+enum Space {
+    static let xxs: CGFloat = 4
+    static let xs: CGFloat = 8
+    static let sm: CGFloat = 12
+    static let md: CGFloat = 16
+    static let lg: CGFloat = 24
+    static let xl: CGFloat = 32
+    static let xxl: CGFloat = 48
+}
+
+/// Ant Design's corner radii, then the radius of a glass card. Glass controls take their shape
+/// from the system instead.
+enum Radius {
+    static let xs: CGFloat = 4
+    static let sm: CGFloat = 6
+    static let md: CGFloat = 8
+    static let card: CGFloat = 16
+}
+
+enum IconSize {
+    static let inline: CGFloat = 14
+    static let row: CGFloat = 16
+    static let title: CGFloat = 20
+    static let state: CGFloat = 28
+    static let rotor: CGFloat = 44
+    static let illustration: CGFloat = 72
+}
+
+enum Layout {
+    static let sidebarWidth: CGFloat = 220
+    static let inspectorWidth: CGFloat = 280
+    static let detailMaxWidth: CGFloat = 720
+    /// Wide enough for the sidebar, a page, and the readings side by side at their widest.
+    static let windowMinWidth: CGFloat = 1120
+    static let panelWidth: CGFloat = 340
+    static let settingsWidth: CGFloat = 520
+    static let trackHeight: CGFloat = 6
+    static let curveHeight: CGFloat = 168
+    static let statusDot: CGFloat = 8
+}
+
+enum Palette {
+    static let accent = Color.accentColor
+
+    /// Fills on the window background. They use the label color, so they darken a light
+    /// window and lighten a dark one.
+    static func fill(_ contrast: ColorSchemeContrast) -> Color {
+        Color.primary.opacity(contrast == .increased ? 0.12 : 0.06)
+    }
+
+    static func fillStrong(_ contrast: ColorSchemeContrast) -> Color {
+        Color.primary.opacity(contrast == .increased ? 0.22 : 0.11)
+    }
+
+    static func hairline(_ contrast: ColorSchemeContrast) -> Color {
+        Color.primary.opacity(contrast == .increased ? 0.40 : 0.12)
+    }
+
+    /// Ant Design's functional colors as a temperature scale, one step per band.
+    static func temperature(_ band: TemperatureBand) -> Color {
+        switch band {
+        case .cool: return Color("TempCool")
+        case .mild: return Color("TempMild")
+        case .warm: return Color("TempWarm")
+        case .hot: return Color("TempHot")
+        case .critical: return Color("TempCritical")
+        }
+    }
+
+    static let success = Color("TempMild")
+    static let caution = Color("TempWarm")
+    static let danger = Color("TempCritical")
+}
+
+/// The type roles. Text is set in Hedvig Letters Sans and every reading (a fan's speed with its
+/// unit, a temperature, any other number that is read) in IBM Plex Mono, so a changing number
+/// never shifts its neighbors. The app carries both faces.
+enum AirType {
+    case display, title, statistic, body, label, caption
+
+    /// The family of the text face. It has one weight, so the roles differ by size alone.
+    static let textFamily = "Hedvig Letters Sans"
+    /// The family of the monospaced face. The app carries its regular and medium weights.
+    static let readingFamily = "IBM Plex Mono"
+
+    var size: CGFloat {
+        switch self {
+        case .display, .statistic: return 24
+        case .title: return 16
+        case .body: return 13
+        case .label: return 12
+        case .caption: return 11
+        }
+    }
+
+    /// The weight of the role as a reading. The text face has one weight.
+    var weight: Font.Weight {
+        switch self {
+        case .display, .title: return .semibold
+        case .statistic, .label: return .medium
+        case .body, .caption: return .regular
+        }
+    }
+
+    var font: Font {
+        self == .statistic ? readingFont : .custom(Self.textFamily, fixedSize: size)
+    }
+
+    /// The role in the monospaced face, for a reading.
+    var readingFont: Font {
+        .custom(Self.readingFamily, fixedSize: size).weight(weight == .regular ? .regular : .medium)
+    }
+}
+
+extension View {
+    func airFont(_ role: AirType) -> some View {
+        font(role.font)
+    }
+
+    /// A reading: a fan speed or a temperature, in the monospaced face.
+    func readingFont(_ role: AirType) -> some View {
+        font(role.readingFont)
+    }
+}
+
+enum Anim {
+    static let quick = Animation.easeOut(duration: 0.2)
+    static let standard = Animation.timingCurve(0.16, 1, 0.3, 1, duration: 0.35)
+
+    /// Nil when nothing may move.
+    static func allowed(_ animation: Animation, reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : animation
+    }
+}
+
+enum Animations {
+    static let rotor = "rotor"
+    static let breeze = "breeze"
+    static let done = "done"
+    static let spark = "spark"
+    static let all = [rotor, breeze, done, spark]
+    static let stillMarker = "reduced motion"
+}
+
+/// Finds the readings in a sentence, so each one can be set in the monospaced face.
+enum ReadingText {
+    /// A number with what belongs to it: its separators, and a degree sign with its scale, a
+    /// percent sign, or RPM.
+    private static let reading = /\d+(?:[.,:]\d+)*(?:\s?°[CF]?|\s?%|\sRPM)?/
+
+    static func ranges(in sentence: String) -> [Range<String.Index>] {
+        sentence.ranges(of: reading)
+    }
+
+    static func attributed(_ sentence: String, role: AirType) -> AttributedString {
+        var text = AttributedString(sentence)
+        for range in ranges(in: sentence) {
+            // The space between a number and its unit stays in the text face. A monospaced
+            // space is a whole cell wide, which reads as two spaces inside a sentence.
+            for piece in sentence[range].split(whereSeparator: \.isWhitespace) {
+                if let lower = AttributedString.Index(piece.startIndex, within: text),
+                   let upper = AttributedString.Index(piece.endIndex, within: text) {
+                    text[lower..<upper].font = role.readingFont
+                }
+            }
+        }
+        return text
+    }
+}
+
+extension Text {
+    /// A sentence whose numbers are readings: each one, with its unit, is in the monospaced face.
+    init(readings sentence: String, role: AirType = .body) {
+        self.init(ReadingText.attributed(sentence, role: role))
+    }
+}
+
+/// Ant Design's components are drawn in Liquid Glass: the surface under a tag, an alert, or a
+/// card is glass that shows what is behind the window, tinted where the component carries a state.
+extension View {
+    /// - Parameters:
+    ///   - tint: the state's color, or nil for clear glass.
+    ///   - radius: the corner radius, or nil for a capsule.
+    ///   - isInteractive: whether the glass reacts to the pointer, for something a person presses.
+    func antGlass(tint: Color? = nil, radius: CGFloat? = Radius.card, isInteractive: Bool = false) -> some View {
+        modifier(AntGlass(tint: tint, radius: radius, isInteractive: isInteractive))
+    }
+}
+
+private struct AntGlass: ViewModifier {
+    let tint: Color?
+    let radius: CGFloat?
+    let isInteractive: Bool
+    @Environment(\.airFlatGlass) private var isFlat
+
+    private var shape: AnyShape {
+        radius.map { AnyShape(.rect(cornerRadius: $0)) } ?? AnyShape(.capsule)
+    }
+
+    func body(content: Content) -> some View {
+        if isFlat {
+            content.background((tint ?? Color.primary).opacity(tint == nil ? 0.06 : 0.28), in: shape)
+        } else {
+            // A pane with no state is clear glass, so the desktop shows through it. A pane that
+            // carries a state is regular glass in the state's color.
+            content
+                .glassEffect((tint.map { Glass.regular.tint($0.opacity(0.28)) } ?? Glass.clear).interactive(isInteractive), in: shape)
+                .overlay {
+                    // A window that is not in front loses the glass's tint. The edge keeps the
+                    // pane of a state visible there.
+                    if let tint {
+                        shape.stroke(tint.opacity(0.35), lineWidth: 1)
+                    }
+                }
+        }
+    }
+}
+
+extension EnvironmentValues {
+    /// True where glass cannot be drawn: an off-screen drawing has nothing behind it, and the
+    /// system leaves out whatever sits on glass there. A flat fill stands in for the pane.
+    @Entry var airFlatGlass = false
+}
+
+/// Ant Design's card as a pane of glass.
+struct GlassCard<Content: View>: View {
+    var padding: CGFloat = Space.md
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .antGlass()
+    }
+}
+
+/// An Ant Design icon from the asset catalog, sized as a square and tinted by its context.
+struct AntIcon: View {
+    let name: String
+    var size: CGFloat = IconSize.row
+
+    init(_ name: String, size: CGFloat = IconSize.row) {
+        self.name = name
+        self.size = size
+    }
+
+    var body: some View {
+        Image(name)
+            .renderingMode(.template)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}

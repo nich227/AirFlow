@@ -32,9 +32,19 @@ struct PresetDetail: View {
                     EmptyState(title: "No Fans", message: "This Mac is cooled without fans, so there is nothing to control. Its temperatures are in the readings.")
                         .frame(minHeight: 240)
                 } else {
+                    if preset.kind == .adaptive {
+                        GlassCard {
+                            AdaptiveSummary()
+                        }
+                    }
                     ForEach(fans) { fan in
                         GlassCard {
                             FanSection(fan: fan, preset: preset, isActive: isActive)
+                        }
+                    }
+                    if preset.kind == .adaptive {
+                        GlassCard {
+                            AppWorkloadsEditor()
                         }
                     }
                 }
@@ -191,6 +201,24 @@ enum FanSentence {
     }
 }
 
+extension FanSentence {
+    /// The sentence for a fan under the Adaptive preset.
+    static func adaptiveText(command: FanCommand, isActive: Bool, mode: FanController.Mode) -> String {
+        guard case .speed(let rpm) = command else {
+            return "Adaptive steers by the CPU and GPU temperatures. This Mac doesn't report them, so macOS controls the fan."
+        }
+        let speed = ReadingFormat.rpmWithUnit(rpm)
+        if isActive, mode == .controlling {
+            return "Adaptive holds it at \(speed)."
+        }
+        var text = "Adaptive would ask for \(speed)."
+        if isActive {
+            text += mode == .safeguard ? " The safeguard is on, so macOS controls the fan now." : " macOS controls the fan now."
+        }
+        return text
+    }
+}
+
 /// One fan under one preset: the live speed, and the control the preset gives it.
 struct FanSection: View {
     @Environment(AppModel.self) private var model
@@ -203,7 +231,10 @@ struct FanSection: View {
 
     /// What this preset asks of the fan with the sensors where they are now.
     private var command: FanCommand {
-        FanPlanner.command(for: control, fan: fan, snapshot: snapshot)
+        if preset.kind == .adaptive {
+            return FanPlanner.adaptiveCommand(fan: fan, fraction: model.adaptive.fraction)
+        }
+        return FanPlanner.command(for: control, fan: fan, snapshot: snapshot)
     }
 
     var body: some View {
@@ -236,7 +267,10 @@ struct FanSection: View {
     }
 
     private var sentence: String {
-        FanSentence.text(
+        if preset.kind == .adaptive {
+            return FanSentence.adaptiveText(command: command, isActive: isActive, mode: model.controller.mode)
+        }
+        return FanSentence.text(
             control: control, command: command, sourceName: { snapshot.name(of: $0) }, format: model.settings.format,
             isActive: isActive, mode: model.controller.mode
         )

@@ -275,7 +275,7 @@ struct Sidebar: View {
             preset.fallback = source.fallback
         case .fullBlast:
             preset.fallback = .constantFraction(1)
-        case .automatic:
+        case .automatic, .adaptive:
             preset.fallback = .sensorBased(SensorRule(source: .cpuAverage, startCelsius: 55, maxCelsius: 85))
         }
         selection = .preset(model.presets.add(preset).id)

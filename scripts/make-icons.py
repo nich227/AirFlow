@@ -30,7 +30,7 @@ ANT_ICONS = [
     # Presets
     "sync", "thunderbolt", "coffee", "rocket", "compass", "moon", "sun", "fire", "code",
     "video-camera", "experiment", "laptop", "desktop", "home", "sound", "car", "cloud",
-    "dashboard", "sliders", "heart", "star",
+    "dashboard", "sliders", "heart", "star", "aim",
     # Navigation and triggers
     "branches", "line-chart", "appstore", "clock-circle", "robot", "bulb",
     # Actions and states

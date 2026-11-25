@@ -173,6 +173,7 @@ struct IntelligenceSettingsPane: View {
 }
 
 struct AboutSettingsPane: View {
+    private let updates = Updates.shared
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
     }
@@ -185,6 +186,18 @@ struct AboutSettingsPane: View {
             Text("Version \(version)")
                 .airFont(.body)
                 .foregroundStyle(.secondary)
+            if updates.isAvailable {
+                VStack(spacing: Space.xs) {
+                    Button("Check for Updates…") { updates.check() }
+                        .disabled(!updates.canCheck)
+                    Toggle("Check for Updates Automatically", isOn: Binding {
+                        updates.checksAutomatically
+                    } set: { on in
+                        updates.checksAutomatically = on
+                    })
+                    .toggleStyle(.checkbox)
+                }
+            }
             Text("Changing fan speeds changes how your Mac cools itself. AirFlow keeps every speed within the limits the fan reports, but you are responsible for the settings you choose.")
                 .airFont(.body)
                 .foregroundStyle(.secondary)

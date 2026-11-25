@@ -19,6 +19,10 @@ struct AirFlowApp: App {
         // AirFlow lives in the menu bar. The window opens when the person asks for it.
         .defaultLaunchBehavior(.suppressed)
         .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") { Updates.shared.check() }
+                    .disabled(!Updates.shared.canCheck)
+            }
             CommandGroup(replacing: .newItem) {}
             CommandGroup(replacing: .importExport) {
                 Button("Import Presets…") {
@@ -80,6 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
         AppModel.shared.start()
+        Updates.shared.start()
         let center = NotificationCenter.default
         for name in [NSWindow.didBecomeKeyNotification, NSWindow.willCloseNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in

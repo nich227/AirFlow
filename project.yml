@@ -12,11 +12,15 @@ packages:
   Yams:
     url: https://github.com/jpsim/Yams
     from: "6.0.0"
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.8.0"
 
 settings:
   base:
     SWIFT_VERSION: "5.9"
     MACOSX_DEPLOYMENT_TARGET: "26.0"
+    # The release workflow uses the tag to override both values. Sparkle compares the build number.
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "10000"
     # The Rust backend is built for Apple silicon only.
@@ -92,6 +96,8 @@ targets:
           PRODUCT_BUNDLE_IDENTIFIER: com.kevster.airflow
           AIRFLOW_BACKEND_PROFILE: release
           ENABLE_HARDENED_RUNTIME: YES
+          # Xcode otherwise adds get-task-allow, the debug entitlement, and notarization refuses it.
+          CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
     preBuildScripts:
       - name: Build the Rust backend
         script: '"$PROJECT_DIR/scripts/build-backend.sh"'
@@ -103,6 +109,7 @@ targets:
     dependencies:
       - package: Lottie
       - package: Yams
+      - package: Sparkle
   AirFlowTests:
     type: bundle.unit-test
     platform: macOS

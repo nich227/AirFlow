@@ -103,3 +103,23 @@ final class BackendBridgeTests: XCTestCase {
         XCTAssertFalse(manager.justEnabled(now: now.addingTimeInterval(HelperManager.announcementSeconds + 1)))
     }
 }
+
+/// What an installed copy needs to find and trust an update.
+final class UpdateSettingsTests: XCTestCase {
+    func testTheAppNamesItsAppcastAndTheKeyUpdatesMustBeSignedWith() throws {
+        let info = try XCTUnwrap(Bundle.main.infoDictionary)
+        let feed = try XCTUnwrap(info["SUFeedURL"] as? String)
+        XCTAssertEqual(feed, "https://raw.githubusercontent.com/nich227/AirFlow/gh-pages/updates.xml.rss")
+        let key = try XCTUnwrap(info["SUPublicEDKey"] as? String)
+        XCTAssertEqual(Data(base64Encoded: key)?.count, 32, "An Ed25519 public key is 32 bytes")
+        XCTAssertEqual(info["SUEnableAutomaticChecks"] as? Bool, true)
+    }
+
+    @MainActor
+    func testACopyUnderTestNeverStartsTheUpdater() {
+        Updates.shared.start()
+        XCTAssertFalse(Updates.shared.isAvailable)
+        XCTAssertFalse(Updates.shared.canCheck)
+        XCTAssertFalse(Updates.shared.checksAutomatically)
+    }
+}

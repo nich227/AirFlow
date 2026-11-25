@@ -1,0 +1,31 @@
+[package]
+name = "airflow-backend"
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+description = "The part of AirFlow that talks to the Mac: the SMC, the fans, the sensors, and the privileged helper."
+publish = false
+
+[lib]
+name = "airflow_backend"
+# The app links the static library. The helper and the tests use the Rust library.
+crate-type = ["staticlib", "rlib"]
+
+[[bin]]
+name = "AirFlowHelper"
+path = "src/bin/helper.rs"
+
+[dependencies]
+# XPC takes its handlers as Objective-C blocks.
+block2 = "0.6"
+libc = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"
+
+[profile.dev]
+panic = "abort"

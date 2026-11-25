@@ -1,0 +1,349 @@
+//! Reading fans and temperature sensors, and naming the sensors.
+
+use std::collections::HashMap;
+use crate::smc::SmcAccess;
+
+/// One fan as the SMC reports it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FanReading {
+    pub index: usize,
+    pub minimum_rpm: f64,
+    pub maximum_rpm: f64,
+    pub current_rpm: f64,
+    pub target_rpm: f64,
+    /// True while something other than the system holds the fan's speed.
+    pub is_manual: bool,
+}
+
+/// The part of the Mac a sensor belongs to. The numbers are the ones in airflow.h.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum Group {
+    Cpu = 0,
+    Gpu = 1,
+    Memory = 2,
+    Storage = 3,
+    Battery = 4,
+    Enclosure = 5,
+    Power = 6,
+    Wireless = 7,
+    Other = 8,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Definition {
+    pub key: String,
+    pub name: String,
+    pub group: Group,
+    /// False for a key whose meaning is not known: it has its group's name and a number.
+    pub is_known: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SensorReading {
+    pub key: String,
+    pub name: String,
+    pub group: Group,
+    pub is_known: bool,
+    pub celsius: f64,
+}
+
+/// A temperature outside this range is a sensor that is off or a key that is not a temperature.
+pub const PLAUSIBLE_CELSIUS: std::ops::RangeInclusive<f64> = 5.0..=130.0;
+
+const KNOWN: &[(&str, &str, Group)] = &[
+    ("TaLP", "Airflow Left", Group::Enclosure),
+    ("TaRF", "Airflow Right", Group::Enclosure),
+    ("Ts0P", "Trackpad", Group::Enclosure),
+    ("Ts1P", "Palm Rest", Group::Enclosure),
+    ("TW0P", "Wi-Fi", Group::Wireless),
+    ("TB0T", "Battery Gas Gauge", Group::Battery),
+    ("TB1T", "Battery Cell 1", Group::Battery),
+    ("TB2T", "Battery Cell 2", Group::Battery),
+    ("TH0x", "SSD", Group::Storage),
+    ("TH0a", "SSD Sensor A", Group::Storage),
+    ("TH0b", "SSD Sensor B", Group::Storage),
+    ("TPSP", "Power Supply", Group::Power),
+    ("TPMP", "Power Manager", Group::Power),
+    ("TMVR", "Memory Regulator", Group::Memory),
+    // Intel
+    ("TC0P", "CPU Proximity", Group::Cpu),
+    ("TC0D", "CPU Diode", Group::Cpu),
+    ("TC0H", "CPU Heatsink", Group::Cpu),
+    ("TCAD", "CPU Package", Group::Cpu),
+    ("TG0P", "GPU Proximity", Group::Gpu),
+    ("TG0D", "GPU Diode", Group::Gpu),
+    ("TG0H", "GPU Heatsink", Group::Gpu),
+    ("Tm0P", "Mainboard", Group::Other),
+    ("TA0P", "Ambient", Group::Enclosure),
+    ("TL0P", "Display", Group::Other),
+];
+
+/// Names a temperature key. The SMC publishes no names, and the keys differ by chip, so a key
+/// gets a name only where its meaning is known. Every other key is grouped by its prefix and
+/// named for its group. `Reader::discover` then numbers the keys that share a name.
+pub fn definition(key: &str, apple_silicon: bool) -> Option<Definition> {
+    if key.len() != 4 || !key.starts_with('T') || !key.is_ascii() {
+        return None;
+    }
+    if let Some((_, name, group)) = KNOWN.iter().find(|(known, _, _)| *known == key) {
+        return Some(Definition { key: key.into(), name: (*name).into(), group: *group, is_known: true });
+    }
+    let group = if apple_silicon { apple_silicon_group(key) } else { intel_group(key) };
+    Some(Definition { key: key.into(), name: noun(group, key).into(), group, is_known: false })
+}
+
+fn apple_silicon_group(key: &str) -> Group {
+    match &key[..2] {
+        "Tp" | "Te" => Group::Cpu,
+        "Tg" => Group::Gpu,
+        // The first M3 chips report performance cores under Tf0 and Tf4, and the GPU under the rest.
+        "Tf" => {
+            if matches!(&key[2..3], "0" | "4") {
+                Group::Cpu
+            } else {
+                Group::Gpu
+            }
+        }
+        "Tm" | "TM" => Group::Memory,
+        "TH" => Group::Storage,
+        "TB" => Group::Battery,
+        "Ta" => Group::Enclosure,
+        "TW" => Group::Wireless,
+        "TP" | "TR" => Group::Power,
+        _ => Group::Other,
+    }
+}
+
+fn intel_group(key: &str) -> Group {
+    match &key[..2] {
+        "TC" => Group::Cpu,
+        "TG" => Group::Gpu,
+        "TM" | "Tm" => Group::Memory,
+        "TH" => Group::Storage,
+        "TB" => Group::Battery,
+        "TA" | "Ts" => Group::Enclosure,
+        "TW" => Group::Wireless,
+        "Tp" | "TP" => Group::Power,
+        _ => Group::Other,
+    }
+}
+
+fn noun(group: Group, key: &str) -> &'static str {
+    match group {
+        Group::Cpu if key.starts_with("Te") => "Efficiency Core Sensor",
+        Group::Cpu if key.starts_with("Tp") || key.starts_with("Tf") => "Performance Core Sensor",
+        Group::Cpu => "CPU Sensor",
+        Group::Gpu => "GPU Sensor",
+        Group::Memory => "Memory Sensor",
+        Group::Storage => "Storage Sensor",
+        Group::Battery => "Battery Sensor",
+        Group::Enclosure => "Enclosure Sensor",
+        Group::Power => "Power Sensor",
+        Group::Wireless => "Wireless Sensor",
+        Group::Other => "Sensor",
+    }
+}
+
+/// Reads fans and temperature sensors through the SMC.
+pub struct Reader<S: SmcAccess> {
+    smc: S,
+    apple_silicon: bool,
+    definitions: Option<Vec<Definition>>,
+}
+
+impl<S: SmcAccess> Reader<S> {
+    pub fn new(smc: S, apple_silicon: bool) -> Self {
+        Self { smc, apple_silicon, definitions: None }
+    }
+
+    /// Lists every temperature key once. The SMC holds a few thousand keys, so this walk is
+    /// the one slow read, and its result is kept.
+    pub fn discover(&mut self) -> &[Definition] {
+        if self.definitions.is_none() {
+            let mut found: Vec<Definition> = (0..self.smc.key_count())
+                .filter_map(|index| self.smc.key_at(index))
+                .filter_map(|key| definition(&key, self.apple_silicon))
+                .filter(|definition| self.smc.number(&definition.key).is_some_and(|celsius| PLAUSIBLE_CELSIUS.contains(&celsius)))
+                .collect();
+            found.sort_by(|a, b| (a.group, !a.is_known, &a.name, &a.key).cmp(&(b.group, !b.is_known, &b.name, &b.key)));
+            // Keys with no known meaning share their group's name, so each gets a number, in
+            // the order of the keys.
+            let mut numbers: HashMap<String, u32> = HashMap::new();
+            for definition in found.iter_mut().filter(|definition| !definition.is_known) {
+                let number = numbers.entry(definition.name.clone()).or_insert(0);
+                *number += 1;
+                definition.name = format!("{} {number}", definition.name);
+            }
+            self.definitions = Some(found);
+        }
+        self.definitions.as_deref().unwrap_or_default()
+    }
+
+    pub fn fans(&self) -> Vec<FanReading> {
+        let count = self.smc.number("FNum").map_or(0, |count| count as usize);
+        (0..count)
+            .filter_map(|index| {
+                let current = self.smc.number(&format!("F{index}Ac"))?;
+                Some(FanReading {
+                    index,
+                    minimum_rpm: self.smc.number(&format!("F{index}Mn")).unwrap_or(0.0),
+                    maximum_rpm: self.smc.number(&format!("F{index}Mx")).unwrap_or(0.0),
+                    current_rpm: current.max(0.0),
+                    target_rpm: self.smc.number(&format!("F{index}Tg")).unwrap_or(current),
+                    is_manual: self.is_manual(index),
+                })
+            })
+            .collect()
+    }
+
+    pub fn sensors(&mut self) -> Vec<SensorReading> {
+        self.discover();
+        let smc = &self.smc;
+        self.definitions
+            .iter()
+            .flatten()
+            .filter_map(|definition| {
+                let celsius = smc.number(&definition.key).filter(|celsius| PLAUSIBLE_CELSIUS.contains(celsius))?;
+                Some(SensorReading {
+                    key: definition.key.clone(),
+                    name: definition.name.clone(),
+                    group: definition.group,
+                    is_known: definition.is_known,
+                    celsius,
+                })
+            })
+            .collect()
+    }
+
+    fn is_manual(&self, index: usize) -> bool {
+        if let Some(mode) = self.smc.number(&format!("F{index}Md")) {
+            return mode == 1.0;
+        }
+        self.smc.number("FS! ").is_some_and(|bits| (bits as u32) & (1 << index) != 0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::FakeSmc;
+
+    fn smc_with_sensors() -> FakeSmc {
+        let smc = FakeSmc::two_fans();
+        smc.set("F0Ac", 2400.0, b"flt ");
+        smc.set("F0Md", 1.0, b"ui8 ");
+        for (key, celsius) in [("Tp01", 61.0), ("Te05", 55.0), ("Tg0D", 48.0), ("TaLP", 39.0), ("TB1T", 31.0), ("TH0x", 35.0)] {
+            smc.set(key, celsius, b"flt ");
+        }
+        smc.set("Tp99", 0.0, b"flt "); // a sensor that is off
+        smc.set("TXXX", 400.0, b"flt "); // not a temperature
+        smc
+    }
+
+    #[test]
+    fn fans_are_read_with_their_limits_and_mode() {
+        let fans = Reader::new(smc_with_sensors(), true).fans();
+        assert_eq!(fans.len(), 2);
+        assert_eq!(fans[0].current_rpm, 2400.0);
+        assert_eq!(fans[0].minimum_rpm, 1350.0);
+        assert_eq!(fans[0].maximum_rpm, 5349.0);
+        assert!(fans[0].is_manual);
+        assert!(!fans[1].is_manual);
+    }
+
+    #[test]
+    fn a_mac_with_no_fans_reads_as_none() {
+        let smc = FakeSmc::default();
+        smc.set("Tp01", 40.0, b"flt ");
+        assert!(Reader::new(smc, true).fans().is_empty());
+    }
+
+    #[test]
+    fn only_plausible_temperature_keys_become_sensors() {
+        let mut reader = Reader::new(smc_with_sensors(), true);
+        let mut keys: Vec<&str> = reader.discover().iter().map(|definition| definition.key.as_str()).collect();
+        keys.sort_unstable();
+        assert_eq!(keys, ["TB1T", "TH0x", "TaLP", "Te05", "Tg0D", "Tp01"]);
+    }
+
+    #[test]
+    fn sensors_are_grouped_named_and_ordered() {
+        let sensors = Reader::new(smc_with_sensors(), true).sensors();
+        let find = |key: &str| sensors.iter().find(|sensor| sensor.key == key).expect("sensor");
+        assert_eq!(find("Tp01").group, Group::Cpu);
+        assert_eq!(find("Tp01").celsius, 61.0);
+        assert_eq!(find("Tg0D").group, Group::Gpu);
+        assert_eq!(find("TaLP").name, "Airflow Left");
+        assert_eq!(find("TH0x").name, "SSD");
+        assert_eq!(sensors.first().map(|sensor| sensor.group), Some(Group::Cpu), "The CPU's sensors come first");
+    }
+
+    #[test]
+    fn a_sensor_that_goes_off_drops_out() {
+        let smc = smc_with_sensors();
+        let mut reader = Reader::new(&smc, true);
+        assert_eq!(reader.sensors().len(), 6);
+        smc.set("Tg0D", 0.0, b"flt ");
+        assert_eq!(reader.sensors().len(), 5);
+    }
+
+    #[test]
+    fn apple_silicon_prefixes() {
+        let group = |key: &str| definition(key, true).map(|definition| definition.group);
+        assert_eq!(group("Tp0V"), Some(Group::Cpu));
+        assert_eq!(group("Te0S"), Some(Group::Cpu));
+        assert_eq!(group("Tf04"), Some(Group::Cpu));
+        assert_eq!(group("Tf4E"), Some(Group::Cpu));
+        assert_eq!(group("Tf14"), Some(Group::Gpu));
+        assert_eq!(group("Tg0L"), Some(Group::Gpu));
+        assert_eq!(group("TPD0"), Some(Group::Power));
+        assert_eq!(group("TD00"), Some(Group::Other));
+    }
+
+    #[test]
+    fn intel_prefixes() {
+        let group = |key: &str| definition(key, false).map(|definition| definition.group);
+        assert_eq!(group("TC1C"), Some(Group::Cpu));
+        assert_eq!(group("TG1D"), Some(Group::Gpu));
+        assert_eq!(group("Tp0P"), Some(Group::Power));
+        assert_eq!(group("TC0P"), Some(Group::Cpu));
+    }
+
+    #[test]
+    fn only_temperature_keys_are_sensors() {
+        assert_eq!(definition("F0Ac", true), None);
+        assert_eq!(definition("T", true), None);
+        assert_eq!(definition("Tp°", true), None);
+    }
+
+    #[test]
+    fn a_key_with_no_known_meaning_is_named_for_its_group() {
+        let unknown = definition("Te0S", true).expect("definition");
+        assert_eq!((unknown.name.as_str(), unknown.is_known), ("Efficiency Core Sensor", false));
+        assert_eq!(definition("TD00", true).map(|d| d.name).as_deref(), Some("Sensor"));
+        assert_eq!(definition("TB1T", true).map(|d| d.is_known), Some(true));
+    }
+
+    #[test]
+    fn keys_with_no_known_meaning_are_numbered_in_key_order_after_the_known_ones() {
+        let smc = smc_with_sensors();
+        for key in ["Te0S", "Te0G", "Tp0V"] {
+            smc.set(key, 50.0, b"flt ");
+        }
+        let mut reader = Reader::new(&smc, true);
+        let cpu: Vec<(String, String, bool)> = reader
+            .discover()
+            .iter()
+            .filter(|definition| definition.group == Group::Cpu && !definition.is_known)
+            .map(|definition| (definition.key.clone(), definition.name.clone(), definition.is_known))
+            .collect();
+        let names: Vec<(&str, &str)> = cpu.iter().map(|(key, name, _)| (key.as_str(), name.as_str())).collect();
+        assert!(names.contains(&("Te05", "Efficiency Core Sensor 1")), "{names:?}");
+        assert!(names.contains(&("Te0G", "Efficiency Core Sensor 2")), "{names:?}");
+        assert!(names.contains(&("Te0S", "Efficiency Core Sensor 3")), "{names:?}");
+        let definitions = reader.discover();
+        let first_unknown = definitions.iter().position(|d| d.group == Group::Cpu && !d.is_known).expect("unknown");
+        assert!(definitions[first_unknown..].iter().filter(|d| d.group == Group::Cpu).all(|d| !d.is_known));
+    }
+}

@@ -6,13 +6,14 @@ enum PresetIcon: String, Codable, CaseIterable, Sendable, Identifiable {
     case sync, thunderbolt, coffee, rocket, compass
     case moon, sun, fire, code, videoCamera = "video-camera", experiment, laptop, desktop, home
     case sound, car, cloud, dashboard, sliders, heart, star
+    case aim
 
     var id: String { rawValue }
 
     var assetName: String { "ant-\(rawValue)" }
 
     /// The icons offered for a preset a person makes.
-    static let choices: [PresetIcon] = allCases.filter { $0 != .sync && $0 != .thunderbolt }
+    static let choices: [PresetIcon] = allCases.filter { $0 != .sync && $0 != .thunderbolt && $0 != .aim }
 }
 
 /// A named way to run the fans.
@@ -22,6 +23,8 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
         case automatic
         /// Every fan at its maximum. Built in.
         case fullBlast
+        /// The predictive controller chooses each fan's speed. Built in.
+        case adaptive
         case custom
     }
 
@@ -53,7 +56,8 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
 
     func control(for fan: Fan) -> FanControl {
         switch kind {
-        case .automatic: return .automatic
+        // The adaptive controller's speed comes from FanPlanner.plan, not from a control.
+        case .automatic, .adaptive: return .automatic
         case .fullBlast: return .constantFraction(1)
         case .custom: return controls[fan.index] ?? fallback
         }
@@ -77,7 +81,14 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
         summary: "Every fan runs at its maximum speed."
     )
 
-    static let builtIn = [automatic, fullBlast]
+    static let adaptiveID = UUID(uuidString: "A1F10000-0000-4000-8000-000000000003") ?? UUID()
+
+    static let adaptive = Preset(
+        id: adaptiveID, name: "Adaptive", icon: .aim, kind: .adaptive,
+        summary: "The fans follow what the Mac is doing, and what it is about to do."
+    )
+
+    static let builtIn = [automatic, adaptive, fullBlast]
 
     /// The presets a new installation starts with. A person can change or delete them.
     static func starters() -> [Preset] {

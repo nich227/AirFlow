@@ -49,6 +49,11 @@ struct ReadingFormat: Equatable, Sendable {
         rpm.rounded().formatted(.number.precision(.fractionLength(0)))
     }
 
+    /// Power in whole watts, without the unit.
+    static func watts(_ watts: Double) -> String {
+        watts.rounded().formatted(.number.precision(.fractionLength(0)))
+    }
+
     static func rpmWithUnit(_ rpm: Double) -> String {
         self.rpm(rpm) + " RPM"
     }

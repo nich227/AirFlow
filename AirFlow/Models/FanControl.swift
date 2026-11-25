@@ -86,12 +86,26 @@ enum FanPlanner {
         }
     }
 
-    static func plan(preset: Preset, snapshot: ThermalSnapshot) -> [Int: FanCommand] {
+    /// - Parameter adaptiveFraction: the share of each fan's range that the adaptive controller
+    ///   asks for. Only the Adaptive preset uses it. Without it, that preset leaves every fan
+    ///   to the system.
+    static func plan(preset: Preset, snapshot: ThermalSnapshot, adaptiveFraction: Double? = nil) -> [Int: FanCommand] {
         var commands: [Int: FanCommand] = [:]
         for fan in snapshot.fans {
-            commands[fan.index] = command(for: preset.control(for: fan), fan: fan, snapshot: snapshot)
+            if preset.kind == .adaptive {
+                commands[fan.index] = adaptiveCommand(fan: fan, fraction: adaptiveFraction)
+            } else {
+                commands[fan.index] = command(for: preset.control(for: fan), fan: fan, snapshot: snapshot)
+            }
         }
         return commands
+    }
+
+    /// The adaptive controller's share of the range as a speed for one fan, between the fan's
+    /// own limits.
+    static func adaptiveCommand(fan: Fan, fraction: Double?) -> FanCommand {
+        guard fan.hasUsableRange, let fraction, fraction.isFinite else { return .automatic }
+        return .speed(fan.clamp((fan.rpm(atFraction: fraction) / rpmStep).rounded() * rpmStep))
     }
 
     /// Whether a new command is different enough from the last one sent to send it.

@@ -16,6 +16,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 - Describe a preset or a rule, such as "Stay quiet until the CPU reaches 80°", and the model on your Mac drafts it. You decide whether to keep it. Nothing you type leaves your Mac.
 - Ask Siri to "Apply Quiet in AirFlow", or use the Apply Fan Preset and Get Fan Status actions in Shortcuts and Spotlight.
 - Presets are stored as a YAML file that you can read and edit. You can export presets to a `.yaml` file and import them on another Mac.
+- AirFlow checks for a newer version by itself and installs it when you agree. Every update is signed, and AirFlow refuses one that isn't.
 - AirFlow uses Liquid Glass throughout, follows Light Mode and Dark Mode, and uses your accent color. Fan speeds and temperatures are set in a monospaced face, so a number that changes doesn't move the text beside it.
 
 ## Using AirFlow
@@ -35,6 +36,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 | Let rules run | Turn on Autopilot on the Rules page. |
 | Turn on fan control | Click Turn On Fan Control, then turn on AirFlow in System Settings > General > Login Items & Extensions. |
 | Open AirFlow at login | Choose AirFlow > Settings > General. |
+| Check for an update | Choose AirFlow > Check for Updates, or click Check for Updates in Settings > About. |
 
 ## Fan control and safety
 
@@ -49,7 +51,7 @@ Changing fan speeds changes how your Mac cools itself. You are responsible for t
 
 ## Privacy
 
-AirFlow doesn't collect any data and makes no network connections. Apple Intelligence runs on your Mac. Your presets and rules are stored in your Library folder, where you can delete them at any time.
+AirFlow doesn't collect any data. Its one network connection is the check for a newer version, which reads a list of releases from GitHub and sends nothing about you or your Mac. You can turn the check off in Settings > About. Apple Intelligence runs on your Mac. Your presets and rules are stored in your Library folder, where you can delete them at any time.
 
 ## The presets file
 
@@ -112,12 +114,12 @@ The tests never read or change a real fan. The backend's tests use a made-up SMC
 
 AirFlow is two parts. The backend is Rust, in `backend/`: it reads the SMC, names the sensors, sets fan speeds, and is the helper. The app is Swift and SwiftUI, in `AirFlow/`, and links the backend through a C interface. XcodeGen generates the Xcode project from `project.yml`, and the repository doesn't include it.
 
-AirFlow uses Swift Package Manager and Cargo for its dependencies. [Lottie](https://github.com/airbnb/lottie-ios) plays the animations, and [Yams](https://github.com/jpsim/Yams) reads YAML. The backend uses [block2](https://github.com/madsmtm/objc2) and [libc](https://github.com/rust-lang/libc). `scripts/make-animations.py` generates the animation files, and `scripts/make-icons.py` writes the icons.
+AirFlow uses Swift Package Manager and Cargo for its dependencies. [Lottie](https://github.com/airbnb/lottie-ios) plays the animations, [Yams](https://github.com/jpsim/Yams) reads YAML, and [Sparkle](https://github.com/sparkle-project/Sparkle) installs updates. The backend uses [block2](https://github.com/madsmtm/objc2) and [libc](https://github.com/rust-lang/libc). `scripts/make-animations.py` generates the animation files, and `scripts/make-icons.py` writes the icons.
 
 ## License
 
 AirFlow is available under the MIT License. See [LICENSE](LICENSE).
 
-Text is set in [Hedvig Letters Sans](https://github.com/KanonFoundry/HedvigLetters) and readings in [IBM Plex Mono](https://github.com/IBM/plex), both under the SIL Open Font License 1.1. The app icon, the menu bar icon, and the turning fan use the fan from [Bootstrap Icons](https://github.com/twbs/icons), under the MIT License. Every other icon is from [Ant Design Icons](https://github.com/ant-design/ant-design-icons), under the MIT License. [Lottie](https://github.com/airbnb/lottie-ios) is licensed under Apache 2.0. [Yams](https://github.com/jpsim/Yams), [objc2](https://github.com/madsmtm/objc2), and [libc](https://github.com/rust-lang/libc) are licensed under the MIT License. The [licenses/](licenses) folder contains each license, and the app carries a copy of that folder.
+Text is set in [Hedvig Letters Sans](https://github.com/KanonFoundry/HedvigLetters) and readings in [IBM Plex Mono](https://github.com/IBM/plex), both under the SIL Open Font License 1.1. The app icon, the menu bar icon, and the turning fan use the fan from [Bootstrap Icons](https://github.com/twbs/icons), under the MIT License. Every other icon is from [Ant Design Icons](https://github.com/ant-design/ant-design-icons), under the MIT License. [Lottie](https://github.com/airbnb/lottie-ios) is licensed under Apache 2.0. [Sparkle](https://github.com/sparkle-project/Sparkle) is licensed under the MIT License. [Yams](https://github.com/jpsim/Yams), [objc2](https://github.com/madsmtm/objc2), and [libc](https://github.com/rust-lang/libc) are licensed under the MIT License. The [licenses/](licenses) folder contains each license, and the app carries a copy of that folder.
 
 © 2026 Kevin Chen.

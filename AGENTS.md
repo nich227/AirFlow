@@ -33,12 +33,13 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 | Log subsystem | `com.kevster.airflow` |
 | Minimum macOS | 26.0, Apple silicon only (`ARCHS: arm64` in `project.yml`). The backend keeps the Intel SMC forms (`fpe2`, `FS! `), which no build exercises |
 | Toolchain | Xcode 26+, Swift 5 language mode, Rust (stable), XcodeGen |
-| Packages | SwiftPM: `Lottie` 4.6.1+, `Yams` 6+. Cargo: `block2`, `libc`, pinned by `backend/Cargo.lock` |
+| Packages | SwiftPM: `Lottie` 4.6.1+, `Yams` 6+, `Sparkle` 2.8+. Cargo: `block2`, `libc`, pinned by `backend/Cargo.lock` |
+| Updates | Sparkle, through `Updates` (`Controllers/Updates.swift`). `SUFeedURL` is `updates.xml.rss` on this repository's `gh-pages` branch, and `SUPublicEDKey` is the public half of the key in the `SPARKLE_ED_PRIVATE_KEY` secret. A Debug build and a test never start the updater |
 | Fonts | `AirFlow/Resources/Fonts`: Hedvig Letters Sans (one weight) and IBM Plex Mono (regular, medium), both under the SIL Open Font License. `ATSApplicationFontsPath` in `Info.plist` registers them. `AirType.textFamily` and `AirType.readingFamily` name them |
 | Frameworks | FoundationModels, AppIntents, Charts, ServiceManagement, XPC |
 | Storage | `~/Library/Application Support/AirFlow/presets.yaml` and `rules.json`. A Debug build uses the `Debug/` folder inside it |
 | UserDefaults keys | `temperatureUnit`, `preciseTemperatures`, `menuBarReadout`, `safeguardEnabled`, `safeguardLimit`, `autopilotEnabled`, `activePresetID`, `userPresetID`, `showsInspector`, `welcomeShown` |
-| Signing | Ad hoc by default, which can only monitor. `scripts/build.sh --sign` passes `AIRFLOW_SIGN_IDENTITY` and `AIRFLOW_TEAM`. Passing `CODE_SIGN_IDENTITY` on the command line breaks the Swift packages |
+| Signing | Ad hoc by default, which can only monitor. `scripts/build.sh --sign` takes the Developer ID Application identity from the keychain (team `8ZUR795GTN`), the one a release is signed with, and passes `AIRFLOW_SIGN_IDENTITY` and `AIRFLOW_TEAM`. `CODE_SIGN_IDENTITY` on the command line needs `CODE_SIGN_STYLE=Manual` beside it, as the release workflow passes them, or the Swift packages refuse it |
 | Lifecycle | SwiftUI `App`: a `Window` that does not open at launch, a `MenuBarExtra` with the window style, and `Settings`. The app has no Dock icon until its window or Settings is open (`AppDelegate.updateDockPresence`). Opening the app again shows the window (`WindowOpener`) |
 | Sampling | `ThermalMonitor` reads every second while a window or the panel shows readings, and every four seconds otherwise. History holds 15 minutes |
 | SMC keys | Fans: `FNum`, `F<n>Ac`, `F<n>Mn`, `F<n>Mx`, `F<n>Tg`, `F<n>Md`, `Ftst`. Temperatures: every `T???` key with a plausible value. Names and groups are in `backend/src/sensors.rs`. A key with no known meaning gets its group's name and a number in key order, and `is_known` is false |
@@ -85,7 +86,8 @@ AirFlow/
 │   └── HelperClient.swift            FanCommanding, HelperClient (XPC), HelperManager (SMAppService)
 ├── Models/                           Fan, Sensor, ThermalSnapshot, FanControl (SensorRule, FanPlanner, Safeguard),
 │                                     Preset, PresetCodec, PresetsDocument, Automation, Temperature, AppSettings
-├── Controllers/                      AppModel, FanController, PresetStore (PresetFile, JSONFile, NameRegistry), AutomationCoordinator (AppDirectory)
+├── Controllers/                      AppModel, FanController, PresetStore (PresetFile, JSONFile, NameRegistry), AutomationCoordinator (AppDirectory),
+│                                     Updates (Sparkle)
 ├── Intelligence/                     IntelligenceService (FoundationModels), Proposals, FanIntents (App Intents)
 ├── Views/                            MainWindow (Sidebar), PresetDetail (FanSentence, FanSection, SensorRuleEditor), LiveInspector
 │   │                                 (HistoryChart, SensorsView), AutomationView (RuleRow), DescribePresetSheet, MenuPanel
@@ -94,7 +96,10 @@ AirFlow/
 ├── Utilities/                        Theme (tokens, AirType, ReadingText, antGlass, GlassCard, AntIcon), Log
 └── Resources/                        Assets.xcassets (MenuBarIcon, ant-*, Temp* colors), AppIcon.icon, Animations/, Fonts/, LaunchDaemons/
 AirFlowTests/                         XCTest. Fixtures.swift holds CommandRecorder and made-up snapshots
-scripts/                              build.sh, test.sh, build-backend.sh, embed-helper.sh, make-animations.py, make-icons.py, fan_geometry.py
+scripts/                              build.sh, test.sh, build-backend.sh, embed-helper.sh, make-animations.py, make-icons.py, fan_geometry.py,
+                                      and for a release: import-certificate.sh, sign-nested.sh, make-dmg.sh, check-sparkle-key.js,
+                                      sign-release.js, update-appcast.js
+.github/workflows/                    test.yml, release.yml (a tag push), check-secrets.yml (by hand)
 licenses/                             One file per dependency and icon set. The app carries the folder
 PRODUCT.md, DESIGN.md                 What the product is, and how it looks and moves
 ```
@@ -107,7 +112,7 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | `backend/src/sensors.rs` | Fan reads, plausible sensors only, groups and names for Apple silicon and Intel, numbers for keys with no known meaning, a sensor that goes off |
 | `backend/src/fans.rs` | Clamping, taking and returning a fan, a fan that does not exist, a speed that is not a number, equal limits, the `Ftst` handover and its failure, reset past a failing fan, Intel's bit per fan |
 | `backend/src/signing.rs`, `protocol.rs`, `ffi.rs` | The requirement string and what makes none, the header agreeing with the source, the sample reader across the C interface, null and negative arguments, text cut to fit |
-| `HelperTests.swift` | The sample Mac across the bridge, group numbers against the header, the helper and its property list inside the built app, the app's requirement, an unsigned copy reaching no helper |
+| `HelperTests.swift` | The sample Mac across the bridge, group numbers against the header, the helper and its property list inside the built app, the app's requirement, an unsigned copy reaching no helper, the appcast's address and the update key in `Info.plist`, no updater under test |
 | `HardwareTests.swift` | Group summaries and outliers, sensor sources, history length, extremes, a failed read, the one-second interval |
 | `ControlTests.swift` | Sensor rules and their limits, each control as a command, built-in and starter presets, the safeguard, the control loop (nothing without the helper, send once then keep alive, a fan taken back, automatic, failure and retry, wake) |
 | `AutomationAndStoreTests.swift` | Rule matching and order, time past midnight, temperature hysteresis, Autopilot decisions and the person's hold, rule storage, finding apps, the preset store (YAML on disk, unique names, built-ins, duplicates, import, export, an unreadable file), `AppModel` |
@@ -135,7 +140,25 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | A new page in the window | `SidebarItem`, `MainWindow.detail`, `MainWindow.launchSelection`, invariant 11 |
 | A sentence or a label that shows a number | `Text(readings:)` or `readingFont`, invariant 17 |
 | A dependency | `project.yml` or `Cargo.toml`, `licenses/`, the README's License section |
+| The update key | Never, for an app that has shipped: every installed copy refuses an update signed with another key. If it must change, `SUPublicEDKey` in `Info.plist` and the `SPARKLE_ED_PRIVATE_KEY` secret change together, and `scripts/check-sparkle-key.js` must pass |
+| Something new inside the app bundle that runs | `scripts/sign-nested.sh` or `scripts/embed-helper.sh` signs it, and the release workflow's "verify the signature" step must still pass |
 | The minimum macOS | `project.yml`, `scripts/build-backend.sh`, the README |
+
+## Releasing
+
+The mechanism is the one nich227/Gailan and nich227/ClipDeck use. Push a tag such as `v1.0.1`, and `release.yml` does the rest on a `macos-26` runner:
+
+1. It checks that `SPARKLE_ED_PRIVATE_KEY` is the private half of `SUPublicEDKey`, and runs the backend's tests.
+2. It imports the Developer ID certificate into a keychain made for the run (`scripts/import-certificate.sh`) and builds Release with it. `MARKETING_VERSION` is the tag, and `CURRENT_PROJECT_VERSION` is `x*10000 + y*100 + z`, which is the number Sparkle compares.
+3. `scripts/embed-helper.sh` signs the helper during the build. `scripts/sign-nested.sh` signs what is inside Sparkle, signs the app again with its entitlements, and checks that the app and the helper carry one team.
+4. It notarizes and staples the app, makes the ZIP that Sparkle downloads and the DMG that people download, and signs, notarizes, and staples the DMG.
+5. It signs the ZIP with the Ed25519 key (`scripts/sign-release.js`), publishes the GitHub Release with `docs/release-notes/<version>.md`, and adds the release to `updates.xml.rss` on `gh-pages` (`scripts/update-appcast.js`).
+
+Six repository secrets carry it: `MACOS_CERTIFICATE_P12` (base64) and `MACOS_CERTIFICATE_PASSWORD` for the Developer ID certificate, `APPLE_API_KEY_P8` (base64), `APPLE_API_KEY_ID`, and `APPLE_API_ISSUER` for notarization, and `SPARKLE_ED_PRIVATE_KEY`, the base64 of the 32-byte seed. The certificate and the API key are the ones Gailan and ClipDeck use. The update key is AirFlow's own, as each app's is. Its private half is also in the login keychain of the Mac that made it, under the service `https://sparkle-project.org` and the account `AirFlow`.
+
+Run `check-secrets.yml` by hand (Actions > check secrets > Run workflow) to test all six without a release. No key, certificate, or password is ever committed: `.gitignore` refuses their file types.
+
+Write the release notes for the update window, which is small: a heading and bullets.
 
 ## Verify before finishing
 

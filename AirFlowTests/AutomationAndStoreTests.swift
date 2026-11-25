@@ -148,7 +148,7 @@ final class PresetStoreTests: XCTestCase {
 
     func testANewInstallationStartsWithTheBuiltInAndStarterPresets() {
         let store = PresetStore(url: nil)
-        XCTAssertEqual(store.presets.map(\.name), ["Automatic", "Full Blast", "Quiet", "Heavy Workload", "Travel"])
+        XCTAssertEqual(store.presets.map(\.name), ["Automatic", "Adaptive", "Full Blast", "Quiet", "Heavy Workload", "Travel"])
         XCTAssertEqual(store.preset(id: Preset.automaticID)?.kind, .automatic)
         XCTAssertEqual(store.preset(named: " full blast")?.id, Preset.fullBlastID)
     }
@@ -192,7 +192,8 @@ final class PresetStoreTests: XCTestCase {
         automatic.name = "Mine"
         store.update(automatic)
         store.delete(id: Preset.fullBlastID)
-        XCTAssertEqual(store.presets.prefix(2).map(\.name), ["Automatic", "Full Blast"])
+        store.delete(id: Preset.adaptiveID)
+        XCTAssertEqual(store.presets.prefix(3).map(\.name), ["Automatic", "Adaptive", "Full Blast"])
     }
 
     func testDuplicatingFullBlastMakesAPresetThatCanBeChanged() throws {

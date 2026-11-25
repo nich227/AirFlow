@@ -123,6 +123,17 @@ final class SnapshotTests: XCTestCase {
         let hotQuiet = try XCTUnwrap(hot.presets.preset(named: "Quiet"))
         try draw("preset-safeguard", width: 640, height: 900, model: hot) { PresetDetail(preset: hotQuiet) }
 
+        let adaptive = try model(helper: .enabled, active: "Adaptive", cpu: 78)
+        adaptive.adaptive.setWorkload(AppWorkload(bundleID: "com.apple.FinalCut", name: "Final Cut Pro", regime: .sustained))
+        adaptive.adaptive.setWorkload(AppWorkload(bundleID: "com.adobe.LightroomClassicCC7", name: "Lightroom Classic", regime: .bursty))
+        for step in 0..<40 {
+            var snapshot = adaptive.monitor.snapshot
+            snapshot.date = Date(timeIntervalSinceNow: Double(step))
+            snapshot.systemWatts = step < 10 ? 14 : 62
+            adaptive.adaptive.ingest(snapshot)
+        }
+        try draw("preset-adaptive", width: 640, height: 900, model: adaptive) { PresetDetail(preset: .adaptive) }
+
         let fanless = try model(helper: .notInstalled, active: "Automatic", fans: [])
         try draw("preset-no-fans", width: 640, height: 520, model: fanless) { PresetDetail(preset: .automatic) }
     }

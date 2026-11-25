@@ -1,0 +1,205 @@
+import Foundation
+import Observation
+
+/// Owns every long-lived object and is the one place that changes the active preset.
+@MainActor
+@Observable
+final class AppModel {
+    /// Who chose the active preset.
+    enum ChosenBy: Equatable {
+        case user
+        case autopilot(ruleID: UUID)
+        case siri
+    }
+
+    static let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    static let shared = AppModel.makeShared()
+
+    let settings: AppSettings
+    let presets: PresetStore
+    let monitor: ThermalMonitor
+    let controller: FanController
+    let automation: AutomationCoordinator
+    let intelligence: IntelligenceService
+    let helper: HelperManager
+
+    private(set) var chosenBy: ChosenBy = .user
+    /// What the window should do about importing and exporting presets.
+    var transfer = PresetTransfer()
+
+    @ObservationIgnored private let client: HelperClient?
+    @ObservationIgnored private let defaults: UserDefaults
+    /// The preset the person chose themselves. Autopilot returns to it when no rule matches.
+    @ObservationIgnored private var userPresetID: UUID
+
+    static let userPresetKey = "userPresetID"
+
+    init(
+        defaults: UserDefaults, presetsURL: URL?, rulesURL: URL?,
+        sampler: HardwareSampler, commander: FanCommanding, helper: HelperManager, client: HelperClient? = nil
+    ) {
+        self.defaults = defaults
+        self.client = client
+        settings = AppSettings(defaults: defaults)
+        presets = PresetStore(url: presetsURL)
+        monitor = ThermalMonitor(sampler: sampler)
+        controller = FanController(commander: commander)
+        automation = AutomationCoordinator(url: rulesURL)
+        intelligence = IntelligenceService()
+        self.helper = helper
+        userPresetID = defaults.string(forKey: Self.userPresetKey).flatMap(UUID.init) ?? settings.activePresetID
+        if presets.preset(id: settings.activePresetID) == nil {
+            settings.activePresetID = Preset.automaticID
+        }
+        monitor.onSnapshot = { [weak self] snapshot in self?.handle(snapshot) }
+    }
+
+    private static func makeShared() -> AppModel {
+        let client = HelperClient()
+        if isRunningTests {
+            // The tests load into the app. This instance must not touch the person's presets,
+            // preferences, or fans.
+            let suite = "com.kevster.airflow.tests.\(UUID().uuidString)"
+            return AppModel(
+                defaults: UserDefaults(suiteName: suite) ?? .standard, presetsURL: nil, rulesURL: nil,
+                sampler: HardwareSampler(makeSource: { throw HardwareError.cannotOpenSMC }),
+                commander: client, helper: HelperManager(isSigned: false), client: nil
+            )
+        }
+        let folder = Bundle.main.bundleIdentifier?.hasSuffix(".debug") == true ? "Debug/" : ""
+        return AppModel(
+            defaults: .standard,
+            presetsURL: JSONFile<[Preset]>.inApplicationSupport(folder + "presets.yaml"),
+            rulesURL: JSONFile<[AutomationRule]>.inApplicationSupport(folder + "rules.json"),
+            sampler: HardwareSampler(), commander: client, helper: HelperManager(), client: client
+        )
+    }
+
+    var activePreset: Preset {
+        presets.preset(id: settings.activePresetID) ?? .automatic
+    }
+
+    /// The rule that chose the active preset, when Autopilot did.
+    var activeRule: AutomationRule? {
+        guard case .autopilot(let ruleID) = chosenBy else { return nil }
+        return automation.rules.first { $0.id == ruleID }
+    }
+
+    func start() {
+        guard !Self.isRunningTests else { return }
+        automation.startWatching()
+        monitor.start()
+    }
+
+    /// Makes a preset the active one and sends its commands at once.
+    func apply(_ id: UUID, by source: ChosenBy = .user) {
+        guard presets.preset(id: id) != nil else { return }
+        settings.activePresetID = id
+        chosenBy = source
+        if case .autopilot = source {} else {
+            userPresetID = id
+            defaults.set(id.uuidString, forKey: Self.userPresetKey)
+            automation.userChosePreset()
+        }
+        runControlLoop()
+    }
+
+    /// Asks the window to save presets to a YAML file: the ones named, or all of them.
+    func beginExport(ids: [UUID]? = nil) {
+        do {
+            let names = ids?.compactMap { presets.preset(id: $0)?.name } ?? []
+            transfer.export = PresetsDocument(text: try presets.exportText(ids: ids))
+            transfer.exportName = names.count == 1 ? names[0] : "AirFlow Presets"
+            transfer.isExporting = true
+        } catch {
+            transfer.message = "AirFlow couldn't write the presets. \(error.localizedDescription)"
+        }
+    }
+
+    /// Reads presets from a YAML file a person chose and returns the ones added.
+    @discardableResult
+    func importPresets(from url: URL) -> [Preset] {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+            guard size <= PresetCodec.maximumBytes else { throw PresetCodec.Failure.tooLarge }
+            let added = try presets.importText(String(decoding: try Data(contentsOf: url), as: UTF8.self))
+            Task { AirFlowShortcuts.updateAppShortcutParameters() }
+            return added
+        } catch {
+            transfer.message = error.localizedDescription
+            return []
+        }
+    }
+
+    func deletePreset(id: UUID) {
+        automation.removeRules(forPreset: id)
+        if userPresetID == id { userPresetID = Preset.automaticID }
+        if settings.activePresetID == id { apply(Preset.automaticID) }
+        presets.delete(id: id)
+    }
+
+    /// Runs the control loop on the readings already in hand, after a change to the active
+    /// preset or to one of its rules.
+    func runControlLoop() {
+        guard monitor.hasLoaded, monitor.isAvailable else { return }
+        tickController(monitor.snapshot)
+    }
+
+    func enableFanControl() {
+        helper.install()
+        controller.isControlAllowed = helper.status.allowsControl
+        runControlLoop()
+    }
+
+    func removeHelper() async {
+        await controller.releaseAll()
+        controller.isControlAllowed = false
+        client?.disconnect()
+        await helper.remove()
+    }
+
+    func systemDidWake() {
+        controller.forgetSentCommands()
+        helper.refresh()
+    }
+
+    /// Returns the fans to the system before the app ends. The helper does the same when the
+    /// connection closes, so this only makes it prompt.
+    func prepareToQuit() {
+        monitor.stop()
+        if controller.holdsAnyFan {
+            client?.resetAllFansBeforeQuitting()
+        }
+        client?.disconnect()
+    }
+
+    private func handle(_ snapshot: ThermalSnapshot) {
+        if helper.status == .needsApproval || helper.status == .notInstalled { helper.refresh() }
+        let decision = automation.evaluate(
+            context: automation.context(snapshot: snapshot),
+            presets: presets.presets,
+            isEnabled: settings.autopilotEnabled
+        )
+        switch decision {
+        case .keep:
+            break
+        case .apply(let presetID, let ruleID):
+            settings.activePresetID = presetID
+            chosenBy = .autopilot(ruleID: ruleID)
+        case .revert:
+            settings.activePresetID = presets.preset(id: userPresetID)?.id ?? Preset.automaticID
+            chosenBy = .user
+        }
+        tickController(snapshot)
+    }
+
+    private func tickController(_ snapshot: ThermalSnapshot) {
+        controller.isControlAllowed = helper.status.allowsControl
+        controller.tick(
+            snapshot: snapshot, preset: activePreset,
+            safeguardEnabled: settings.safeguardEnabled, safeguardLimit: settings.safeguardLimit
+        )
+    }
+}

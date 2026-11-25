@@ -1,0 +1,73 @@
+# XcodeGen generates this file from project.yml. Never commit it.
+*.xcodeproj
+*.xcworkspace
+!project.yml
+
+# Build output and derived data from local and workflow runs
+/build/
+/dd/
+/ddt/
+DerivedData/
+*.xcresult
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Xcode and Swift Package Manager state
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+.swiftpm/
+.build/
+Package.resolved
+
+# Release artifacts are not kept in the repository.
+*.dmg
+*.zip
+notes.md
+
+# Keys, certificates, and credentials do not belong in the repository. The signing identity lives
+# in the keychain.
+*.p12
+*.p8
+*.pem
+*.key
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+*ed_private*
+*private_key*
+*private-key*
+.env
+.env.*
+secrets/
+
+# Editors and the operating system
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.idea/
+.vscode/
+*.swp
+*~
+
+# Voice linter backups and scratch files
+*.voice-lint-*.bak
+*.orig
+*.rej
+
+# Python bytecode from running the scripts
+__pycache__/
+*.pyc
+
+# Rust build output. Cargo.lock is committed, so the backend builds from pinned crates.
+/backend/target/
+
+# Captures for a design review. They are made again for each review.
+/.impeccable/review/

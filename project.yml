@@ -1,0 +1,120 @@
+name: AirFlow
+options:
+  bundleIdPrefix: com.kevster
+  deploymentTarget:
+    macOS: "26.0"
+  generateEmptyDirectories: true
+
+packages:
+  Lottie:
+    url: https://github.com/airbnb/lottie-ios
+    from: "4.6.1"
+  Yams:
+    url: https://github.com/jpsim/Yams
+    from: "6.0.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "10000"
+    # The Rust backend is built for Apple silicon only.
+    ARCHS: arm64
+    # Local builds use ad hoc signing, so they need no developer team or certificate. An ad hoc
+    # build monitors only: the helper refuses every client unless both carry one team's signature.
+    # scripts/build.sh --sign passes an identity from the keychain.
+    # build.sh passes these two by their own names. Passing CODE_SIGN_IDENTITY itself would
+    # also reach the Swift packages, which sign themselves and refuse an identity set by hand.
+    AIRFLOW_SIGN_IDENTITY: "-"
+    AIRFLOW_TEAM: ""
+    CODE_SIGN_IDENTITY: "$(AIRFLOW_SIGN_IDENTITY)"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: "$(AIRFLOW_TEAM)"
+
+schemes:
+  AirFlow:
+    build:
+      targets:
+        AirFlow: all
+        AirFlowTests: [test]
+    test:
+      targets:
+        - AirFlowTests
+
+targets:
+  AirFlow:
+    type: application
+    platform: macOS
+    sources:
+      - path: AirFlow
+        excludes:
+          - Resources/AppIcon.icon
+          - Resources/LaunchDaemons
+      # This references one file, so actool compiles the Icon Composer document instead of copying
+      # its parts.
+      - path: AirFlow/Resources/AppIcon.icon
+        type: file
+        buildPhase: resources
+      # The notices for the open source code and artwork the app carries travel inside it.
+      - path: licenses
+        type: folder
+        buildPhase: resources
+      # SMAppService looks for the daemon's property list here, inside the app.
+      - path: AirFlow/Resources/LaunchDaemons/com.kevster.airflow.helper.plist
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchDaemons
+    settings:
+      base:
+        PRODUCT_NAME: AirFlow
+        PRODUCT_BUNDLE_DISPLAY_NAME: AirFlow
+        INFOPLIST_FILE: AirFlow/Info.plist
+        CODE_SIGN_ENTITLEMENTS: AirFlow/AirFlow.entitlements
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
+        COMBINE_HIDPI_IMAGES: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # The Rust backend: its module map for Swift, and its static library for the linker.
+        SWIFT_INCLUDE_PATHS: "$(PROJECT_DIR)/backend/include"
+        LIBRARY_SEARCH_PATHS: "$(PROJECT_DIR)/backend/target/$(AIRFLOW_BACKEND_PROFILE)"
+        OTHER_LDFLAGS: "-lairflow_backend -framework IOKit -framework Security"
+        # The scripts below run cargo and read the backend's folder.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.kevster.airflow.debug
+          PRODUCT_BUNDLE_DISPLAY_NAME: AirFlow Debug
+          AIRFLOW_BACKEND_PROFILE: debug
+          # The unit tests load into the app. Library validation would refuse an ad hoc test bundle.
+          ENABLE_HARDENED_RUNTIME: NO
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: com.kevster.airflow
+          AIRFLOW_BACKEND_PROFILE: release
+          ENABLE_HARDENED_RUNTIME: YES
+    preBuildScripts:
+      - name: Build the Rust backend
+        script: '"$PROJECT_DIR/scripts/build-backend.sh"'
+        basedOnDependencyAnalysis: false
+    postBuildScripts:
+      - name: Embed and sign the helper
+        script: '"$PROJECT_DIR/scripts/embed-helper.sh"'
+        basedOnDependencyAnalysis: false
+    dependencies:
+      - package: Lottie
+      - package: Yams
+  AirFlowTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: AirFlowTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kevster.airflow.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/AirFlow.app/Contents/MacOS/AirFlow"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        GENERATE_INFOPLIST_FILE: YES
+        # The tests read the names in the backend's C header.
+        SWIFT_INCLUDE_PATHS: "$(PROJECT_DIR)/backend/include"
+    dependencies:
+      - target: AirFlow

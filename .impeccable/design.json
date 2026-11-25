@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-25T17:30:00Z",
+  "title": "Design System: AirFlow",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "System Accent",
+        "canonical": "Color.accentColor"
+      },
+      "temp-cool": {
+        "role": "tertiary",
+        "displayName": "Cool (cyan)",
+        "canonical": "#08979C",
+        "tonalRamp": [
+          "#08979C",
+          "#36CFC9"
+        ]
+      },
+      "temp-mild": {
+        "role": "tertiary",
+        "displayName": "Normal (green)",
+        "canonical": "#389E0D",
+        "tonalRamp": [
+          "#389E0D",
+          "#73D13D"
+        ]
+      },
+      "temp-warm": {
+        "role": "tertiary",
+        "displayName": "Warm (gold)",
+        "canonical": "#AD6800",
+        "tonalRamp": [
+          "#AD6800",
+          "#FFC53D"
+        ]
+      },
+      "temp-hot": {
+        "role": "tertiary",
+        "displayName": "Hot (volcano)",
+        "canonical": "#D4380D",
+        "tonalRamp": [
+          "#D4380D",
+          "#FF7A45"
+        ]
+      },
+      "temp-critical": {
+        "role": "tertiary",
+        "displayName": "Very Hot (red)",
+        "canonical": "#CF1322",
+        "tonalRamp": [
+          "#CF1322",
+          "#FF4D4F"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "A page's heading."
+      },
+      "statistic": {
+        "displayName": "Statistic",
+        "purpose": "A fan's speed and its RPM unit, in IBM Plex Mono."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "quick",
+        "value": "ease-out 0.2s",
+        "purpose": "Press and quick state changes."
+      },
+      {
+        "name": "standard",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1) 0.35s",
+        "purpose": "A panel or a section that appears."
+      },
+      {
+        "name": "rotor",
+        "value": "0.35 to 2.75 turns per second",
+        "purpose": "A fan's own relative speed."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "window-minimum",
+        "value": "1120pt"
+      }
+    ]
+  },
+  "components": [],
+  "narrative": {
+    "northStar": "Glass Over Air",
+    "overview": "AirFlow is a translucent window. The desktop shows through it, and every component on it is a pane of Liquid Glass. The components are Ant Design's, and color has one job, which is temperature.",
+    "keyCharacteristics": [
+      "A translucent window with glass components, and no card inside a card.",
+      "Ant Design's outlined icons at one weight, and one mark, the fan.",
+      "A five-step temperature scale that always sits beside a number.",
+      "Hedvig Letters Sans for text, and IBM Plex Mono for every reading.",
+      "Motion that shows a state: a rotor turns as fast as its fan."
+    ],
+    "rules": [
+      {
+        "name": "The Number Rule",
+        "body": "A temperature color never appears alone.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Accent Rule",
+        "body": "The accent means selected or acts. It never decorates.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Draw components through antGlass, GlassCard, StateTag, and StatusBanner.",
+      "Root every page in a ScrollView or a Table."
+    ],
+    "donts": [
+      "Don't put a card inside a card.",
+      "Don't use a temperature color without its number.",
+      "Don't use SF Symbols in AirFlow's own views."
+    ]
+  }
+}

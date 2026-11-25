@@ -243,7 +243,9 @@ struct AntSegmented<Value: Hashable>: View {
                 } label: {
                     Text(option.title)
                         .airFont(.body)
-                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        // The pane under the selected segment marks it. Every title stays in
+                        // the primary color, so the ones to choose from hold their contrast.
+                        .foregroundStyle(.primary)
                         .padding(.horizontal, Space.sm)
                         .padding(.vertical, Space.xxs)
                         .frame(minWidth: 88)

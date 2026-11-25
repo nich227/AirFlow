@@ -125,6 +125,15 @@ pub unsafe extern "C" fn airflow_reader_read_sensors(reader: *mut AirflowReader,
     count as i32
 }
 
+/// The power the whole Mac draws, in watts, or a negative number where it is not reported.
+///
+/// # Safety
+/// `reader` is null or an open reader.
+#[no_mangle]
+pub unsafe extern "C" fn airflow_reader_read_system_power(reader: *mut AirflowReader) -> f64 {
+    reader.as_mut().and_then(|reader| reader.reader.system_power()).unwrap_or(-1.0)
+}
+
 #[no_mangle]
 pub extern "C" fn airflow_power_source_is_battery() -> i32 {
     i32::from(power::is_on_battery())
@@ -176,6 +185,8 @@ mod tests {
             assert_eq!(airflow_reader_read_fans(reader, std::ptr::null_mut(), 8), 0);
             assert_eq!(airflow_reader_read_fans(reader, fans.as_mut_ptr(), -1), 0);
             assert_eq!(airflow_reader_read_fans(std::ptr::null_mut(), fans.as_mut_ptr(), 8), 0);
+            assert_eq!(airflow_reader_read_system_power(reader), 28.5);
+            assert!(airflow_reader_read_system_power(std::ptr::null_mut()) < 0.0);
             airflow_reader_close(reader);
             airflow_reader_close(std::ptr::null_mut());
         }
@@ -201,7 +212,8 @@ mod tests {
         let header = include_str!("../include/airflow.h");
         for name in [
             "airflow_reader_open(void)", "airflow_reader_open_sample(void)", "airflow_reader_close(",
-            "airflow_reader_read_fans(", "airflow_reader_read_sensors(", "airflow_power_source_is_battery(void)",
+            "airflow_reader_read_fans(", "airflow_reader_read_sensors(", "airflow_reader_read_system_power(",
+            "airflow_power_source_is_battery(void)",
             "airflow_helper_requirement(",
         ] {
             assert!(header.contains(name), "{name} is missing from airflow.h");

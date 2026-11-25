@@ -59,8 +59,14 @@ final class BackendReader: SnapshotSource {
         }
     }
 
+    /// The power the whole Mac draws, in watts, or nil where the SMC does not report it.
+    func readSystemPower() -> Double? {
+        let watts = airflow_reader_read_system_power(reader)
+        return watts > 0 ? watts : nil
+    }
+
     func snapshot(at date: Date = Date()) -> ThermalSnapshot {
-        ThermalSnapshot(date: date, fans: readFans(), sensors: readSensors())
+        ThermalSnapshot(date: date, fans: readFans(), sensors: readSensors(), systemWatts: readSystemPower())
     }
 
     /// A fixed C field of NUL-terminated UTF-8 as a string.

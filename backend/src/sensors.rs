@@ -51,6 +51,11 @@ pub struct SensorReading {
 /// A temperature outside this range is a sensor that is off or a key that is not a temperature.
 pub const PLAUSIBLE_CELSIUS: std::ops::RangeInclusive<f64> = 5.0..=130.0;
 
+/// The key for the power the whole Mac draws, in watts.
+pub const SYSTEM_POWER_KEY: &str = "PSTR";
+/// A value outside this range is not a reading of a Mac's power.
+pub const PLAUSIBLE_WATTS: std::ops::RangeInclusive<f64> = 0.5..=1000.0;
+
 const KNOWN: &[(&str, &str, Group)] = &[
     ("TaLP", "Airflow Left", Group::Enclosure),
     ("TaRF", "Airflow Right", Group::Enclosure),
@@ -216,6 +221,11 @@ impl<S: SmcAccess> Reader<S> {
             .collect()
     }
 
+    /// The power the whole Mac draws, in watts, or none where the SMC does not report it.
+    pub fn system_power(&self) -> Option<f64> {
+        self.smc.number(SYSTEM_POWER_KEY).filter(|watts| PLAUSIBLE_WATTS.contains(watts))
+    }
+
     fn is_manual(&self, index: usize) -> bool {
         if let Some(mode) = self.smc.number(&format!("F{index}Md")) {
             return mode == 1.0;
@@ -277,6 +287,18 @@ mod tests {
         assert_eq!(find("TaLP").name, "Airflow Left");
         assert_eq!(find("TH0x").name, "SSD");
         assert_eq!(sensors.first().map(|sensor| sensor.group), Some(Group::Cpu), "The CPU's sensors come first");
+    }
+
+    #[test]
+    fn system_power_is_read_only_when_it_is_plausible() {
+        let smc = smc_with_sensors();
+        assert_eq!(Reader::new(&smc, true).system_power(), None, "a Mac with no power key reports none");
+        smc.set(SYSTEM_POWER_KEY, 34.5, b"flt ");
+        assert_eq!(Reader::new(&smc, true).system_power(), Some(34.5));
+        smc.set(SYSTEM_POWER_KEY, 0.0, b"flt ");
+        assert_eq!(Reader::new(&smc, true).system_power(), None);
+        smc.set(SYSTEM_POWER_KEY, 5000.0, b"flt ");
+        assert_eq!(Reader::new(&smc, true).system_power(), None);
     }
 
     #[test]

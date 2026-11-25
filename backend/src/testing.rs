@@ -39,6 +39,7 @@ impl FakeSmc {
         smc.set("F0Ac", 2400.0, b"flt ");
         smc.set("F1Ac", 2600.0, b"flt ");
         smc.set("F0Md", 1.0, b"ui8 ");
+        smc.set("PSTR", 28.5, b"flt ");
         for (key, celsius) in [("Tp01", 61.0), ("Tp05", 63.0), ("Te05", 55.0), ("Tg0D", 48.0), ("TaLP", 39.0), ("TB1T", 31.0), ("TH0x", 35.0)] {
             smc.set(key, celsius, b"flt ");
         }

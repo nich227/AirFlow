@@ -7,15 +7,18 @@ struct ThermalSnapshot: Equatable, Sendable {
     var sensors: [Sensor] {
         didSet { index = Index(sensors) }
     }
+    /// The power the whole Mac draws, in watts, or nil on a Mac that does not report it.
+    var systemWatts: Double?
 
     /// Each group's summary and each sensor's place, worked out once when the sensors are set.
     /// A fan, a rule, and each row of a view all ask for them every second.
     private var index: Index
 
-    init(date: Date, fans: [Fan], sensors: [Sensor]) {
+    init(date: Date, fans: [Fan], sensors: [Sensor], systemWatts: Double? = nil) {
         self.date = date
         self.fans = fans
         self.sensors = sensors
+        self.systemWatts = systemWatts
         index = Index(sensors)
     }
 

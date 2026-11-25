@@ -72,6 +72,9 @@ void airflow_reader_close(AirflowReader *reader);
 int32_t airflow_reader_read_fans(AirflowReader *reader, AirflowFan *fans, int32_t capacity);
 int32_t airflow_reader_read_sensors(AirflowReader *reader, AirflowSensor *sensors, int32_t capacity);
 
+// The power the whole Mac draws, in watts, or a negative number where the SMC does not report it.
+double airflow_reader_read_system_power(AirflowReader *reader);
+
 // 1 when the Mac runs on its battery, and 0 when it is plugged in or has no battery.
 int32_t airflow_power_source_is_battery(void);
 

@@ -54,6 +54,20 @@ struct PresetProposal: Equatable, Sendable {
     }
 }
 
+/// What the model proposes an app is known for. A person accepts it before it counts.
+struct WorkloadProposal: Equatable, Sendable {
+    var regime: WorkloadRegime
+    var reason: String
+
+    static let reasonLimit = 160
+
+    /// The proposal with its sentence trimmed to one line of bounded length.
+    var cleaned: WorkloadProposal {
+        let line = reason.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+        return WorkloadProposal(regime: regime, reason: String(line.trimmingCharacters(in: .whitespaces).prefix(Self.reasonLimit)))
+    }
+}
+
 /// A rule as the model proposed it.
 struct RuleProposal: Equatable, Sendable {
     enum Trigger: String, Equatable, Sendable {

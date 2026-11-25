@@ -62,6 +62,31 @@ struct PresetDraft {
     }
 }
 
+@Generable(description: "How hard an app works a computer")
+enum DraftWorkload {
+    case light
+    case bursty
+    case sustained
+}
+
+@Generable(description: "What kind of load an app puts on a Mac")
+struct WorkloadDraft {
+    @Guide(description: "light: browsing, writing, chat, coding without long builds. bursty: short heavy spikes, such as photo editing or compiling. sustained: minutes of heavy load, such as video export, 3D rendering, or running a language model.")
+    var workload: DraftWorkload
+    @Guide(description: "One short sentence that says why, in plain words.")
+    var reason: String
+
+    var proposal: WorkloadProposal {
+        let regime: WorkloadRegime
+        switch workload {
+        case .light: regime = .light
+        case .bursty: regime = .bursty
+        case .sustained: regime = .sustained
+        }
+        return WorkloadProposal(regime: regime, reason: reason)
+    }
+}
+
 @Generable(description: "What makes an automation rule apply")
 enum DraftTrigger {
     case app
@@ -156,6 +181,12 @@ final class IntelligenceService {
         Turn the person's request into one rule. Choose the preset from the available presets only.
         """
 
+    static let workloadInstructions = """
+        You judge how hard a Mac app works the computer, from the app's name alone. \
+        Choose light, bursty, or sustained. If you do not know the app, choose light. \
+        Give one short sentence that says why. Do not give advice.
+        """
+
     static let explainInstructions = """
         You explain a Mac's recent temperatures and fan speeds to its owner in two short sentences. \
         Use plain words and the numbers you are given. Do not give advice about hardware safety, \
@@ -197,6 +228,18 @@ final class IntelligenceService {
         let prompt = "Available presets: \(presetNames.joined(separator: ", ")).\nRequest: \(text)"
         do {
             return try await session.respond(to: prompt, generating: RuleDraft.self).content.proposal
+        } catch {
+            throw failure(error)
+        }
+    }
+
+    /// Proposes what an app is known for. Nothing is saved: the person sees the proposal and
+    /// decides.
+    func suggestWorkload(appName: String) async throws -> WorkloadProposal {
+        let text = try checked(appName)
+        let session = LanguageModelSession(instructions: Self.workloadInstructions)
+        do {
+            return try await session.respond(to: "App: \(text)", generating: WorkloadDraft.self).content.proposal.cleaned
         } catch {
             throw failure(error)
         }

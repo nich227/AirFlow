@@ -20,6 +20,7 @@ final class AppModel {
     let monitor: ThermalMonitor
     let controller: FanController
     let automation: AutomationCoordinator
+    let adaptive: AdaptiveCoordinator
     let intelligence: IntelligenceService
     let helper: HelperManager
 
@@ -35,7 +36,7 @@ final class AppModel {
     static let userPresetKey = "userPresetID"
 
     init(
-        defaults: UserDefaults, presetsURL: URL?, rulesURL: URL?,
+        defaults: UserDefaults, presetsURL: URL?, rulesURL: URL?, adaptiveURL: URL? = nil, workloadsURL: URL? = nil,
         sampler: HardwareSampler, commander: FanCommanding, helper: HelperManager, client: HelperClient? = nil
     ) {
         self.defaults = defaults
@@ -45,6 +46,7 @@ final class AppModel {
         monitor = ThermalMonitor(sampler: sampler)
         controller = FanController(commander: commander)
         automation = AutomationCoordinator(url: rulesURL)
+        adaptive = AdaptiveCoordinator(memoryURL: adaptiveURL, workloadsURL: workloadsURL)
         intelligence = IntelligenceService()
         self.helper = helper
         userPresetID = defaults.string(forKey: Self.userPresetKey).flatMap(UUID.init) ?? settings.activePresetID
@@ -71,6 +73,8 @@ final class AppModel {
             defaults: .standard,
             presetsURL: JSONFile<[Preset]>.inApplicationSupport(folder + "presets.yaml"),
             rulesURL: JSONFile<[AutomationRule]>.inApplicationSupport(folder + "rules.json"),
+            adaptiveURL: JSONFile<AdaptiveMemory>.inApplicationSupport(folder + "adaptive.json"),
+            workloadsURL: JSONFile<[AppWorkload]>.inApplicationSupport(folder + "workloads.json"),
             sampler: HardwareSampler(), commander: client, helper: HelperManager(), client: client
         )
     }
@@ -88,6 +92,7 @@ final class AppModel {
     func start() {
         guard !Self.isRunningTests else { return }
         automation.startWatching()
+        adaptive.startWatching()
         monitor.start()
     }
 
@@ -169,6 +174,7 @@ final class AppModel {
     /// connection closes, so this only makes it prompt.
     func prepareToQuit() {
         monitor.stop()
+        adaptive.save()
         if controller.holdsAnyFan {
             client?.resetAllFansBeforeQuitting()
         }
@@ -177,6 +183,9 @@ final class AppModel {
 
     private func handle(_ snapshot: ThermalSnapshot) {
         if helper.status == .needsApproval || helper.status == .notInstalled { helper.refresh() }
+        // The adaptive controller learns from every reading, whichever preset is active, so
+        // its forecast is ready when the person chooses it.
+        adaptive.ingest(snapshot)
         let decision = automation.evaluate(
             context: automation.context(snapshot: snapshot),
             presets: presets.presets,
@@ -199,7 +208,8 @@ final class AppModel {
         controller.isControlAllowed = helper.status.allowsControl
         controller.tick(
             snapshot: snapshot, preset: activePreset,
-            safeguardEnabled: settings.safeguardEnabled, safeguardLimit: settings.safeguardLimit
+            safeguardEnabled: settings.safeguardEnabled, safeguardLimit: settings.safeguardLimit,
+            adaptiveFraction: adaptive.fraction
         )
     }
 }

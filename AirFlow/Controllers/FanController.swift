@@ -40,10 +40,15 @@ final class FanController {
         sent.values.contains { $0 != .automatic }
     }
 
-    func tick(snapshot: ThermalSnapshot, preset: Preset, safeguardEnabled: Bool, safeguardLimit: Double, now: Date = Date()) {
+    /// - Parameter adaptiveFraction: what the adaptive controller asks for now. Only the
+    ///   Adaptive preset uses it.
+    func tick(
+        snapshot: ThermalSnapshot, preset: Preset, safeguardEnabled: Bool, safeguardLimit: Double,
+        adaptiveFraction: Double? = nil, now: Date = Date()
+    ) {
         safeguard.update(snapshot: snapshot, limit: safeguardLimit, isEnabled: safeguardEnabled)
         let effective = safeguard.isEngaged ? Preset.automatic : preset
-        plan = FanPlanner.plan(preset: effective, snapshot: snapshot)
+        plan = FanPlanner.plan(preset: effective, snapshot: snapshot, adaptiveFraction: adaptiveFraction)
 
         guard isControlAllowed else {
             mode = .monitoring

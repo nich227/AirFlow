@@ -170,6 +170,10 @@ final class PresetStore {
             copy.fallback = .constantFraction(1)
             copy.icon = .fire
         }
+        if source.kind == .adaptive {
+            // Only the built-in preset is adaptive. Its copy starts as a curve to change.
+            copy.fallback = .sensorBased(SensorRule(source: .cpuAverage, startCelsius: 65, maxCelsius: 90))
+        }
         copy.name = source.name + " Copy"
         return add(copy)
     }

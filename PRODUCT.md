@@ -44,6 +44,7 @@ Macs Fan Control keeps one custom state in its free version and loses it when an
 - Readings and the history chart update every second while they are on screen.
 - Settings: launch at login, Celsius or Fahrenheit, precise temperatures, what the menu bar shows, the safeguard limit, and the helper.
 - Requires macOS 26. Apple Intelligence features need a Mac and a region where the model is available, and the app says so when it is not.
+- Adaptive is a built-in preset: a detector of the kind of work (light, bursty, sustained) from the Mac's power and its open apps, and a controller that forecasts the temperature 15 seconds ahead and weighs heat against noise. The user specified it and chose these: a built-in preset, total system power from the SMC, a forecaster fitted on the Mac with no stored readings, and Apple Intelligence that suggests what an app is known for while the person decides.
 - Updates come through Sparkle, and releases are signed with the Developer ID certificate and notarized, by the same workflow as Gailan and ClipDeck. The user asked for both.
 - Undecided: Intel support. The first version is built for Apple silicon only and is tested on a MacBook Pro with two fans.
 

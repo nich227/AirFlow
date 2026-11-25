@@ -151,7 +151,7 @@ Each Ant Design component is drawn in glass through `antGlass` (`Theme.swift`), 
 | Component | Ant Design | Glass | Use |
 |---|---|---|---|
 | `GlassCard` | Card | Clear, radius 16, padding 16 | One for each fan. One for the temperatures and one for the history in the inspector. |
-| `StateTag` | Tag | Capsule, tinted | Active, Matches Now |
+| `StateTag` | Tag | Capsule, tinted | Active, Matches Now, and the kind of work on the Adaptive page |
 | `StatusBanner` | Alert | Radius 16, tinted by kind | Monitoring Only, Allow the Helper, Safeguard Is On, a failure, Fan Control Is On |
 | `Statistic` | Statistic | None | A fan's speed with its unit, in IBM Plex Mono |
 | `StatusDot` | Badge | None | A temperature's band |

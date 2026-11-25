@@ -10,10 +10,10 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 4. The helper gives every fan back to the system in four cases: the last client disconnects, no request arrives for `protocol::WATCHDOG` while a fan is held, SIGTERM, and `reset_all`. It releases `Ftst` when it holds no fan, including after a handover that failed.
 5. The app's control loop is `FanController.tick`, and `AppModel.apply` is the one place that changes the active preset. Views never call the helper. A fan with no entry in `FanController.sent` is the system's, so a preset that leaves every fan automatic sends nothing and never starts the helper.
 6. The safeguard (`Safeguard` in `Models/FanControl.swift`) overrides every preset. It engages at the limit on the CPU or GPU average and releases `Safeguard.releaseMargin` below it.
-7. The on-device model never reaches a fan. `IntelligenceService` returns a `PresetProposal` or `RuleProposal`. `makePreset` and `makeRule` clamp and check every field, and a person saves the result. Autopilot (`AutomationCoordinator`) applies saved rules only, is off by default, and a preset the person chooses holds until a different rule matches.
+7. The on-device model never reaches a fan. `IntelligenceService` returns a `PresetProposal`, a `RuleProposal`, or a `WorkloadProposal`. `makePreset` and `makeRule` clamp and check every field, and a person saves the result. A `WorkloadProposal` says what an app is known for: it counts only after the person accepts it (`AdaptiveCoordinator.setWorkload`), and an app's regime can only make the detector choose more cooling sooner. Autopilot (`AutomationCoordinator`) applies saved rules only, is off by default, and a preset the person chooses holds until a different rule matches.
 8. Every number that enters from outside goes through one clamp: `SensorRule.init` for temperatures, `FanPlanner` for speeds, and then the helper. This covers YAML files, model drafts, and App Intents.
 9. Presets are stored and exported in one format, `PresetCodec` (`airflow: 1`). Reading goes through Yams. Writing is line by line in `PresetCodec.encode`. A change to the format raises `PresetCodec.version` and keeps reading the older one. A stored file that cannot be read is moved to `presets.yaml.unreadable` and never written over.
-10. Importing never replaces a preset: `PresetStore.importText` gives each one a new identifier and a name of its own. Built-in presets (`Preset.automatic`, `Preset.fullBlast`) are never stored, exported, changed, or deleted.
+10. Importing never replaces a preset: `PresetStore.importText` gives each one a new identifier and a name of its own. Built-in presets (`Preset.automatic`, `Preset.adaptive`, `Preset.fullBlast`) are never stored, exported, changed, or deleted.
 11. Every page in the window's detail column has a `ScrollView` or a `Table` at its root. A page rooted in a plain stack makes the split view lay the whole window out taller than it is, so the sidebar and the page's own header leave the screen (measured on macOS 26.7). Use `PageEmptyState` for an empty page.
 12. Ant Design components are Liquid Glass: use `antGlass` and `GlassCard` (`Utilities/Theme.swift`), `StateTag`, and `StatusBanner`. Never call `glassEffect` in a view: one direct call leaves the whole page out of an off-screen drawing. Never nest one glass card in another. Do not wrap page content in `GlassEffectContainer`: it sizes to its content's ideal width and pushes the window's columns off screen.
 13. Every drawn animation is a Lottie file played through `AirAnimation`, on Lottie's Core Animation engine. `scripts/make-animations.py` generates the files. Edit the script, rerun it, commit both, and list the name in `Animations.all`. Each file marks its still frame with a `reduced motion` marker. Nothing moves with Reduce Motion on or while `isActive` is false.
@@ -22,6 +22,7 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 16. `cargo clippy --all-targets -- -D warnings` passes, and the Swift build has no warnings.
 17. Text is Hedvig Letters Sans through `airFont`. Every reading (a fan speed with its unit, a temperature, a percentage, an axis value, an SMC key) is IBM Plex Mono: `readingFont` for a value that stands alone, and `Text(readings:)` for a sentence that holds one. Settings is the exception: its numbers use `monospacedDigit()`. Never use `.system(size:)` in a view. A button's title, a toggle's title, and a sidebar row need `airFont` on their own text, because the system sets them in its own font otherwise. Use `AntSegmented` and `AntSelect`, not a segmented or pop-up `Picker`.
 18. A fan's sentence comes from `FanSentence.text`. It states a fact ("Held at", "Follows") only for the active preset while `FanController.mode` is `.controlling`. In every other case it says what the preset would do and who controls the fan.
+19. The Adaptive preset's speed is a share of each fan's range from `AdaptiveController.step`. It reaches a fan only through `FanPlanner.adaptiveCommand`, which keeps it between the fan's limits, and then the helper. It is never below `AdaptiveController.safetyFraction` at the present temperature, whatever the forecaster has learned, and the safety line is not slowed by the slew limit. The safeguard overrides it. With no CPU or GPU temperature it leaves the fans to the system. `adaptive.json` holds the forecaster's coefficients and the Mac's range of power: no reading and no app's name.
 
 ## Facts
 
@@ -37,12 +38,12 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 | Updates | Sparkle, through `Updates` (`Controllers/Updates.swift`). `SUFeedURL` is `updates.xml.rss` on this repository's `gh-pages` branch, and `SUPublicEDKey` is the public half of the key in the `SPARKLE_ED_PRIVATE_KEY` secret. A Debug build and a test never start the updater |
 | Fonts | `AirFlow/Resources/Fonts`: Hedvig Letters Sans (one weight) and IBM Plex Mono (regular, medium), both under the SIL Open Font License. `ATSApplicationFontsPath` in `Info.plist` registers them. `AirType.textFamily` and `AirType.readingFamily` name them |
 | Frameworks | FoundationModels, AppIntents, Charts, ServiceManagement, XPC |
-| Storage | `~/Library/Application Support/AirFlow/presets.yaml` and `rules.json`. A Debug build uses the `Debug/` folder inside it |
+| Storage | `~/Library/Application Support/AirFlow/presets.yaml`, `rules.json`, `adaptive.json` (what the forecaster learned), and `workloads.json` (what the person says an app is known for). A Debug build uses the `Debug/` folder inside it |
 | UserDefaults keys | `temperatureUnit`, `preciseTemperatures`, `menuBarReadout`, `safeguardEnabled`, `safeguardLimit`, `autopilotEnabled`, `activePresetID`, `userPresetID`, `showsInspector`, `welcomeShown` |
 | Signing | Ad hoc by default, which can only monitor. `scripts/build.sh --sign` takes the Developer ID Application identity from the keychain (team `8ZUR795GTN`), the one a release is signed with, and passes `AIRFLOW_SIGN_IDENTITY` and `AIRFLOW_TEAM`. `CODE_SIGN_IDENTITY` on the command line needs `CODE_SIGN_STYLE=Manual` beside it, as the release workflow passes them, or the Swift packages refuse it |
 | Lifecycle | SwiftUI `App`: a `Window` that does not open at launch, a `MenuBarExtra` with the window style, and `Settings`. The app has no Dock icon until its window or Settings is open (`AppDelegate.updateDockPresence`). Opening the app again shows the window (`WindowOpener`) |
 | Sampling | `ThermalMonitor` reads every second while a window or the panel shows readings, and every four seconds otherwise. History holds 15 minutes |
-| SMC keys | Fans: `FNum`, `F<n>Ac`, `F<n>Mn`, `F<n>Mx`, `F<n>Tg`, `F<n>Md`, `Ftst`. Temperatures: every `T???` key with a plausible value. Names and groups are in `backend/src/sensors.rs`. A key with no known meaning gets its group's name and a number in key order, and `is_known` is false |
+| SMC keys | Fans: `FNum`, `F<n>Ac`, `F<n>Mn`, `F<n>Mx`, `F<n>Tg`, `F<n>Md`, `Ftst`. Power: `PSTR`, the whole Mac's draw in watts. Temperatures: every `T???` key with a plausible value. Names and groups are in `backend/src/sensors.rs`. A key with no known meaning gets its group's name and a number in key order, and `is_known` is false |
 | Mark | The fan from Bootstrap Icons, in `scripts/fan_geometry.py`. The app icon is `AirFlow/Resources/AppIcon.icon`, an Icon Composer document with the blades and the housing as two glass layers |
 | User-facing copy | Apple Style Guide: title-style capitalization for menu items, buttons, toggles, and headings, sentence style for messages, "click" and "choose", contractions are fine, never "please" |
 
@@ -85,12 +86,15 @@ AirFlow/
 │   ├── ThermalMonitor.swift          Snapshot, history, extremes, the sampling loop
 │   └── HelperClient.swift            FanCommanding, HelperClient (XPC), HelperManager (SMAppService)
 ├── Models/                           Fan, Sensor, ThermalSnapshot, FanControl (SensorRule, FanPlanner, Safeguard),
-│                                     Preset, PresetCodec, PresetsDocument, Automation, Temperature, AppSettings
+│                                     Preset, PresetCodec, PresetsDocument, Automation, Temperature, AppSettings,
+│                                     Adaptive (WorkloadRegime, RollingWindow, PowerScale, RegimeDetector, ThermalForecaster,
+│                                     AdaptivePolicy, AdaptiveController, KnownWorkloads)
 ├── Controllers/                      AppModel, FanController, PresetStore (PresetFile, JSONFile, NameRegistry), AutomationCoordinator (AppDirectory),
-│                                     Updates (Sparkle)
+│                                     AdaptiveCoordinator, Updates (Sparkle)
 ├── Intelligence/                     IntelligenceService (FoundationModels), Proposals, FanIntents (App Intents)
 ├── Views/                            MainWindow (Sidebar), PresetDetail (FanSentence, FanSection, SensorRuleEditor), LiveInspector
-│   │                                 (HistoryChart, SensorsView), AutomationView (RuleRow), DescribePresetSheet, MenuPanel
+│   │                                 (HistoryChart, SensorsView), AutomationView (RuleRow), AdaptiveViews (AdaptiveSummary,
+│   │                                 AppWorkloadsEditor), DescribePresetSheet, MenuPanel
 │   ├── Components/                   AirAnimation (Rotor), Components (StateTag, Statistic, FanTrack, StatusBanner, EmptyState, AntSegmented, AntSelect, FlowLayout), CurveEditor
 │   └── Settings/SettingsView.swift   General, Fan Control, Intelligence, About
 ├── Utilities/                        Theme (tokens, AirType, ReadingText, antGlass, GlassCard, AntIcon), Log
@@ -116,6 +120,7 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | `HardwareTests.swift` | Group summaries and outliers, sensor sources, history length, extremes, a failed read, the one-second interval |
 | `ControlTests.swift` | Sensor rules and their limits, each control as a command, built-in and starter presets, the safeguard, the control loop (nothing without the helper, send once then keep alive, a fan taken back, automatic, failure and retry, wake) |
 | `AutomationAndStoreTests.swift` | Rule matching and order, time past midnight, temperature hysteresis, Autopilot decisions and the person's hold, rule storage, finding apps, the preset store (YAML on disk, unique names, built-ins, duplicates, import, export, an unreadable file), `AppModel` |
+| `AdaptiveTests.swift` | The rolling window, the Mac's range of power, the regime tree and its hold, the forecaster learning a made-up Mac, the controller against that Mac (light work, a long load, a steady speed, the slew limit, the fall hold, short bursts, an app's hint, the safety line, no power, no temperature), the share of the range as a speed, the control loop and the safeguard, the hint from open apps, storage |
 | `PresetCodecTests.swift` | Round trips, the shape of the file, names YAML could misread, a file written by hand, limits on numbers, every refusal and its message, sensor names, import and export through `AppModel` |
 | `IntelligenceAndViewTests.swift` | Proposals becoming presets and rules, the digest, formats and bands, the menu bar readout, the sentence Siri speaks, settings, animations and icons, both fonts being registered, the readings in a sentence, each fan sentence by mode, names for imported presets, the rule row's line breaks |
 | `SnapshotTests.swift` | Skipped unless `AIRFLOW_SNAPSHOTS` is set. Draws each surface's layers off screen. The system draws nothing that sits on Liquid Glass there, so the drawings set `airFlatGlass`, and `antGlass` draws a flat fill |
@@ -131,6 +136,7 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | The helper's identifier or service name | `protocol.rs`, `airflow.h`, `helper-Info.plist`, the launchd property list, `scripts/embed-helper.sh`, `HelperManager.daemonPlistName` |
 | A kind of fan control | `FanControl`, `FanPlanner`, `PresetCodec` (both directions), `FanSection`, `ProposalPreview`, the README's table |
 | The presets file's format | `PresetCodec.version`, a test that reads the older format, the README's example |
+| A number of the adaptive controller (a threshold, a weight, a slew rate, a hold) | `AdaptivePolicy`, `RegimeDetector`, or `AdaptiveController`, the README's Adaptive section, and `AdaptiveControllerTests`, which must still pass against the made-up Mac |
 | A design token | `DESIGN.md` and `Utilities/Theme.swift` together |
 | A font | `AirFlow/Resources/Fonts`, `AirType.textFamily` or `readingFamily`, `ReadingFontTests`, `licenses/`, `DESIGN.md`, the README's License section |
 | An animation | `scripts/make-animations.py`, rerun it, `Animations` (the name and `all`), `AnimationTests`, the table in `DESIGN.md` |
@@ -169,5 +175,7 @@ scripts/test.sh                                                    # cargo test,
 python3 scripts/make-animations.py && git diff --exit-code -- AirFlow/Resources/Animations
 grep -rnE 'as!|try!|\)!' AirFlow --include='*.swift'                # must print nothing
 ```
+
+The adaptive controller has run only against the made-up Mac in `AdaptiveTests.swift` and, without the helper, as a forecast on the real one. Say so when you report a change to it.
 
 Fan writes cannot be tested without the helper installed, which needs a signed build and approval in System Settings. Say so when you report a change to `fans.rs`, `bin/helper.rs`, or `HelperClient.swift`, and name what you ran.

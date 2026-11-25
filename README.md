@@ -10,7 +10,8 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 
 - AirFlow reads each fan's speed, its minimum, and its maximum, and the temperature of every sensor your Mac reports. Sensors are grouped by part: CPU, GPU, Memory, Storage, Battery, Enclosure, Power, and Wireless.
 - Each fan can be Automatic (macOS controls it), Constant (one speed), or Sensor-Based (the fan follows a sensor between two temperatures). A sensor-based fan is drawn as a curve with the sensor's current temperature marked on it.
-- You can keep as many presets as you want. AirFlow starts with Automatic, Full Blast, Quiet, Heavy Workload, and Travel. Changing a preset never changes another one.
+- You can keep as many presets as you want. AirFlow starts with Automatic, Adaptive, Full Blast, Quiet, Heavy Workload, and Travel. Changing a preset never changes another one.
+- Adaptive runs the fans by what your Mac is doing and by the temperature it expects in 15 seconds. It stays quiet for light work, lets a short burst pass, and raises the fans early for a long load. See [Adaptive](#adaptive).
 - The menu bar item shows a fan speed, a temperature, or both. Click it to see every fan and to change presets.
 - Rules change presets for you: when an app is in front, when your Mac is on battery, when a part gets hot, or at a time of day. Rules do nothing until you turn on Autopilot.
 - Describe a preset or a rule, such as "Stay quiet until the CPU reaches 80°", and the model on your Mac drafts it. You decide whether to keep it. Nothing you type leaves your Mac.
@@ -38,6 +39,29 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 | Open AirFlow at login | Choose AirFlow > Settings > General. |
 | Check for an update | Choose AirFlow > Check for Updates, or click Check for Updates in Settings > About. |
 
+## Adaptive
+
+One curve is either too loud for light work or too late for a long load. Adaptive decides in two steps.
+
+First, it works out what kind of work your Mac is doing. It reads the power your Mac draws, as a share of what your Mac draws between rest and full load, over 5 and 30 seconds. It also knows which open apps work a Mac hard, such as Final Cut Pro, Lightroom, or Ollama. You can add your own on the Adaptive page, and Apple Intelligence can suggest what an app is known for. A suggestion counts only after you accept it.
+
+| Work | What it means | What the fans do |
+| --- | --- | --- |
+| Light | Browsing, writing, coding | They stay at their minimum until the forecast passes 68 °C. |
+| Bursty | A photo filter or a build: seconds of load | Your Mac's own mass takes up the burst. The fans rise only if the average load over 15 seconds stays high. |
+| Sustained | A video export or a local language model: a high average load over 30 seconds, or a few seconds of load while a known app is open | The fans rise to at least 30% of their range before the heat arrives, and then hold steady. |
+
+Second, it forecasts the temperature 15 seconds ahead for each speed it could choose, and takes the speed that best balances heat against noise for that kind of work. The forecast is fitted to your Mac while it runs. AirFlow keeps the fitted coefficients and no history of readings.
+
+Four limits hold whatever Adaptive decides:
+
+- Above 85 °C, heat counts ten times as much, so a long load stays under the temperature where the chip slows itself down.
+- The speed rises no faster than 150 RPM a second (300 for a long load) and falls no faster than 100, because a jump in pitch is easier to hear than steady air.
+- The fans fall only after a lower speed has been wanted for 20 seconds, so they don't rise and fall between two prompts or two edits.
+- The fans are never asked for less than a fixed line gives at the present temperature: nothing at 80 °C, full speed at 92 °C. What Adaptive has learned can't lower it. The safeguard below still returns the fans to macOS.
+
+A copy of AirFlow that can't control fans still shows what Adaptive would ask for.
+
 ## Fan control and safety
 
 Reading fans and sensors needs no permission. Changing a fan's speed does, so AirFlow uses a small helper that runs as an administrator. You can decline the helper and use AirFlow to monitor only.
@@ -51,7 +75,7 @@ Changing fan speeds changes how your Mac cools itself. You are responsible for t
 
 ## Privacy
 
-AirFlow doesn't collect any data. Its one network connection is the check for a newer version, which reads a list of releases from GitHub and sends nothing about you or your Mac. You can turn the check off in Settings > About. Apple Intelligence runs on your Mac. Your presets and rules are stored in your Library folder, where you can delete them at any time.
+AirFlow doesn't collect any data. Its one network connection is the check for a newer version, which reads a list of releases from GitHub and sends nothing about you or your Mac. You can turn the check off in Settings > About. Apple Intelligence runs on your Mac. Your presets and rules, the apps you told Adaptive about, and the coefficients Adaptive has learned are stored in your Library folder, where you can delete them at any time.
 
 ## The presets file
 

@@ -1,0 +1,283 @@
+import SwiftUI
+
+enum SidebarItem: Hashable {
+    case preset(UUID)
+    case rules
+    case sensors
+}
+
+/// The window: presets and pages in the sidebar, the selected one in the middle, and the Mac's
+/// live readings in the inspector whichever one is showing.
+struct MainWindow: View {
+    @Environment(AppModel.self) private var model
+    @State private var selection: SidebarItem?
+    @State private var isDescribing = false
+
+    var body: some View {
+        @Bindable var settings = model.settings
+        @Bindable var model = model
+        NavigationSplitView {
+            Sidebar(selection: $selection, isDescribing: $isDescribing)
+                .navigationSplitViewColumnWidth(min: 200, ideal: Layout.sidebarWidth, max: 240)
+        } detail: {
+            detail
+                .toolbar { applyItem }
+        }
+        .inspector(isPresented: $settings.showsInspector) {
+            LiveInspector()
+                .inspectorColumnWidth(min: 240, ideal: Layout.inspectorWidth, max: 300)
+                // In the inspector's own part of the toolbar, the button sits at the window's
+                // trailing edge, above the column it shows and hides.
+                .toolbar { readingsItem }
+        }
+        // The window lets the desktop show through, so the glass components have something to bend.
+        .containerBackground(.ultraThinMaterial, for: .window)
+        // Each page has its own heading, so the title bar does not repeat it. The title still
+        // names the window in the Window menu and to VoiceOver.
+        .toolbar(removing: .title)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .navigationTitle(title)
+        .sheet(isPresented: $isDescribing) {
+            DescribePresetSheet { preset in
+                selection = .preset(preset.id)
+            }
+        }
+        .fileImporter(isPresented: $model.transfer.isImporting, allowedContentTypes: [PresetCodec.contentType]) { result in
+            guard case .success(let url) = result, let first = model.importPresets(from: url).first else { return }
+            selection = .preset(first.id)
+        }
+        .fileExporter(
+            isPresented: $model.transfer.isExporting, document: model.transfer.export,
+            contentType: PresetCodec.contentType, defaultFilename: model.transfer.exportName
+        ) { result in
+            if case .failure(let error) = result {
+                model.transfer.message = "AirFlow couldn't save the file. \(error.localizedDescription)"
+            }
+        }
+        .alert("Presets Not Imported", isPresented: transferFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.transfer.message ?? "")
+        }
+        .onAppear {
+            model.monitor.visibleSurfaces += 1
+            if selection == nil { selection = Self.launchSelection(model) ?? .preset(model.settings.activePresetID) }
+        }
+        .onDisappear { model.monitor.visibleSurfaces -= 1 }
+        .onChange(of: model.presets.custom.map(\.id)) { _, ids in
+            // The selected preset was deleted.
+            if case .preset(let id) = selection, model.presets.preset(id: id) == nil, !ids.contains(id) {
+                selection = .preset(model.settings.activePresetID)
+            }
+        }
+    }
+
+    private var transferFailed: Binding<Bool> {
+        Binding {
+            model.transfer.message != nil
+        } set: { shown in
+            if !shown { model.transfer.message = nil }
+        }
+    }
+
+    /// A Debug build opens on the page that AIRFLOW_SHOW names: rules, sensors, or a preset's
+    /// name. The scripts that capture the window use it. A Release build ignores it.
+    private static func launchSelection(_ model: AppModel) -> SidebarItem? {
+        #if DEBUG
+        guard let wanted = ProcessInfo.processInfo.environment["AIRFLOW_SHOW"] else { return nil }
+        switch wanted.lowercased() {
+        case "rules": return .rules
+        case "sensors": return .sensors
+        default: return model.presets.preset(named: wanted).map { .preset($0.id) }
+        }
+        #else
+        return nil
+        #endif
+    }
+
+    private var title: String {
+        switch selection {
+        case .preset(let id): return model.presets.preset(id: id)?.name ?? "AirFlow"
+        case .rules: return "Rules"
+        case .sensors: return "Sensors"
+        case nil: return "AirFlow"
+        }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        switch selection {
+        case .preset(let id):
+            if let preset = model.presets.preset(id: id) {
+                PresetDetail(preset: preset)
+                    .id(id)
+            } else {
+                PageEmptyState(title: "No Preset Selected", message: "Choose a preset in the sidebar.")
+            }
+        case .rules:
+            AutomationView()
+        case .sensors:
+            SensorsView()
+        case nil:
+            PageEmptyState(title: "No Preset Selected", message: "Choose a preset in the sidebar.")
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var applyItem: some ToolbarContent {
+        // The active preset says so in its header, so it needs no button.
+        if case .preset(let id) = selection, let preset = model.presets.preset(id: id), model.settings.activePresetID != id {
+            ToolbarSpacer(.flexible)
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    model.apply(id)
+                } label: {
+                    Label("Apply", image: "ant-check")
+                        .labelStyle(.titleAndIcon)
+                        .airFont(.body)
+                }
+                .buttonStyle(.glassProminent)
+                .help("Run the fans with \(preset.name)")
+                .keyboardShortcut(.return, modifiers: .command)
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var readingsItem: some ToolbarContent {
+        ToolbarSpacer(.flexible)
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                model.settings.showsInspector.toggle()
+            } label: {
+                Label("Readings", image: "ant-line-chart")
+            }
+            .help(model.settings.showsInspector ? "Hide the readings" : "Show the readings")
+        }
+    }
+}
+
+struct Sidebar: View {
+    @Environment(AppModel.self) private var model
+    @Binding var selection: SidebarItem?
+    @Binding var isDescribing: Bool
+
+    var body: some View {
+        List(selection: $selection) {
+            Section {
+                ForEach(Preset.builtIn) { preset in
+                    row(for: preset)
+                }
+                ForEach(model.presets.custom) { preset in
+                    row(for: preset)
+                }
+                .onMove { model.presets.move(fromOffsets: $0, toOffset: $1) }
+            } header: {
+                Text("Presets").airFont(.label)
+            }
+            Section {
+                Label {
+                    Text("Rules").airFont(.body)
+                } icon: {
+                    AntIcon("ant-branches")
+                }
+                .badge(model.settings.autopilotEnabled ? Text("Autopilot").font(AirType.label.font) : nil)
+                .tag(SidebarItem.rules)
+            } header: {
+                Text("Automation").airFont(.label)
+            }
+            Section {
+                Label {
+                    Text("Sensors").airFont(.body)
+                } icon: {
+                    AntIcon("ant-dashboard")
+                }
+                .tag(SidebarItem.sensors)
+            } header: {
+                Text("Monitor").airFont(.label)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            HStack(spacing: Space.xs) {
+                Button {
+                    addPreset()
+                } label: {
+                    Label("New Preset", image: "ant-plus")
+                        .labelStyle(.iconOnly)
+                }
+                .help("Make a new preset, starting from the selected one")
+                Button {
+                    isDescribing = true
+                } label: {
+                    Label("Describe a Preset", image: "ant-bulb")
+                        .labelStyle(.iconOnly)
+                }
+                .help(model.intelligence.availability.reason ?? "Describe a preset and let Apple Intelligence draft it")
+                .disabled(!model.intelligence.availability.isAvailable)
+                Menu {
+                    Button("Import Presets…") { model.transfer.isImporting = true }
+                    Button("Export Presets…") { model.beginExport() }
+                        .disabled(model.presets.custom.isEmpty)
+                } label: {
+                    Label("Import and Export", image: "ant-ellipsis")
+                        .labelStyle(.iconOnly)
+                }
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Import or export presets as a YAML file")
+                Spacer()
+            }
+            .buttonStyle(.glass)
+            .padding(Space.sm)
+        }
+    }
+
+    private func row(for preset: Preset) -> some View {
+        let isActive = model.settings.activePresetID == preset.id
+        return Label {
+            HStack {
+                Text(preset.name).airFont(.body)
+                Spacer()
+                if isActive {
+                    // The row's own text style, so the mark stays visible when the row is selected.
+                    AntIcon("ant-check", size: IconSize.inline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } icon: {
+            AntIcon(preset.icon.assetName)
+        }
+        .tag(SidebarItem.preset(preset.id))
+        .accessibilityLabel(isActive ? "\(preset.name), active" : preset.name)
+        .contextMenu {
+            Button("Apply") { model.apply(preset.id) }
+                .disabled(isActive)
+            Button("Duplicate") {
+                if let copy = model.presets.duplicate(id: preset.id) { selection = .preset(copy.id) }
+            }
+            if !preset.isBuiltIn {
+                Button("Export…") { model.beginExport(ids: [preset.id]) }
+                Divider()
+                Button("Delete", role: .destructive) { model.deletePreset(id: preset.id) }
+            }
+        }
+    }
+
+    /// A new preset starts as a copy of what the selected preset does, so there is something to
+    /// change instead of a blank.
+    private func addPreset() {
+        var source = model.activePreset
+        if case .preset(let id) = selection, let selected = model.presets.preset(id: id) { source = selected }
+        var preset = Preset(name: "New Preset", icon: .sliders, summary: "")
+        switch source.kind {
+        case .custom:
+            preset.controls = source.controls
+            preset.fallback = source.fallback
+        case .fullBlast:
+            preset.fallback = .constantFraction(1)
+        case .automatic:
+            preset.fallback = .sensorBased(SensorRule(source: .cpuAverage, startCelsius: 55, maxCelsius: 85))
+        }
+        selection = .preset(model.presets.add(preset).id)
+    }
+}

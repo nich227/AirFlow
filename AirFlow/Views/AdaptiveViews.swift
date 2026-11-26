@@ -141,6 +141,11 @@ struct AppWorkloadsEditor: View {
                 // The capture shows a suggestion, with the apps AirFlow knows itself standing in.
                 picker = Picker(selected: Set(apps.filter { KnownWorkloads.regimes[$0.bundleID] != nil }.map(\.bundleID)), isSuggested: true)
             }
+            // The same grid, but after a real suggestion: the running apps are measured and the
+            // model is asked, as when the person clicks Suggest Apps.
+            if ProcessInfo.processInfo.environment["AIRFLOW_SHOW"]?.lowercased() == "suggest" {
+                suggestApps()
+            }
             #endif
         }
         .sheet(item: $picker) { picker in
@@ -239,7 +244,8 @@ struct AppWorkloadsEditor: View {
             defer { isSuggestingApps = false }
             do {
                 let loads = await model.measureAppLoads(installed: installed)
-                let proposal = try await model.intelligence.suggestHeavyApps(among: installed.map(\.name), loads: loads)
+                let known = installed.filter { KnownWorkloads.regimes[$0.bundleID] != nil }.map(\.name)
+                let proposal = try await model.intelligence.suggestHeavyApps(loads: loads, known: known)
                 suggestion = .none
                 picker = Picker(selected: Set(proposal.apps(among: installed, excluding: added).map(\.bundleID)), isSuggested: true)
             } catch {

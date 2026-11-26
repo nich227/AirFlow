@@ -208,7 +208,7 @@ final class AppModel {
         let after = await Task.detached { Backend.appUsage() }.value
         let seconds = Double(Self.appLoadInterval.components.seconds) + Double(Self.appLoadInterval.components.attoseconds) / 1e18
         return AppLoad.loads(
-            before: before, after: after, seconds: seconds, installed: installed, own: Bundle.main.bundleIdentifier,
+            before: before, after: after, seconds: seconds, installed: installed, own: Log.subsystem,
             bundleID: { Bundle(path: $0)?.bundleIdentifier }
         )
     }

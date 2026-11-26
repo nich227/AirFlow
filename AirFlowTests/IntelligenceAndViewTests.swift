@@ -172,53 +172,41 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(AppSelectionProposal(names: many.map(\.name)).apps(among: many, excluding: []).count, AppSelectionProposal.limit)
     }
 
-    @MainActor
-    func testTheListOfAppsForTheModelIsCut() {
-        let names = (0..<300).map { "App \($0)" } + [String(repeating: "x", count: 200)]
-        let lines = IntelligenceService.heavyAppsPrompt(names).split(separator: "\n")
-        XCTAssertEqual(lines.count, IntelligenceService.heavyAppsListLimit + 3, "The two headings, no running app, and the first apps")
-        XCTAssertEqual(Array(lines.prefix(3)), ["Running apps:", "None", "Other apps:"])
-        XCTAssertEqual(IntelligenceService.heavyAppsPrompt([String(repeating: "x", count: 200)]).count, "Running apps:\nNone\nOther apps:\n".count + 60)
-    }
-
     private func load(_ name: String, now: Double, overall: Double, cpu: Double = 600) -> AppLoad {
         AppLoad(name: name, bundleID: "id." + name, coresNow: now, coresOverall: overall, cpuSeconds: cpu)
     }
 
     @MainActor
-    func testTheModelIsToldWhatEachRunningAppUses() {
-        let loads = [load("OpenCode", now: 0.95, overall: 0.67), load("Slack", now: 0.01, overall: 0.14), load("Notes", now: 0.004, overall: 0.01)]
-        let prompt = IntelligenceService.heavyAppsPrompt(["Final Cut Pro", "Notes", "OpenCode", "Slack"], loads: loads)
-        XCTAssertEqual(prompt, """
-            Running apps:
-            OpenCode: 95% of a core now, 67% since it opened
-            Slack: 1% of a core now, 14% since it opened
-            Other apps:
-            Final Cut Pro
-            Notes
-            """, "A running app is listed once, with what it uses, and an idle one is listed with the others")
-        let many = (0..<60).map { load("App \($0)", now: 1, overall: 1) }
-        let lines = IntelligenceService.heavyAppsPrompt([], loads: many).split(separator: "\n")
-        XCTAssertEqual(lines.count, IntelligenceService.runningAppsListLimit + 2)
-        XCTAssertEqual(AppLoad.percent(-1), "0%")
-        XCTAssertEqual(AppLoad.percent(2.345), "235%", "An app can use more than one core")
-        XCTAssertTrue(IntelligenceService.heavyAppsInstructions.contains("share of one processor core"))
+    func testTheModelIsAskedOnlyAboutBusyAppsThatAreNotHeavyByMeasure() {
+        let loads = [
+            load("OpenCode", now: 0.95, overall: 0.67), load("Edge", now: 0.06, overall: 0.71), load("Slack", now: 0.01, overall: 0.14),
+            load("Gailan", now: 0.2, overall: 0.11), load("Notes", now: 0.004, overall: 0.01), load("Fresh", now: 0.049, overall: 0.9, cpu: 10),
+        ]
+        XCTAssertEqual(IntelligenceService.candidates(loads).map(\.name), ["Gailan", "Fresh"], "Not the heavy ones, and not the ones that use little")
+        XCTAssertEqual(AppLoad.listedCores, 0.15)
+        let many = (0..<40).map { load("App \($0)", now: 0.2, overall: 0.1) }
+        XCTAssertEqual(IntelligenceService.candidates(many).count, IntelligenceService.judgedAppsLimit)
+        XCTAssertEqual(IntelligenceService.candidates(many).first?.name, "App 0", "The busiest are asked about first")
+        XCTAssertTrue(IntelligenceService.candidates([]).isEmpty)
     }
 
     @MainActor
-    func testAnAppMeasuredAsHeavyIsSelectedWhateverTheModelChooses() {
+    func testAnAppMeasuredAsHeavyIsSelectedWhateverTheModelSays() {
         XCTAssertTrue(load("A", now: 0.5, overall: 0).isHeavy, "Half a core now")
         XCTAssertFalse(load("A", now: 0.49, overall: 0.24).isHeavy)
         XCTAssertTrue(load("A", now: 0, overall: 0.25, cpu: 60).isHeavy, "A quarter of a core over a minute of processor time")
         XCTAssertFalse(load("A", now: 0, overall: 0.9, cpu: 59).isHeavy, "An app that just opened has too little time to judge")
         XCTAssertEqual(load("A", now: 0.2, overall: 0.7).cores, 0.7)
         let loads = [load("OpenCode", now: 0.95, overall: 0.67), load("Slack", now: 0.01, overall: 0.14)]
-        XCTAssertEqual(IntelligenceService.selection(loads: loads, chosen: ["Minecraft", "OpenCode"]).names, ["OpenCode", "Minecraft", "OpenCode"])
-        XCTAssertEqual(IntelligenceService.selection(loads: [], chosen: ["Minecraft"]).names, ["Minecraft"])
-        let installed = [AppDirectory.App(bundleID: "id.OpenCode", name: "OpenCode"), AppDirectory.App(bundleID: "id.Minecraft", name: "Minecraft")]
         XCTAssertEqual(
-            IntelligenceService.selection(loads: loads, chosen: ["Minecraft", "OpenCode"]).apps(among: installed, excluding: []).map(\.name),
-            ["OpenCode", "Minecraft"], "An app named twice is selected once"
+            IntelligenceService.selection(loads: loads, judged: ["Gailan"], known: ["Xcode", "OpenCode"]).names,
+            ["OpenCode", "Gailan", "Xcode", "OpenCode"], "The measured apps, then the judged ones, then the known ones"
+        )
+        XCTAssertEqual(IntelligenceService.selection(loads: [], judged: [], known: []).names, [])
+        let installed = [AppDirectory.App(bundleID: "id.OpenCode", name: "OpenCode"), AppDirectory.App(bundleID: "id.Xcode", name: "Xcode")]
+        XCTAssertEqual(
+            IntelligenceService.selection(loads: loads, judged: ["Gailan"], known: ["Xcode", "OpenCode"]).apps(among: installed, excluding: []).map(\.name),
+            ["OpenCode", "Xcode"], "An app named twice is selected once, and one that is not installed is not selected"
         )
     }
 
@@ -226,10 +214,12 @@ final class FormatTests: XCTestCase {
         let installed = [
             AppDirectory.App(bundleID: "ai.opencode", name: "OpenCode"), AppDirectory.App(bundleID: "com.slack", name: "Slack"),
             AppDirectory.App(bundleID: "com.kevster.airflow", name: "AirFlow"), AppDirectory.App(bundleID: "com.new", name: "Fresh"),
+            AppDirectory.App(bundleID: "com.kevster.airflow.debug", name: "AirFlow Debug"), AppDirectory.App(bundleID: "com.kevster.airflowish", name: "Other"),
         ]
         let ids = [
             "/Applications/OpenCode.app": "ai.opencode", "/Users/me/Applications/OpenCode.app": "ai.opencode", "/Applications/Slack.app": "com.slack",
             "/Applications/AirFlow.app": "com.kevster.airflow", "/Applications/Fresh.app": "com.new", "/opt/Python.app": "org.python",
+            "/Builds/AirFlow.app": "com.kevster.airflow.debug", "/Applications/Other.app": "com.kevster.airflowish",
         ]
         let before = [
             AppUsage(bundlePath: "/Applications/OpenCode.app", cpuSeconds: 100, runningSeconds: 200),
@@ -245,17 +235,19 @@ final class FormatTests: XCTestCase {
             AppUsage(bundlePath: "/Applications/Fresh.app", cpuSeconds: 2, runningSeconds: 0),
             AppUsage(bundlePath: "/opt/Python.app", cpuSeconds: 900, runningSeconds: 1000),
             AppUsage(bundlePath: "/Applications/Unknown.app", cpuSeconds: 900, runningSeconds: 1000),
+            AppUsage(bundlePath: "/Builds/AirFlow.app", cpuSeconds: 900, runningSeconds: 1000),
+            AppUsage(bundlePath: "/Applications/Other.app", cpuSeconds: 1, runningSeconds: 1000),
         ]
         let loads = AppLoad.loads(before: before, after: after, seconds: 2, installed: installed, own: "com.kevster.airflow") { ids[$0] }
-        XCTAssertEqual(loads.map(\.name), ["OpenCode", "Slack", "Fresh"], "The busiest first, without AirFlow and without what is not an installed app")
+        XCTAssertEqual(loads.map(\.name), ["OpenCode", "Slack", "Other", "Fresh"], "The busiest first, without any copy of AirFlow and without what is not an installed app")
         XCTAssertEqual(loads[0].coresNow, 2, accuracy: 1e-9, "Two copies of one app count together: 3 and 1 seconds over 2")
         XCTAssertEqual(loads[0].coresOverall, 103.0 / 202 + 11.0 / 102, accuracy: 1e-9)
         XCTAssertEqual(loads[0].cpuSeconds, 114)
         XCTAssertEqual(loads[1].coresNow, 0, "Time that seems to run backward counts as none")
-        XCTAssertEqual(loads[2].coresNow, 0, "An app that opened between the readings has no share yet")
-        XCTAssertEqual(loads[2].coresOverall, 0)
-        XCTAssertTrue(AppLoad.loads(before: before, after: after, seconds: 0, installed: installed, own: nil) { ids[$0] }.allSatisfy { $0.coresNow == 0 })
-        XCTAssertTrue(AppLoad.loads(before: [], after: [], seconds: 2, installed: installed, own: nil) { ids[$0] }.isEmpty)
+        XCTAssertEqual(loads[3].coresNow, 0, "An app that opened between the readings has no share yet")
+        XCTAssertEqual(loads[3].coresOverall, 0)
+        XCTAssertTrue(AppLoad.loads(before: before, after: after, seconds: 0, installed: installed, own: "x") { ids[$0] }.allSatisfy { $0.coresNow == 0 })
+        XCTAssertTrue(AppLoad.loads(before: [], after: [], seconds: 2, installed: installed, own: "x") { ids[$0] }.isEmpty)
     }
 
     @MainActor

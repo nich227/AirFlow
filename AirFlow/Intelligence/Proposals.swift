@@ -85,8 +85,9 @@ struct AppLoad: Equatable, Sendable {
     static let heavyCoresNow = 0.5
     static let heavyCoresOverall = 0.25
     static let heavyCPUSeconds: Double = 60
-    /// An app below this share now and on average is not listed as running for the model.
-    static let listedCores = 0.05
+    /// The model is asked only about an app that uses at least this share now or on average. Below
+    /// it, the model called small utilities heavy that used a tenth of a core.
+    static let listedCores = 0.15
 
     var isHeavy: Bool {
         coresNow >= Self.heavyCoresNow || (coresOverall >= Self.heavyCoresOverall && cpuSeconds >= Self.heavyCPUSeconds)
@@ -95,30 +96,22 @@ struct AppLoad: Equatable, Sendable {
     /// The larger of the two shares, by which the apps are ordered.
     var cores: Double { max(coresNow, coresOverall) }
 
-    /// The app as one line the model reads: "OpenCode: 95% of a core now, 67% since it opened".
-    var promptLine: String {
-        "\(name.prefix(60)): \(Self.percent(coresNow)) of a core now, \(Self.percent(coresOverall)) since it opened"
-    }
-
-    static func percent(_ share: Double) -> String {
-        "\(Int((max(share, 0) * 100).rounded()))%"
-    }
-
     /// The loads of the installed apps that are running, the busiest first.
     /// - Parameters:
     ///   - before: the running apps at one moment.
     ///   - after: the running apps `seconds` later.
     ///   - bundleID: the identifier of the app at a path, or nil if it is not an app.
-    ///   - own: AirFlow's own identifier, which is left out.
+    ///   - own: AirFlow's identifier. Every copy of AirFlow is left out: this one, and one with a
+    ///     longer identifier that starts with it.
     static func loads(
-        before: [AppUsage], after: [AppUsage], seconds: Double, installed: [AppDirectory.App], own: String?,
+        before: [AppUsage], after: [AppUsage], seconds: Double, installed: [AppDirectory.App], own: String,
         bundleID: (String) -> String?
     ) -> [AppLoad] {
         let earlier = Dictionary(before.map { ($0.bundlePath, $0.cpuSeconds) }, uniquingKeysWith: { first, _ in first })
         let names = Dictionary(installed.map { ($0.bundleID, $0.name) }, uniquingKeysWith: { first, _ in first })
         var loads: [String: AppLoad] = [:]
         for usage in after {
-            guard let id = bundleID(usage.bundlePath), id != own, let name = names[id] else { continue }
+            guard let id = bundleID(usage.bundlePath), id != own, !id.hasPrefix(own + "."), let name = names[id] else { continue }
             // An app that opened between the two readings has no earlier time, so it has no share now.
             let used = earlier[usage.bundlePath].map { max(usage.cpuSeconds - $0, 0) } ?? 0
             let now = seconds > 0 ? used / seconds : 0
@@ -134,8 +127,8 @@ struct AppLoad: Equatable, Sendable {
     }
 }
 
-/// The apps to select in the grid of apps: the ones measured as heavy, then the ones the model
-/// picked. The person sees them selected and decides which to add.
+/// The apps to select in the grid of apps: the ones measured as heavy, the busy ones the model
+/// judged heavy, and the ones AirFlow knows. The person sees them selected and decides which to add.
 struct AppSelectionProposal: Equatable, Sendable {
     var names: [String]
 

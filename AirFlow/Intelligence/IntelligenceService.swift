@@ -69,12 +69,6 @@ enum DraftWorkload {
     case sustained
 }
 
-@Generable(description: "The apps on a Mac that work it hard")
-struct AppSelectionDraft {
-    @Guide(description: "The names of the running apps that use a large share of a processor core and of the apps known for heavy work, each copied exactly from the lists without its numbers. Empty if none fit.")
-    var names: [String]
-}
-
 @Generable(description: "What kind of load an app puts on a Mac")
 struct WorkloadDraft {
     @Guide(description: "light: browsing, writing, chat, coding without long builds. bursty: short heavy spikes, such as photo editing or compiling. sustained: minutes of heavy load, such as video export, 3D rendering, or running a language model.")
@@ -193,17 +187,6 @@ final class IntelligenceService {
         Give one short sentence that says why. Do not give advice.
         """
 
-    static let heavyAppsInstructions = """
-        You are given the apps on a Mac in two lists. The first list has the apps that are running, \
-        the busiest first, each with the share of one processor core it uses now and since it opened. \
-        The second list has the other apps. Choose the running apps that use a large share of a core. \
-        Also choose the apps that are known to work a computer hard for more than a moment: video \
-        editing and export, 3D, games, building code, virtual machines, photo editing, and running \
-        language models. Leave out a running app that uses a small share and is not known for such work. \
-        Copy each name exactly as it is given, without the numbers. Leave out an app you do not know. \
-        If none fit, choose none.
-        """
-
     static let explainInstructions = """
         You explain a Mac's recent temperatures and fan speeds to its owner in two short sentences. \
         Use plain words and the numbers you are given. Do not give advice about hardware safety, \
@@ -262,41 +245,40 @@ final class IntelligenceService {
         }
     }
 
-    /// Picks the apps that work the Mac hard out of the installed ones: the running apps measured
-    /// as heavy, and the apps the model chooses from what each running app uses and from what it
-    /// knows of the others. Nothing is saved. The grid of apps opens with them selected, and the
-    /// person decides.
-    /// - Parameter loads: what each running app uses, the busiest first.
-    func suggestHeavyApps(among names: [String], loads: [AppLoad] = []) async throws -> AppSelectionProposal {
+    /// Picks the apps that work the Mac hard. The running apps measured as heavy are selected by
+    /// the measurement alone. The model on the Mac is poor at choosing from a long list and reads
+    /// only about 4,000 tokens, so it is asked about one app at a time, by name, and only about
+    /// the running apps that use a noticeable share of a core without being heavy. The apps
+    /// AirFlow knows for heavy work are added too. Nothing is saved. The grid of apps opens with
+    /// the selection, and the person decides.
+    /// - Parameters:
+    ///   - loads: what each installed app that is running uses, the busiest first.
+    ///   - known: the names of the installed apps AirFlow knows for heavy work.
+    func suggestHeavyApps(loads: [AppLoad], known: [String]) async throws -> AppSelectionProposal {
         guard availability.isAvailable else { throw unavailable }
-        let session = LanguageModelSession(instructions: Self.heavyAppsInstructions)
-        do {
-            let draft = try await session.respond(to: Self.heavyAppsPrompt(names, loads: loads), generating: AppSelectionDraft.self).content
-            return Self.selection(loads: loads, chosen: draft.names)
-        } catch {
-            throw failure(error)
+        var judged: [String] = []
+        for load in Self.candidates(loads) {
+            let session = LanguageModelSession(instructions: Self.workloadInstructions)
+            // An app the model cannot judge is left out. The measured apps do not depend on it.
+            guard let draft = try? await session.respond(to: "App: \(load.name.prefix(60))", generating: WorkloadDraft.self).content else { continue }
+            if draft.proposal.regime != .light { judged.append(load.name) }
         }
+        return Self.selection(loads: loads, judged: judged, known: known)
     }
 
-    /// The apps measured as heavy come first, so the model cannot leave one out, and the model's
-    /// own choices follow.
-    static func selection(loads: [AppLoad], chosen: [String]) -> AppSelectionProposal {
-        AppSelectionProposal(names: loads.filter(\.isHeavy).map(\.name) + chosen)
+    /// The running apps the model is asked about: busy enough to notice, and not heavy by the
+    /// measurement alone. The busiest come first, and the list is short so the wait is too.
+    static func candidates(_ loads: [AppLoad]) -> [AppLoad] {
+        Array(loads.filter { !$0.isHeavy && $0.cores >= AppLoad.listedCores }.prefix(judgedAppsLimit))
     }
 
-    /// The apps as two lists the model can copy names from: the running apps with what each
-    /// uses, then the other apps. The lists are cut so that they fit what the model on the Mac
-    /// can read at once.
-    static func heavyAppsPrompt(_ names: [String], loads: [AppLoad] = []) -> String {
-        let running = loads.filter { $0.cores >= AppLoad.listedCores }.prefix(runningAppsListLimit)
-        let listed = Set(running.map(\.name))
-        var lines = ["Running apps:"] + (running.isEmpty ? ["None"] : running.map(\.promptLine))
-        lines += ["Other apps:"] + names.filter { !listed.contains($0) }.prefix(heavyAppsListLimit).map { String($0.prefix(60)) }
-        return lines.joined(separator: "\n")
-    }
+    static let judgedAppsLimit = 12
 
-    static let heavyAppsListLimit = 240
-    static let runningAppsListLimit = 30
+    /// The apps measured as heavy come first, then the busy apps the model judged heavy by
+    /// name, then the apps AirFlow knows for heavy work.
+    static func selection(loads: [AppLoad], judged: [String], known: [String]) -> AppSelectionProposal {
+        AppSelectionProposal(names: loads.filter(\.isHeavy).map(\.name) + judged + known)
+    }
 
     func explain(_ digest: ThermalDigest?, format: ReadingFormat) async throws -> String {
         guard let digest else { throw IntelligenceError.noHistory }

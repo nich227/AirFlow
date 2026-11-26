@@ -124,7 +124,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 
 - Describe a preset or a rule, such as "Stay quiet until the CPU reaches 80°", and the model on your Mac drafts it. You decide whether to keep it.
 - Click Explain These Readings, and the model says in plain words what the recent temperatures and fan speeds show.
-- Click Suggest Apps on the Adaptive page. AirFlow measures how much of your Mac's processor each open app uses, and the model selects the apps that use the most and the apps it knows are used for heavy work. You can change the selection before you add the apps.
+- Click Suggest Apps on the Adaptive page. AirFlow measures how much of your Mac's processor each open app uses and selects the apps that use the most. The model judges the other busy apps by name, and AirFlow adds the apps it knows are used for heavy work. You can change the selection before you add the apps.
 - The model never changes a fan. Nothing you type and no reading leaves your Mac.
 
 ### Siri and Shortcuts

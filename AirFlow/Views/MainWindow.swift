@@ -138,7 +138,7 @@ struct MainWindow: View {
         #if DEBUG
         guard let wanted = ProcessInfo.processInfo.environment["AIRFLOW_SHOW"] else { return nil }
         switch wanted.lowercased() {
-        case "apps": return .preset(Preset.adaptiveID)
+        case "apps", "suggest": return .preset(Preset.adaptiveID)
         case "rules": return .rules
         case "sensors": return .sensors
         default: return model.presets.preset(named: wanted).map { .preset($0.id) }

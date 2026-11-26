@@ -39,13 +39,6 @@ wheel.colors = colors
 context.cgContext.beginTransparencyLayer(auxiliaryInfo: nil)
 wheel.render(in: context.cgContext)
 context.cgContext.endTransparencyLayer()
-// At the hub every color meets in a point, so the disc in the middle fades to white instead.
-context.cgContext.setBlendMode(.sourceAtop)
-let white = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1), clear = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0)
-if let fade = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: [white, white, clear] as CFArray, locations: [0, 0.35, 1]) {
-    let middle = CGPoint(x: side / 2, y: side / 2)
-    context.cgContext.drawRadialGradient(fade, startCenter: middle, startRadius: 0, endCenter: middle, endRadius: 126, options: [])
-}
 NSGraphicsContext.restoreGraphicsState()
 guard let data = bitmap.representation(using: .png, properties: [:]) else { fatalError("no PNG") }
 try data.write(to: out)

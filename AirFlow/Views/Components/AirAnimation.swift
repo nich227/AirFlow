@@ -228,8 +228,6 @@ struct Rotor: View {
         if isRainbow {
             // The rotor is the stencil, and the rainbow shows through it.
             AngularGradient(colors: Palette.rainbow + Palette.rainbow.prefix(1), center: .center)
-                // At the hub every color meets in a point, so the dot in the middle fades to white.
-                .overlay(RadialGradient(colors: [.white, .white, .white.opacity(0)], center: .center, startRadius: size * 0.04, endRadius: size * 0.123))
                 .mask {
                     ZStack {
                         AirAnimation(name: Animations.rotor, loops: true, isActive: isActive, speed: Self.turnsPerSecond(for: fan), tint: .white)

@@ -21,7 +21,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 <p align="center">
   <img
     src="docs/images/adaptive.png"
-    alt="The AirFlow window on the Adaptive preset. Adaptive holds the left fan at 2,550 RPM and the right fan at 2,750 RPM for sustained work at 37 watts. The CPU is at 65 degrees, and AirFlow expects 65 degrees in 15 seconds. The sidebar lists six presets, and the readings panel shows a temperature for each part of the Mac and charts of the last 15 minutes."
+    alt="The AirFlow window on the Adaptive preset. Adaptive holds the left fan at 4,550 RPM and the right fan at 4,910 RPM for sustained work at 45 watts. The CPU is at 77 degrees, and AirFlow expects 72 degrees in 15 seconds. The sidebar lists six presets, and the readings panel shows a temperature for each part of the Mac and charts of the last 15 minutes."
     width="800"
   />
 </p>
@@ -30,7 +30,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
   <tr>
     <td width="33%">
       <a href="docs/images/preset-curve.png">
-        <img src="docs/images/preset-curve.png" alt="The Quiet preset. The left fan follows the CPU's average temperature on a curve from 70 degrees to full speed at 95. The CPU is at 68 degrees, below the start of the curve, so the fan is set to its minimum speed of 1,350 RPM" />
+        <img src="docs/images/preset-curve.png" alt="The Quiet preset. The left fan follows the CPU's average temperature on a curve from 70 degrees to full speed at 95. The CPU is at 77 degrees, and the fan is set to 2,500 RPM" />
       </a>
     </td>
     <td width="33%">

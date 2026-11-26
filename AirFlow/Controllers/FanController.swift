@@ -31,6 +31,9 @@ final class FanController {
     @ObservationIgnored private var sent: [Int: FanCommand] = [:]
     @ObservationIgnored private var isApplying = false
     @ObservationIgnored private var retryAfter = Date.distantPast
+    /// The fans whose plan at the last reading was a speed, and the control each fan had then.
+    @ObservationIgnored private var taken: Set<Int> = []
+    @ObservationIgnored private var lastControls: [Int: FanControl] = [:]
     /// How many snapshots in a row each fan's speed was not the one AirFlow sent.
     @ObservationIgnored private var strayCounts: [Int: Int] = [:]
 
@@ -48,10 +51,13 @@ final class FanController {
         sent.values.contains { $0 != .automatic }
     }
 
-    /// Whether AirFlow holds one fan at a speed.
+    /// Whether the fan's control has taken the fan: its plan at the last reading was a speed,
+    /// from the control the fan has now. A sensor rule that leaves the fan to the system below
+    /// its start keeps a fan it has taken until the temperature is `SensorRule.restMargin` under
+    /// the start. A fan that another preset held, or the same rule before it was changed, is
+    /// not a fan the rule took, so it goes to the system at once below the start.
     func holds(_ index: Int) -> Bool {
-        if case .speed? = sent[index] { return true }
-        return false
+        taken.contains(index)
     }
 
     /// - Parameter adaptiveFraction: what the adaptive controller asks for now. Only the
@@ -62,10 +68,14 @@ final class FanController {
     ) {
         safeguard.update(snapshot: snapshot, limit: safeguardLimit, isEnabled: safeguardEnabled)
         let effective = safeguard.isEngaged ? Preset.automatic : preset
+        var controls: [Int: FanControl] = [:]
+        for fan in snapshot.fans { controls[fan.index] = effective.control(for: fan) }
         plan = FanPlanner.plan(
             preset: effective, snapshot: snapshot, adaptiveFraction: adaptiveFraction,
-            held: Set(snapshot.fans.map(\.index).filter(holds))
+            held: taken.filter { lastControls[$0] == controls[$0] }
         )
+        taken = Set(plan.filter { $0.value != .automatic }.keys)
+        lastControls = controls
 
         guard isControlAllowed else {
             mode = .monitoring

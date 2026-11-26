@@ -213,6 +213,56 @@ final class FanControllerTests: XCTestCase {
         XCTAssertFalse(controller.holds(0))
     }
 
+    func testAFanAnotherPresetHeldGoesToTheSystemAtOnceBelowTheStart() async {
+        controller.isControlAllowed = true
+        let rule = SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43, belowStart: .automatic)
+        let lap = Preset(name: "Lap", icon: .airplane, fallback: .sensorBased(rule))
+        // Full Blast holds both fans. The battery is just below the start, where a fan the rule
+        // had taken itself would stay held.
+        await tick(Fixtures.snapshot(battery: 32), .fullBlast)
+        XCTAssertEqual(recorder.calls, [.speed(0, 5000), .speed(1, 5000)])
+        var held = [Fixtures.fan(0, manual: true), Fixtures.fan(1, manual: true)]
+        for index in held.indices { held[index].targetRPM = 5000 }
+        await tick(Fixtures.snapshot(battery: 32, fans: held), lap)
+        XCTAssertEqual(recorder.calls.last, .resetAll, "The rule did not take these fans, so macOS gets them")
+        XCTAssertFalse(controller.holds(0))
+        XCTAssertFalse(controller.holdsAnyFan)
+        // The readings that follow change nothing until the battery reaches the start.
+        await tick(Fixtures.snapshot(battery: 32.5), lap)
+        await tick(Fixtures.snapshot(battery: 32.9), lap)
+        XCTAssertEqual(recorder.calls.count, 3)
+        await tick(Fixtures.snapshot(battery: 33), lap)
+        XCTAssertEqual(recorder.calls.suffix(2), [.speed(0, 1000), .speed(1, 1000)])
+        XCTAssertTrue(controller.holds(1))
+    }
+
+    func testARuleThatIsChangedStartsAgainBelowItsNewStart() async {
+        controller.isControlAllowed = true
+        let rule = SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43, belowStart: .automatic)
+        var lap = Preset(name: "Lap", icon: .airplane, fallback: .sensorBased(rule))
+        await tick(Fixtures.snapshot(battery: 36), lap)
+        XCTAssertTrue(controller.holds(0))
+        // The person moves the start above the battery's temperature.
+        lap.fallback = .sensorBased(SensorRule(source: .group(.battery, .average), startCelsius: 37, maxCelsius: 43, belowStart: .automatic))
+        var held = [Fixtures.fan(0, manual: true), Fixtures.fan(1, manual: true)]
+        for index in held.indices { held[index].targetRPM = 2200 }
+        await tick(Fixtures.snapshot(battery: 36, fans: held), lap)
+        XCTAssertEqual(recorder.calls.last, .resetAll)
+        XCTAssertFalse(controller.holds(0))
+    }
+
+    func testAFanTheRuleTookStaysTakenWhenTheSystemTakesItBackForAMoment() async {
+        controller.isControlAllowed = true
+        let rule = SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43, belowStart: .automatic)
+        let lap = Preset(name: "Lap", icon: .airplane, fallback: .sensorBased(rule))
+        await tick(Fixtures.snapshot(battery: 38), lap)
+        XCTAssertEqual(recorder.calls, [.speed(0, 3000), .speed(1, 3000)])
+        // After a sleep the fans read as the system's. The battery is just below the start.
+        await tick(Fixtures.snapshot(battery: 32), lap)
+        XCTAssertEqual(recorder.calls.suffix(2), [.speed(0, 1000), .speed(1, 1000)], "The rule still has the fans, so their speed goes out again")
+        XCTAssertTrue(controller.holds(0))
+    }
+
     func testAFanSetToAnotherSpeedIsNotedAndNotWrittenOver() async {
         controller.isControlAllowed = true
         await tick(Fixtures.snapshot(), quiet)

@@ -27,6 +27,9 @@ final class AppModel {
     private(set) var chosenBy: ChosenBy = .user
     /// What the window should do about importing and exporting presets.
     var transfer = PresetTransfer()
+    /// The size of a sheet that is open over the window, or nil. The window draws the sheet's
+    /// shadow, because macOS gives a sheet none.
+    var openSheetSize: CGSize?
 
     @ObservationIgnored private let client: HelperClient?
     @ObservationIgnored private let defaults: UserDefaults

@@ -141,17 +141,90 @@ final class FormatTests: XCTestCase {
         )
     }
 
-    func testTheDockIconFollowsTheAccentAndAdaptive() {
-        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, accent: nil), "AppIcon", "Multicolor is blue")
-        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, accent: 4), "AppIcon")
-        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, accent: 6), "AppIconPink")
-        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, accent: -1), "AppIconGraphite")
-        XCTAssertEqual(DockIcon.bundledName(isRainbow: true, accent: 6), "AppIconRainbow")
-        for name in ["AppIconRainbow", "AppIconPurple", "AppIconPink", "AppIconRed", "AppIconOrange", "AppIconYellow", "AppIconGreen", "AppIconGraphite"] {
+    func testTheDockIconFollowsThePaletteAndAdaptive() {
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .bliss), "AppIcon", "The first palette has the app's own icon")
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .matrix), "AppIconMatrix")
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: true, palette: .matrix), "AppIconRainbow")
+        XCTAssertEqual(DockIcon.darkName(for: "AppIconRainbow"), "DockRainbowDark")
+        for name in ["AppIconRainbow"] + ColorPalette.allCases.map(\.iconName) where name != "AppIcon" {
             XCTAssertNotNil(Bundle.main.image(forResource: name), "\(name) is inside the app")
             XCTAssertNotNil(NSImage(named: DockIcon.darkName(for: name)), "\(name) has a picture of its Dark rendition")
         }
-        XCTAssertEqual(DockIcon.darkName(for: "AppIconRainbow"), "DockRainbowDark")
+    }
+
+    func testAnAppSelectionKeepsOnlyInstalledAppsThatAreNotAddedYet() {
+        let installed = [
+            AppDirectory.App(bundleID: "com.apple.dt.Xcode", name: "Xcode"),
+            AppDirectory.App(bundleID: "com.apple.FinalCut", name: "Final Cut Pro"),
+            AppDirectory.App(bundleID: "org.blenderfoundation.blender", name: "Blender"),
+        ]
+        let proposal = AppSelectionProposal(names: [" final cut pro\n", "Xcode", "xcode", "Blend", "Minecraft", "Blender"])
+        XCTAssertEqual(proposal.apps(among: installed, excluding: []).map(\.name), ["Final Cut Pro", "Xcode", "Blender"])
+        XCTAssertEqual(proposal.apps(among: installed, excluding: ["com.apple.dt.Xcode"]).map(\.name), ["Final Cut Pro", "Blender"])
+        XCTAssertEqual(AppSelectionProposal(names: []).apps(among: installed, excluding: []), [])
+        let many = (0..<40).map { AppDirectory.App(bundleID: "app.\($0)", name: "App \($0)") }
+        XCTAssertEqual(AppSelectionProposal(names: many.map(\.name)).apps(among: many, excluding: []).count, AppSelectionProposal.limit)
+    }
+
+    @MainActor
+    func testTheListOfAppsForTheModelIsCut() {
+        let names = (0..<300).map { "App \($0)" } + [String(repeating: "x", count: 200)]
+        let lines = IntelligenceService.heavyAppsPrompt(names).split(separator: "\n")
+        XCTAssertEqual(lines.count, IntelligenceService.heavyAppsListLimit + 1, "The heading and the first apps")
+        XCTAssertEqual(lines.first, "Apps:")
+        XCTAssertEqual(IntelligenceService.heavyAppsPrompt([String(repeating: "x", count: 200)]).count, "Apps:\n".count + 60)
+    }
+
+    @MainActor
+    func testTheGridOfAppsFindsAndCounts() {
+        let apps = [
+            AppDirectory.App(bundleID: "a", name: "Final Cut Pro"), AppDirectory.App(bundleID: "b", name: "Café Editor"),
+            AppDirectory.App(bundleID: "c", name: "Xcode"),
+        ]
+        XCTAssertEqual(AppPickerSheet.matches("", in: apps), apps)
+        XCTAssertEqual(AppPickerSheet.matches("  cut ", in: apps).map(\.name), ["Final Cut Pro"])
+        XCTAssertEqual(AppPickerSheet.matches("cafe", in: apps).map(\.name), ["Café Editor"], "Accents and case do not matter")
+        XCTAssertEqual(AppPickerSheet.matches("zzz", in: apps), [])
+        XCTAssertEqual(AppPickerSheet.status(chosen: 0), "Click an app to select it.")
+        XCTAssertEqual(AppPickerSheet.status(chosen: 1), "1 app selected")
+        XCTAssertEqual(AppPickerSheet.status(chosen: 3), "3 apps selected")
+        XCTAssertTrue(AppPickerSheet.subtitle(isSuggested: true, selected: 2).hasPrefix("Apple Intelligence selected"))
+        XCTAssertTrue(AppPickerSheet.subtitle(isSuggested: true, selected: 0).hasPrefix("Apple Intelligence found no app"))
+        XCTAssertEqual(Sidebar.deleteWarning(rules: 0), "You can’t undo this action.")
+        XCTAssertTrue(Sidebar.deleteWarning(rules: 1).hasPrefix("The rule that uses this preset"))
+        XCTAssertTrue(Sidebar.deleteWarning(rules: 3).hasPrefix("The 3 rules that use this preset"))
+    }
+
+    func testEveryPaletteHasEveryColorAndTheFirstIsBliss() {
+        XCTAssertEqual(ColorPalette.standard, .bliss)
+        XCTAssertEqual(ColorPalette.allCases.first, .bliss)
+        for palette in ColorPalette.allCases {
+            XCTAssertEqual(palette.temperatures.count, TemperatureBand.allCases.count, palette.title)
+            XCTAssertEqual(Set(palette.temperatures.map(\.dark)).count, 5, "\(palette.title) has a color of its own for each band")
+            XCTAssertEqual(Set(palette.temperatures.map(\.light)).count, 5, palette.title)
+            XCTAssertEqual(palette.cpu.count, 2, palette.title)
+            XCTAssertEqual(palette.gpu.count, 2, palette.title)
+            XCTAssertEqual(palette.fans.count, 3, palette.title)
+            for shade in palette.fans {
+                XCTAssertFalse((palette.cpu + palette.gpu).contains(shade), "\(palette.title) gives a fan a line of its own color")
+            }
+            // White text is read on the accent, as on a selected row.
+            for hex in [palette.accent.light, palette.accent.dark] {
+                XCTAssertGreaterThanOrEqual(Self.contrastWithWhite(hex), 3, "\(palette.title) \(String(hex, radix: 16))")
+            }
+            XCTAssertFalse(palette.title.isEmpty)
+            XCTAssertEqual(ColorPalette(rawValue: palette.id), palette)
+        }
+    }
+
+    /// The contrast of white against an sRGB color, as WCAG counts it.
+    private static func contrastWithWhite(_ hex: UInt32) -> Double {
+        let channels = [16, 8, 0].map { shift -> Double in
+            let value = Double((hex >> UInt32(shift)) & 0xFF) / 255
+            return value <= 0.03928 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+        }
+        let luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+        return 1.05 / (luminance + 0.05)
     }
 
     func testTheDockIconFollowsTheIconStyle() {

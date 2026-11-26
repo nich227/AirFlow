@@ -115,6 +115,21 @@ final class SnapshotTests: XCTestCase {
         try draw("setup-on-light", width: 520, dark: false, model: try model(helper: .enabled, active: "Automatic")) { SetupSheet() }
     }
 
+    func testTheGridOfApps() throws {
+        let apps = AppDirectory.installed()
+        let model = try model(helper: .enabled, active: "Adaptive")
+        let known = Set(apps.filter { KnownWorkloads.regimes[$0.bundleID] != nil }.map(\.bundleID))
+        try draw("apps-suggested", width: Layout.appPickerSize.width, model: model) {
+            AppPickerSheet(apps: apps, added: Set(apps.prefix(2).map(\.bundleID)), isLoading: false, selected: known, isSuggested: true) { _ in }
+        }
+        try draw("apps-light", width: Layout.appPickerSize.width, dark: false, model: model) {
+            AppPickerSheet(apps: apps, added: [], isLoading: false) { _ in }
+        }
+        try draw("apps-loading", width: Layout.appPickerSize.width, model: model) {
+            AppPickerSheet(apps: [], added: [], isLoading: true) { _ in }
+        }
+    }
+
     func testThePanel() throws {
         let controlling = try model(helper: .enabled, active: "Quiet", cpu: 78)
         try draw("panel-controlling", width: Layout.panelWidth, model: controlling) { MenuPanel() }

@@ -60,11 +60,23 @@ struct AdaptiveSummary: View {
 struct AppWorkloadsEditor: View {
     @Environment(AppModel.self) private var model
     @State private var apps: [AppDirectory.App] = []
+    @State private var hasLoadedApps = false
+    @State private var picker: Picker?
+    @State private var isSuggestingApps = false
     @State private var suggestion: Suggestion = .none
+
+    /// One opening of the grid of apps: the apps that start out selected, and who selected them.
+    struct Picker: Identifiable, Equatable {
+        let id = UUID()
+        var selected: Set<String> = []
+        var isSuggested = false
+    }
 
     enum Suggestion: Equatable {
         case none
         case working(bundleID: String)
+        /// Apple Intelligence is picking apps out of the installed ones.
+        case choosing
         case proposed(bundleID: String, name: String, proposal: WorkloadProposal)
         case failed(String)
     }
@@ -72,6 +84,10 @@ struct AppWorkloadsEditor: View {
     private static let regimeOptions = WorkloadRegime.allCases.map { AntOption(value: $0, title: $0.title) }
 
     var body: some View {
+        // The sheet shows these two. A view follows a state only if its body reads it, and a
+        // sheet's own closure does not count, so the body reads them here.
+        let installed = apps
+        let isLoading = !hasLoadedApps
         VStack(alignment: .leading, spacing: Space.sm) {
             Text("Apps")
                 .airFont(.title)
@@ -83,23 +99,47 @@ struct AppWorkloadsEditor: View {
                 row(workload)
             }
             proposal
-            AntSelect(title: "Add an App", selection: Binding {
-                ""
-            } set: { bundleID in
-                add(bundleID)
-            }, options: [AntOption(value: "", title: "Add an App")] + addable)
+            HStack(spacing: Space.xs) {
+                Button {
+                    open(Picker())
+                } label: {
+                    Label("Add Apps…", image: "ant-plus")
+                        .airFont(.body)
+                }
+                if model.intelligence.availability.isAvailable {
+                    Button {
+                        suggestApps()
+                    } label: {
+                        Label("Suggest Apps…", image: "ant-sparkles")
+                            .airFont(.body)
+                    }
+                    .disabled(isSuggestingApps || !hasLoadedApps)
+                    .help("Ask Apple Intelligence which of your apps put a heavy load on your Mac")
+                }
+            }
+            .buttonStyle(.glass)
         }
         .task {
-            if apps.isEmpty {
+            if !hasLoadedApps {
                 apps = await Task.detached { AppDirectory.installed() }.value
+                hasLoadedApps = true
+            }
+            #if DEBUG
+            // A script that captures the grid of apps asks for it by name.
+            if ProcessInfo.processInfo.environment["AIRFLOW_SHOW"]?.lowercased() == "apps" {
+                // The capture shows a suggestion, with the apps AirFlow knows itself standing in.
+                open(Picker(selected: Set(apps.filter { KnownWorkloads.regimes[$0.bundleID] != nil }.map(\.bundleID)), isSuggested: true))
+            }
+            #endif
+        }
+        .sheet(item: $picker, onDismiss: { model.openSheetSize = nil }) { picker in
+            AppPickerSheet(
+                apps: installed, added: Set(model.adaptive.workloads.map(\.bundleID)), isLoading: isLoading,
+                selected: picker.selected, isSuggested: picker.isSuggested
+            ) { picked in
+                picked.forEach { add($0.bundleID) }
             }
         }
-    }
-
-    /// The installed apps that have no entry yet.
-    private var addable: [AntOption<String>] {
-        let taken = Set(model.adaptive.workloads.map(\.bundleID))
-        return apps.filter { !taken.contains($0.bundleID) }.map { AntOption(value: $0.bundleID, title: $0.name) }
     }
 
     private func row(_ workload: AppWorkload) -> some View {
@@ -145,7 +185,7 @@ struct AppWorkloadsEditor: View {
         switch suggestion {
         case .none:
             EmptyView()
-        case .working:
+        case .working, .choosing:
             HStack(spacing: Space.xs) {
                 AirAnimation(name: Animations.spark, loops: true)
                     .frame(width: IconSize.title, height: IconSize.title)
@@ -174,6 +214,32 @@ struct AppWorkloadsEditor: View {
         guard let app = apps.first(where: { $0.bundleID == bundleID }) else { return }
         let regime = KnownWorkloads.regimes[bundleID] ?? .sustained
         model.adaptive.setWorkload(AppWorkload(bundleID: bundleID, name: app.name, regime: regime))
+    }
+
+    /// Opens the grid of apps. macOS gives a sheet no shadow, so the window is told the sheet's
+    /// size and draws one under it.
+    private func open(_ picker: Picker) {
+        model.openSheetSize = Layout.appPickerSize
+        self.picker = picker
+    }
+
+    /// Asks which installed apps are known for heavy work, then opens the grid with them selected.
+    /// Nothing is added until the person clicks Add there.
+    private func suggestApps() {
+        isSuggestingApps = true
+        suggestion = .choosing
+        let installed = apps
+        let added = Set(model.adaptive.workloads.map(\.bundleID))
+        Task {
+            defer { isSuggestingApps = false }
+            do {
+                let proposal = try await model.intelligence.suggestHeavyApps(among: installed.map(\.name))
+                suggestion = .none
+                open(Picker(selected: Set(proposal.apps(among: installed, excluding: added).map(\.bundleID)), isSuggested: true))
+            } catch {
+                suggestion = .failed(error.localizedDescription)
+            }
+        }
     }
 
     private func suggest(_ workload: AppWorkload) {

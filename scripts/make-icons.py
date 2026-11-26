@@ -43,7 +43,7 @@ ANT_ICONS = [
     # Actions and states
     "plus", "delete", "copy", "edit", "check", "check-circle", "close-circle", "exclamation-circle",
     "info-circle", "warning", "safety-certificate", "setting", "poweroff", "ellipsis", "holder",
-    "pause-circle", "undo", "send", "export", "lock", "down",
+    "pause-circle", "undo", "send", "export", "lock", "down", "search",
 ]
 
 TEMPLATE_CONTENTS = {

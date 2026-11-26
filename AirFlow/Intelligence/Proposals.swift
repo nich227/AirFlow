@@ -68,6 +68,32 @@ struct WorkloadProposal: Equatable, Sendable {
     }
 }
 
+/// The apps the model picked out of the installed ones as known for heavy work. The person sees
+/// them selected in the grid of apps and decides which to add.
+struct AppSelectionProposal: Equatable, Sendable {
+    var names: [String]
+
+    /// The most apps one proposal can select.
+    static let limit = 24
+
+    /// The installed apps the proposal names, without the ones that have an entry already. A name
+    /// counts only if it is an installed app's whole name, whatever its case, so the model cannot
+    /// select an app it was not shown.
+    func apps(among installed: [AppDirectory.App], excluding added: Set<String>) -> [AppDirectory.App] {
+        var seen = Set<String>()
+        var result: [AppDirectory.App] = []
+        for name in names {
+            let wanted = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard let app = installed.first(where: { $0.name.lowercased() == wanted }),
+                  !added.contains(app.bundleID), seen.insert(app.bundleID).inserted
+            else { continue }
+            result.append(app)
+            if result.count == Self.limit { break }
+        }
+        return result
+    }
+}
+
 /// A rule as the model proposed it.
 struct RuleProposal: Equatable, Sendable {
     enum Trigger: String, Equatable, Sendable {

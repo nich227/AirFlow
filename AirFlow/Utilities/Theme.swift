@@ -21,6 +21,8 @@ enum Radius {
     static let sm: CGFloat = 6
     static let md: CGFloat = 8
     static let card: CGFloat = 16
+    /// The corners of a sheet as macOS draws it, for the shadow under one.
+    static let sheet: CGFloat = 26
 }
 
 enum IconSize {
@@ -43,10 +45,14 @@ enum Layout {
     static let trackHeight: CGFloat = 8
     static let curveHeight: CGFloat = 168
     static let statusDot: CGFloat = 8
+    /// An app's icon in the grid that adds apps, the size the Finder's icon view starts at.
+    static let appIcon: CGFloat = 64
+    static let appPickerSize = CGSize(width: 680, height: 540)
 }
 
 enum Palette {
-    static let accent = Color.accentColor
+    /// The main color of the palette the person chose. It marks what is selected and what acts.
+    static var accent: Color { Color(ColorPalette.current.accent) }
 
     /// Fills on the window background. They use the label color, so they darken a light
     /// window and lighten a dark one.
@@ -403,6 +409,49 @@ private struct WindowVisibility: NSViewRepresentable {
 extension EnvironmentValues {
     /// True while Adaptive is the current preset. The fans' rotors are then drawn in the rainbow.
     @Entry var airRainbow = false
+}
+
+/// The shadow a sheet casts on the window under it: a soft dark shape the size of the sheet, a
+/// little below it. macOS puts a sheet in the middle of its window, so the shape goes there too,
+/// and the sheet covers all of it but its edge.
+struct SheetShadow: View {
+    let size: CGSize?
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        GeometryReader { proxy in
+            // This view may not span the window, so the middle of the window is found from the
+            // window's own size.
+            let origin = proxy.frame(in: .global).origin
+            if let size, let window = Self.windowSize {
+                let middle = CGPoint(x: window.width / 2 - origin.x, y: window.height / 2 - origin.y)
+                ZStack {
+                    // A wide soft shadow that falls below the sheet, and a close dark one at its edge.
+                    RoundedRectangle(cornerRadius: Radius.sheet)
+                        .fill(.black.opacity(scheme == .dark ? 1 : 0.6))
+                        .frame(width: size.width + 24, height: size.height + 24)
+                        .blur(radius: 30)
+                        .position(x: middle.x, y: middle.y + 26)
+                    RoundedRectangle(cornerRadius: Radius.sheet)
+                        .fill(.black.opacity(scheme == .dark ? 0.8 : 0.4))
+                        .frame(width: size.width, height: size.height)
+                        .blur(radius: 6)
+                        .position(x: middle.x, y: middle.y + 4)
+                }
+                .transition(.opacity)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .animation(Anim.allowed(Anim.standard, reduceMotion: reduceMotion), value: size)
+    }
+
+    /// The size of AirFlow's window. A sheet stops the window from changing size, so the size
+    /// read when the sheet opens holds while it is open.
+    private static var windowSize: CGSize? {
+        NSApp.windows.first { $0.identifier?.rawValue.hasPrefix(AirFlowApp.mainWindowID) == true }?.frame.size
+    }
 }
 
 /// Ant Design's card as a pane of glass.

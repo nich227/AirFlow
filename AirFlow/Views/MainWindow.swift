@@ -32,6 +32,11 @@ struct MainWindow: View {
                 // trailing edge, above the column it shows and hides.
                 .toolbar { readingsItem }
         }
+        .overlay {
+            SheetShadow(size: model.openSheetSize)
+        }
+        // The palette's main color is the accent of every control in the window.
+        .tint(Palette.accent)
         // The window lets the desktop show through, so the glass components have something to bend.
         // While Adaptive is on, fields of color lie over it.
         .containerBackground(for: .window) {
@@ -120,6 +125,7 @@ struct MainWindow: View {
         #if DEBUG
         guard let wanted = ProcessInfo.processInfo.environment["AIRFLOW_SHOW"] else { return nil }
         switch wanted.lowercased() {
+        case "apps": return .preset(Preset.adaptiveID)
         case "rules": return .rules
         case "sensors": return .sensors
         default: return model.presets.preset(named: wanted).map { .preset($0.id) }

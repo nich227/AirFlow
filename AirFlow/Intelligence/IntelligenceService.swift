@@ -69,6 +69,12 @@ enum DraftWorkload {
     case sustained
 }
 
+@Generable(description: "The apps on a Mac that are known for heavy work")
+struct AppSelectionDraft {
+    @Guide(description: "The names of the apps known for heavy work, each copied exactly from the list. Empty if none fit.")
+    var names: [String]
+}
+
 @Generable(description: "What kind of load an app puts on a Mac")
 struct WorkloadDraft {
     @Guide(description: "light: browsing, writing, chat, coding without long builds. bursty: short heavy spikes, such as photo editing or compiling. sustained: minutes of heavy load, such as video export, 3D rendering, or running a language model.")
@@ -187,6 +193,13 @@ final class IntelligenceService {
         Give one short sentence that says why. Do not give advice.
         """
 
+    static let heavyAppsInstructions = """
+        You are given the names of the apps on a Mac, one on each line. Choose only the apps that are \
+        known to work the computer hard for more than a moment: video editing and export, 3D, games, \
+        building code, virtual machines, photo editing, and running language models. \
+        Copy each name exactly as it is given. Leave out an app you do not know. If none fit, choose none.
+        """
+
     static let explainInstructions = """
         You explain a Mac's recent temperatures and fan speeds to its owner in two short sentences. \
         Use plain words and the numbers you are given. Do not give advice about hardware safety, \
@@ -244,6 +257,27 @@ final class IntelligenceService {
             throw failure(error)
         }
     }
+
+    /// Picks the apps known for heavy work out of the installed ones. Nothing is saved. The grid
+    /// of apps opens with them selected, and the person decides.
+    func suggestHeavyApps(among names: [String]) async throws -> AppSelectionProposal {
+        guard availability.isAvailable else { throw unavailable }
+        let session = LanguageModelSession(instructions: Self.heavyAppsInstructions)
+        do {
+            let draft = try await session.respond(to: Self.heavyAppsPrompt(names), generating: AppSelectionDraft.self).content
+            return AppSelectionProposal(names: draft.names)
+        } catch {
+            throw failure(error)
+        }
+    }
+
+    /// The installed apps as a list the model can copy names from. The list is cut so that it
+    /// fits what the model on the Mac can read at once.
+    static func heavyAppsPrompt(_ names: [String]) -> String {
+        "Apps:\n" + names.prefix(heavyAppsListLimit).map { String($0.prefix(60)) }.joined(separator: "\n")
+    }
+
+    static let heavyAppsListLimit = 240
 
     func explain(_ digest: ThermalDigest?, format: ReadingFormat) async throws -> String {
         guard let digest else { throw IntelligenceError.noHistory }

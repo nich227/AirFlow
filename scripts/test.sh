@@ -11,6 +11,10 @@ export PATH="$HOME/.cargo/bin:/opt/homebrew/bin:$PATH"
 (cd backend && cargo test --locked --jobs "${AIRFLOW_BUILD_JOBS:-4}" 2>&1 | grep -E '^test result|FAILED|panicked|^error' \
     && cargo clippy --locked --all-targets -- -D warnings 2>&1 | grep -E '^(warning|error)' || true)
 
+# The check that scripts/coverage.sh runs has tests of its own.
+(cd scripts/coverage && cargo test --locked 2>&1 | grep -E '^test result|FAILED|panicked|^error' \
+    && cargo clippy --locked --all-targets -- -D warnings 2>&1 | grep -E '^(warning|error)' || true)
+
 xcodegen generate
 xcodebuild -project AirFlow.xcodeproj -scheme AirFlow -configuration Debug \
     -derivedDataPath build/DerivedData -jobs "${AIRFLOW_BUILD_JOBS:-4}" test 2>&1 \

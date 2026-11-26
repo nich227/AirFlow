@@ -271,7 +271,15 @@ To run the tests:
 scripts/test.sh
 ```
 
-The tests never read or change a real fan. The backend's tests use a made-up SMC, and the app's tests use a recorder in place of the helper.
+The tests never read or change a real fan. The backend tests use a fake SMC, and the app tests use a fake helper.
+
+Run this command to check that the tests cover every line of logic:
+
+```
+scripts/coverage.sh
+```
+
+The coverage check includes the backend and the app's models, controllers, hardware bridge, and Apple Intelligence code. It requires the `llvm-tools` component from the Rust toolchain (`rustup component add llvm-tools`). Code that only the system can run, such as the call into the kernel's SMC service, is marked with the reason in its source.
 
 The backend is Rust, in `backend/`. It reads the SMC, names the sensors, sets fan speeds, and is the helper. The app is Swift and SwiftUI, in `AirFlow/`, and links the backend through a C interface. XcodeGen generates the Xcode project from `project.yml`, and the repository doesn't include it.
 

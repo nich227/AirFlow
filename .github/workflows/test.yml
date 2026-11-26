@@ -17,21 +17,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: brew install xcodegen
-      - name: backend tests
-        working-directory: backend
+      # The coverage check reads what the tests ran with the Rust toolchain's own llvm-cov.
+      - run: rustup component add llvm-tools
+      - name: lint the backend and the coverage check
         run: |
-          cargo test --locked
-          cargo clippy --locked --all-targets -- -D warnings
-      - run: xcodegen generate
-      - name: build and test
-        run: >
-          set -o pipefail &&
-          xcodebuild
-          -project AirFlow.xcodeproj
-          -scheme AirFlow
-          -configuration Debug
-          -derivedDataPath dd
-          test | grep -E '^/.*(error|warning):|: error:|Executed [0-9]+ tests|TEST (SUCCEEDED|FAILED)' | grep -v appintentsmetadataprocessor
+          (cd backend && cargo clippy --locked --all-targets -- -D warnings)
+          (cd scripts/coverage && cargo clippy --locked --all-targets -- -D warnings)
+      # Every test of the backend and of the app, with coverage. It fails if a test fails, and
+      # if a line or a function of the logic ran under no test.
+      - name: test, and check that the tests run every line of the logic
+        run: scripts/coverage.sh
       - name: animations are what the script writes
         run: |
           python3 scripts/make-animations.py

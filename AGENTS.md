@@ -7,7 +7,7 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 1. Everything that touches the Mac itself is Rust, in `backend/`: the SMC, fan and sensor reads, sensor names, fan writes, the power source, what each running app uses, the trust rule, and the helper. Swift never calls IOKit or the SMC. Swift reaches the backend only through `backend/include/airflow.h` (`AirFlow/Hardware/Backend.swift`, `HelperClient.swift`). The frontmost app, login items, and `SMAppService` stay in Swift.
 2. Only the helper writes to the SMC, and only through `FanWriter` (`backend/src/fans.rs`). `set_automatic` asks until the fan reads as the system's again (`RELEASE_ATTEMPTS`), because the SMC follows a write late, and a fan is the system's at any mode but 1. The last fan to go back gives the system its control back first. The app gives every fan back in one `reset_all` when the plan leaves every fan automatic (`FanController.apply`). `set_target` clamps to the fan's own `F<n>Mn` and `F<n>Mx`, refuses a fan index out of range, a speed that is not finite, and a fan whose limits are equal, and writes no target to a fan the system did not hand over.
 3. The helper accepts a client only when the helper has a team identifier and the client satisfies `signing::requirement` for that team and `protocol::CLIENT_IDENTIFIERS`. An ad hoc helper accepts no one. The app sets the mirror requirement on its connection (`airflow_helper_requirement`). Never weaken either side, and never add a second way to reach the helper.
-4. The helper gives every fan back to the system in four cases: the last client disconnects, no request arrives for `protocol::WATCHDOG` while a fan is held, SIGTERM, and `reset_all`. It releases `Ftst` when it holds no fan, including after a handover that failed.
+4. The helper gives every fan back to the system in four cases: the last client disconnects, no request arrives for `protocol::WATCHDOG` while a fan is held, SIGTERM, and `reset_all`. It releases `Ftst` when it holds no fan, including after a handover that failed. `service.rs` decides each case and has the tests. `bin/helper.rs` receives the messages, keeps the time, and waits for the signal.
 5. The app's control loop is `FanController.tick`, and `AppModel.apply` is the one place that changes the active preset. Views never call the helper. A fan with no entry in `FanController.sent` is the system's, so a preset that leaves every fan automatic sends nothing and never starts the helper.
 6. The safeguard (`Safeguard` in `Models/FanControl.swift`) overrides every preset. It engages at the limit on the CPU or GPU average and releases `Safeguard.releaseMargin` below it.
 7. The on-device model never reaches a fan. `IntelligenceService` returns a `PresetProposal`, a `RuleProposal`, a `WorkloadProposal`, or an `AppSelectionProposal`. An `AppSelectionProposal` only selects apps in the grid of apps (`AppPickerSheet`), where the person clicks Add, and it can name only an app that is installed. Before the model is asked, `AppModel.measureAppLoads` reads what the running apps use twice, a moment apart (`Backend.appUsage`, `usage.rs`: processor time and memory, added up by app bundle, read without privilege and never stored). An app measured as heavy (`AppLoad.isHeavy`) is selected by the measurement alone. The model on the Mac reads about 4,000 tokens and chooses badly from a list, so it is asked about one app at a time by name (`IntelligenceService.candidates`: the running apps above `AppLoad.listedCores` that are not heavy), and the installed apps in `KnownWorkloads` are selected too. `makePreset` and `makeRule` clamp and check every field, and a person saves the result. A `WorkloadProposal` says what an app is known for: it counts only after the person accepts it (`AdaptiveCoordinator.setWorkload`), and an app's regime can only make the detector choose more cooling sooner. Autopilot (`AutomationCoordinator`) applies saved rules only, is off by default, and a preset the person chooses holds until a different rule matches.
@@ -24,6 +24,7 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 17. Text is Hedvig Letters Sans through `airFont`. Every reading (a fan speed with its unit, a temperature, a percentage, an axis value, an SMC key) is IBM Plex Mono: `readingFont` for a value that stands alone, and `Text(readings:)` for a sentence that holds one. Preferences is the exception: its numbers use `monospacedDigit()`. Never use `.system(size:)` in a view. A button's title, a toggle's title, and a sidebar row need `airFont` on their own text, because the system sets them in its own font otherwise. Use `AntSegmented` and `AntSelect`, not a segmented or pop-up `Picker`.
 18. A fan's sentence comes from `FanSentence.text`. It states a fact ("Held at", "Follows") only for the active preset while `FanController.mode` is `.controlling` and the fan is set to the speed AirFlow sent. In every other case it says what the preset would do and who controls the fan. A fan that reads another speed than the one AirFlow sent for `FanController.strayTicks` snapshots is in `FanController.heldElsewhere`: its sentence says "Something else holds the fan at" that speed, the preset's tag reads Current, and AirFlow does not send the speed again until the preset asks for a different one or the system takes the fan.
 19. The Adaptive preset's speed is a share of each fan's range from `AdaptiveController.step`. It reaches a fan only through `FanPlanner.adaptiveCommand`, which keeps it between the fan's limits, and then the helper. It is never below `AdaptiveController.safetyFraction` at the present temperature, whatever the forecaster has learned, and the safety line is not slowed by the slew limit. The safeguard overrides it. With no CPU or GPU temperature it leaves the fans to the system. `adaptive.json` holds the forecaster's coefficients, its two recent error scores, and the Mac's range of power: no reading and no app's name.
+20. Every line and every function of the logic runs under a test: `backend/src`, `AirFlow/Models`, `AirFlow/Controllers`, `AirFlow/Hardware`, `AirFlow/Intelligence`, and `scripts/coverage/src`. `scripts/coverage.sh` checks it. A part that only the system can run is between `// coverage:off <reason>` and `// coverage:on`, and it is as small as it can be. Before you mark a part, move what it decides to where a test reaches it: `service.rs` holds what the helper decides, `SmcConnection` runs over a `Port`, `HelperClient` is given how its connection is made, `HelperManager` a `DaemonRegistration`, and `IntelligenceService` an `OnDeviceModel`. A mark whose lines all run fails the check, and so does a source file with a function that no test program holds. Do not write `??` after a value that cannot be missing: its right side is a closure that never runs, and the check reports it.
 
 ## Facts
 
@@ -34,7 +35,7 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 | Helper messages | XPC dictionaries. Keys and operations are in `backend/src/protocol.rs` and repeated in `airflow.h`. `protocol::tests::the_header_names_the_same_things` fails when they differ |
 | Log subsystem | `com.kevster.airflow` |
 | Minimum macOS | 26.0, Apple silicon only (`ARCHS: arm64` in `project.yml`). The backend keeps the Intel SMC forms (`fpe2`, `FS! `), which no build exercises |
-| Toolchain | Xcode 26+, Swift 5 language mode, Rust (stable), XcodeGen |
+| Toolchain | Xcode 26+, Swift 5 language mode, Rust (stable), XcodeGen. `scripts/coverage.sh` also needs the toolchain's `llvm-tools` component (`rustup component add llvm-tools`) |
 | Packages | SwiftPM: `Lottie` 4.6.1+, `Yams` 6+, `Sparkle` 2.8+. Cargo: `block2`, `libc`, pinned by `backend/Cargo.lock` |
 | Updates | Sparkle, through `Updates` (`Controllers/Updates.swift`). `SUFeedURL` is `updates.xml.rss` on this repository's `gh-pages` branch, and `SUPublicEDKey` is the public half of the key in the `SPARKLE_ED_PRIVATE_KEY` secret. A Debug build and a test never start the updater |
 | License | GNU Affero General Public License, version 3 only (SPDX `AGPL-3.0-only`). `LICENSE` is the FSF's text, unchanged, and the app carries it in `Contents/Resources`. `license` in `backend/Cargo.toml` and `NSHumanReadableCopyright` in `Info.plist` name it. A dependency, a font, or an icon set needs a license that AGPL-3.0 code can include: MIT, BSD, Apache 2.0, and the SIL Open Font License are fine |
@@ -61,6 +62,7 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 scripts/build.sh                 # xcodegen, cargo (through Xcode), xcodebuild; ad hoc
 scripts/build.sh --sign          # signed with a developer identity, so the helper can be installed
 scripts/test.sh                  # cargo test, then the AirFlowTests unit tests
+scripts/coverage.sh              # every test with coverage, then the check of invariant 20. Or one half: backend, app, checker
 (cd backend && cargo test && cargo clippy --all-targets -- -D warnings)
 python3 scripts/make-animations.py                      # regenerates AirFlow/Resources/Animations/*.json
 python3 scripts/make-icons.py <ant-design-icons checkout>   # the mark and the Ant Design icons
@@ -92,9 +94,10 @@ backend/                              Rust. The system layer.
     ├── usage.rs                      The processor time and memory of each running app
     ├── signing.rs                    Own team identifier, the requirement string
     ├── protocol.rs                   Service name, message keys, operations, timeouts
+    ├── service.rs                    What the helper does with a request, a client that leaves, and silence
     ├── ffi.rs                        The functions airflow.h declares
     ├── testing.rs                    FakeSmc, also behind airflow_reader_open_sample
-    └── bin/helper.rs                 The helper: XPC listener, state, watchdog, SIGTERM
+    └── bin/helper.rs                 The helper program: XPC listener, timers, SIGTERM. It calls service.rs
 AirFlow/
 ├── AirFlowApp.swift                  Scenes, File menu commands, AppDelegate, WindowOpener
 ├── Hardware/
@@ -115,8 +118,11 @@ AirFlow/
 │   └── Settings/SettingsView.swift   General, Fan Control, Intelligence, About
 ├── Utilities/                        Theme (tokens, AirType, ReadingText, antGlass, AirBackdrop, SheetShadow, GlassCard, AntIcon), DockIcon, Log
 └── Resources/                        Assets.xcassets (MenuBarIcon, MarkBlades, MarkHousing, ant-*, Dock*Dark), AppIcon.icon and one for each other palette, AppIconRainbow.icon, Animations/, Fonts/, LaunchDaemons/
-AirFlowTests/                         XCTest. Fixtures.swift holds CommandRecorder and made-up snapshots
-scripts/                              build.sh, test.sh, build-backend.sh, embed-helper.sh, make-animations.py, make-icons.py, fan_geometry.py,
+AirFlowTests/                         XCTest. Fixtures.swift holds CommandRecorder and made-up snapshots. HelperConnectionTests.swift holds
+                                      FakeHelper (an XPC listener in the test's process) and FakeRegistration, IntelligenceServiceTests.swift
+                                      ScriptedModel, CoordinatorTests.swift CountingSource
+scripts/                              build.sh, test.sh, coverage.sh, coverage/ (the Rust program that checks what the tests ran),
+                                      build-backend.sh, embed-helper.sh, make-animations.py, make-icons.py, fan_geometry.py,
                                       make-brand.swift, make-screenshots.sh (the README's pictures),
                                       and for a release: import-certificate.sh, sign-nested.sh, make-dmg.sh, check-sparkle-key.js,
                                       sign-release.js, update-appcast.js
@@ -130,11 +136,13 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 
 | Where | Covers |
 |---|---|
-| `backend/src/smc.rs` | The byte formats, values that do not fit, key codes |
+| `backend/src/smc.rs` | The byte formats, values that do not fit, key codes, and the connection over a made-up kernel port: a key's size and type asked once, a missing key, a write that is not the key's size, keys by index, a call the kernel refuses, a lock left by a thread that stopped |
+| `backend/src/service.rs` | A request with no fan or no speed, a fan held and given back by request, an unknown request, the SMC opened once and again after a failure, the last client to leave, silence past the watchdog |
+| `backend/src/power.rs` | Which power source counts as the battery, and what the Mac says it draws from |
 | `backend/src/sensors.rs` | Fan reads, a fan's limits read once, only the groups asked for read and the others keeping their last reading, plausible sensors only, groups and names for Apple silicon and Intel, numbers for keys with no known meaning, a sensor that goes off |
 | `backend/src/fans.rs` | Clamping, taking and returning a fan, a fan whose mode follows late, a fan that stays manual while the system's control is off, a fan the system reports with another number, a fan the system never takes back, a fan that does not exist, a speed that is not a number, equal limits, the `Ftst` handover and its failure, reset past a failing fan, Intel's bit per fan |
 | `backend/src/usage.rs` | A helper counted for the outermost app that holds it, processes added up by app with the busiest first, ticks as seconds, the test's own process among the samples |
-| `backend/src/signing.rs`, `protocol.rs`, `ffi.rs` | The running apps across the C interface and a path cut to fit, the requirement string and what makes none, the header agreeing with the source, the sample reader across the C interface, null and negative arguments, text cut to fit |
+| `backend/src/signing.rs`, `protocol.rs`, `ffi.rs` | The running apps across the C interface and a path cut to fit, the requirement string and what makes none, the header agreeing with the source, the sample reader across the C interface, null and negative arguments, text cut to fit and never through a character, a requirement written whole or not at all |
 | `HelperTests.swift` | The sample Mac across the bridge, the running apps across the bridge, group numbers against the header, the helper and its property list inside the built app, the app's requirement, an unsigned copy reaching no helper, the appcast's address and the update key in `Info.plist`, the license inside the app, no updater under test |
 | `HardwareTests.swift` | Group summaries and outliers, sensor sources, history length, extremes, a failed read, the one-second interval, the history thinned for a chart, the parts read on each sample, the parts that presets and rules follow |
 | `ControlTests.swift` | Sensor rules and their limits, each control as a command, a rule that leaves the fan to the system below its start, built-in and starter presets, the safeguard, the control loop (nothing without the helper, send once then keep alive, a fan taken back, a fan set to a speed AirFlow did not send, every fan given back in one request, one fan given back while another is held, a failed give-back, failure and retry, wake) |
@@ -142,6 +150,12 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | `AdaptiveTests.swift` | The rolling window, the Mac's range of power, the regime tree and its hold, the forecaster learning a made-up Mac, the controller against that Mac (light work, a long load, a steady speed, the slew limit, the fall hold, short bursts, an app's hint, the safety line, no power, no temperature), the share of the range as a speed, the control loop and the safeguard, the hint from open apps, storage. `ForecasterComparisonTests` is skipped unless `AIRFLOW_COMPARE` is set: it prints the forecaster's error beside Apple's `LinearRegressor` (Create ML Components) on the made-up Mac |
 | `PresetCodecTests.swift` | Round trips, the shape of the file, names YAML could misread, a file written by hand, a file of the older format, a rule's `below`, limits on numbers, every refusal and its message, sensor names, import and export through `AppModel` |
 | `IntelligenceAndViewTests.swift` | Proposals becoming presets and rules, the digest, formats and bands, the menu bar readout, the sentence Siri speaks, settings, animations and icons, both fonts being registered, the readings in a sentence, each fan sentence by mode, names for imported presets, the rule row's line breaks, the name of the Preferences menu item, the size of a Preferences tab's icon, the Dock icon by palette and by icon style, every palette's colors, the palette in Preferences, an app selection, the apps the model is asked about, the load of each installed app from two readings, an app measured as heavy, the grid of apps' search and its lines, the warning before a preset is deleted |
+| `HelperConnectionTests.swift` | The client over real XPC to a made-up helper: each request's operation, fan, and speed, a refusal and its reason, a helper that hangs up, a connection that ends while idle, the fans given back before quitting with a bounded wait. The helper's registration against a made-up system record: the three statuses, approval, a failed install, removal, a copy with no team |
+| `IntelligenceServiceTests.swift` | The service with a model that answers from a script: each draft as a proposal, a request refused before the model is asked, a model that fails or goes away, which apps the model is asked about, the system's availability in words |
+| `CoordinatorTests.swift` | The workspace's notifications (the app in front without AirFlow itself, apps that open and quit), a rule changed and deleted, a stored file that cannot be read or written, installed apps in a folder, the sampling loop from start to stop, the history as it grows |
+| `AppModelFlowTests.swift` | The model with a made-up Mac, helper, and system record: a stored preset that is gone, Autopilot going back to the person's preset, export names, a file read no further than its limit, start to quit, turning fan control on and off, a wake, the running apps measured. The App Intents against a model |
+| `ModelWordingTests.swift` | The words and identifiers of each enumeration, the built-in presets' identifiers, the forecaster after a clock change and after numbers that overflow, power that is not a number |
+| `scripts/coverage` | The LCOV records, the marks and their reasons, a line and a closure that did not run, a mark that ran in full, a file no test program holds, the report, the command's three ways to end |
 | `SnapshotTests.swift` | Skipped unless `AIRFLOW_SNAPSHOTS` is set. Draws each surface's layers off screen. The system draws nothing that sits on Liquid Glass there, so the drawings set `airFlatGlass`, and `antGlass` draws a flat fill |
 
 ## When you change X, also change Y
@@ -149,7 +163,9 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | Change | Also update |
 |---|---|
 | A function or structure in `ffi.rs` | `backend/include/airflow.h`, `Backend.swift`, `ffi::tests::the_header_declares_every_function` |
-| A message key or operation | `protocol.rs`, `airflow.h`, `bin/helper.rs`, `HelperClient.swift`, and raise `PROTOCOL_VERSION` |
+| A message key or operation | `protocol.rs`, `airflow.h`, `service.rs`, `bin/helper.rs`, `HelperClient.swift`, `FakeHelper` in the tests, and raise `PROTOCOL_VERSION` |
+| What the helper does with a request, a client that leaves, or silence | `service.rs` and its tests. `bin/helper.rs` only calls it |
+| Logic in a folder that invariant 20 names | A test that runs every new line and closure, and one that fails when the logic is wrong. `scripts/coverage.sh` must print no "Not run" list. A mark only for what the system alone can run |
 | A sensor group | `sensors::Group`, the `AIRFLOW_GROUP_*` values in `airflow.h`, `SensorGroup` in the same order, `TemperatureBand.thresholds`, `testTheGroupsAreNumberedAsTheBackendNumbersThem` |
 | A sensor's name or group | `KNOWN` or the prefix rules in `sensors.rs`, and its tests |
 | The helper's identifier or service name | `protocol.rs`, `airflow.h`, `helper-Info.plist`, the launchd property list, `scripts/embed-helper.sh`, `HelperManager.daemonPlistName` |
@@ -197,6 +213,7 @@ Write the release notes for the update window, which is small: a heading and bul
 ```bash
 scripts/build.sh                                                   # must print BUILD SUCCEEDED and no warning
 scripts/test.sh                                                    # cargo test, then TEST SUCCEEDED
+scripts/coverage.sh                                                # must print no "Not run" and no "Marked, and run in full" list
 (cd backend && cargo clippy --all-targets -- -D warnings)
 python3 scripts/make-animations.py && git diff --exit-code -- AirFlow/Resources/Animations
 grep -rnE 'as!|try!|\)!' AirFlow --include='*.swift'                # must print nothing
@@ -204,4 +221,4 @@ grep -rnE 'as!|try!|\)!' AirFlow --include='*.swift'                # must print
 
 The adaptive controller has run only against the made-up Mac in `AdaptiveTests.swift` and, without the helper, as a forecast on the real one. Say so when you report a change to it.
 
-Fan writes cannot be tested without the helper installed, which needs a signed build and approval in System Settings. Say so when you report a change to `fans.rs`, `bin/helper.rs`, or `HelperClient.swift`, and name what you ran.
+Fan writes cannot be tested without the helper installed, which needs a signed build and approval in System Settings. Say so when you report a change to `fans.rs`, `smc.rs`, `service.rs`, `bin/helper.rs`, or `HelperClient.swift`, and name what you ran.

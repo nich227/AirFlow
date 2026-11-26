@@ -1,0 +1,7 @@
+[package]
+name = "airflow-coverage"
+version = "1.0.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+publish = false
+description = "Checks that every line and function of AirFlow's logic runs under its tests."

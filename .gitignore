@@ -74,3 +74,4 @@ __pycache__/
 
 # The design skill writes this file about the Mac it runs on.
 .impeccable/staleness-check.json
+/scripts/coverage/target/

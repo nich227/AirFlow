@@ -8,6 +8,7 @@ struct PresetDetail: View {
 
     @State private var name = ""
     @State private var isRenaming = false
+    @State private var isChoosingIcon = false
     @FocusState private var nameIsFocused: Bool
     private var isActive: Bool { model.settings.activePresetID == preset.id }
 
@@ -107,26 +108,25 @@ struct PresetDetail: View {
                 .foregroundStyle(.secondary)
                 .padding(.top, 2)
         } else {
-            Menu {
-                ForEach(PresetIcon.choices) { icon in
-                    Button {
-                        var changed = preset
-                        changed.icon = icon
-                        model.presets.update(changed)
-                    } label: {
-                        Label(icon.rawValue.replacingOccurrences(of: "-", with: " ").capitalized, image: icon.assetName)
-                    }
-                }
+            Button {
+                isChoosingIcon = true
             } label: {
                 AntIcon(preset.icon.assetName, size: IconSize.state)
+                    .contentShape(.rect)
             }
-            .menuStyle(.button)
             .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-            .fixedSize()
             .padding(.top, 2)
             .help("Change the preset's icon")
             .accessibilityLabel("Preset icon")
+            .accessibilityValue(preset.icon.title)
+            .popover(isPresented: $isChoosingIcon, arrowEdge: .bottom) {
+                IconPicker(selected: preset.icon) { icon in
+                    var changed = preset
+                    changed.icon = icon
+                    model.presets.update(changed)
+                    isChoosingIcon = false
+                }
+            }
         }
     }
 

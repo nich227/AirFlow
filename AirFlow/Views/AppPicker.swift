@@ -33,7 +33,6 @@ struct AppPickerSheet: View {
     @State private var search = ""
     @State private var chosen: Set<String>
     @State private var hovered: String?
-    @FocusState private var searchIsFocused: Bool
 
     private static let columns = [GridItem(.adaptive(minimum: 108, maximum: 140), spacing: Space.xs, alignment: .top)]
 
@@ -63,42 +62,9 @@ struct AppPickerSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: Space.sm)
-            searchField
+            SearchField(text: $search, label: "Search apps")
+                .frame(width: 220)
         }
-    }
-
-    /// A search field as the Finder's: a magnifying glass, the text, and a button that clears it.
-    private var searchField: some View {
-        HStack(spacing: Space.xxs + 2) {
-            AntIcon("ant-search", size: IconSize.inline)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-            TextField("Search", text: $search)
-                .font(AirType.body.font)
-                .textFieldStyle(.plain)
-                .focused($searchIsFocused)
-                .accessibilityLabel("Search apps")
-            if !search.isEmpty {
-                Button {
-                    search = ""
-                } label: {
-                    Label("Clear the search", image: "ant-close-circle")
-                        .labelStyle(.iconOnly)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .help("Clear the search")
-            }
-        }
-        .padding(.horizontal, Space.xs)
-        .frame(width: 220, height: 28)
-        .background(Palette.fill(contrast), in: .rect(cornerRadius: Radius.sm))
-        .overlay {
-            RoundedRectangle(cornerRadius: Radius.sm)
-                .strokeBorder(searchIsFocused ? Palette.accent : Palette.hairline(contrast), lineWidth: searchIsFocused ? 2 : 1)
-        }
-        .contentShape(.rect(cornerRadius: Radius.sm))
-        .onTapGesture { searchIsFocused = true }
     }
 
     @ViewBuilder

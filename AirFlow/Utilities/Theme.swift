@@ -50,6 +50,8 @@ enum Layout {
     /// An app's icon in the grid that adds apps, the size the Finder's icon view starts at.
     static let appIcon: CGFloat = 64
     static let appPickerSize = CGSize(width: 680, height: 540)
+    /// The grid of icons, which shows eight icons in a row.
+    static let iconPickerSize = CGSize(width: 340, height: 380)
 }
 
 enum Palette {

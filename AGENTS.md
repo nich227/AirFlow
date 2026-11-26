@@ -65,7 +65,7 @@ scripts/test.sh                  # cargo test, then the AirFlowTests unit tests
 scripts/coverage.sh              # every test with coverage, then the check of invariant 20. Or one half: backend, app, checker
 (cd backend && cargo test && cargo clippy --all-targets -- -D warnings)
 python3 scripts/make-animations.py                      # regenerates AirFlow/Resources/Animations/*.json
-python3 scripts/make-icons.py <ant-design-icons checkout>   # the mark and the Ant Design icons
+python3 scripts/make-icons.py <ant-design-icons checkout>   # the mark, every outlined Ant Design icon, and the list of their names
 swift scripts/make-rainbow-icon.swift                   # the rainbow fan inside AppIconRainbow.icon
 swift scripts/make-brand.swift                          # docs/images/airflow-brand.png and airflow-brand-dark.png, for the README
 scripts/make-screenshots.sh                             # the README's screenshots into docs/images, from the Debug build, without taking the keyboard
@@ -105,7 +105,8 @@ AirFlow/
 │   ├── ThermalMonitor.swift          Snapshot, history, extremes, the sampling loop
 │   └── HelperClient.swift            FanCommanding, HelperClient (XPC), HelperManager (SMAppService)
 ├── Models/                           Fan, Sensor, ThermalSnapshot, FanControl (SensorRule, FanPlanner, Safeguard),
-│                                     Preset, PresetCodec, PresetsDocument, Automation, Temperature, AppSettings, ColorPalette,
+│                                     Preset (PresetIcon), AntIconCatalog (written by make-icons.py), PresetCodec, PresetsDocument,
+│                                     Automation, Temperature, AppSettings, ColorPalette,
 │                                     Adaptive (WorkloadRegime, RollingWindow, PowerScale, RegimeDetector, ThermalForecaster,
 │                                     AdaptivePolicy, AdaptiveController, KnownWorkloads)
 ├── Controllers/                      AppModel, FanController, PresetStore (PresetFile, JSONFile, NameRegistry), AutomationCoordinator (AppDirectory),
@@ -113,8 +114,8 @@ AirFlow/
 ├── Intelligence/                     IntelligenceService (FoundationModels), Proposals, FanIntents (App Intents)
 ├── Views/                            MainWindow (Sidebar), PresetDetail (FanSentence, FanSection, SensorRuleEditor), LiveInspector
 │   │                                 (HistoryChart, SensorsView), AutomationView (RuleRow), AdaptiveViews (AdaptiveSummary,
-│   │                                 AppWorkloadsEditor), AppPicker (AppPickerSheet, AppIcons), DescribePresetSheet, SetupSheet (LoginItem), SettingsGuide, MenuPanel
-│   ├── Components/                   AirAnimation (Rotor), Components (StateTag, Statistic, FanTrack, StatusBanner, EmptyState, AntSegmented, AntSelect, FlowLayout), CurveEditor
+│   │                                 AppWorkloadsEditor), AppPicker (AppPickerSheet, AppIcons), IconPicker, DescribePresetSheet, SetupSheet (LoginItem), SettingsGuide, MenuPanel
+│   ├── Components/                   AirAnimation (Rotor), Components (StateTag, Statistic, FanTrack, StatusBanner, EmptyState, SearchField, AntSegmented, AntSelect, FlowLayout), CurveEditor
 │   └── Settings/SettingsView.swift   General, Fan Control, Intelligence, About
 ├── Utilities/                        Theme (tokens, AirType, ReadingText, antGlass, AirBackdrop, SheetShadow, GlassCard, AntIcon), DockIcon, Log
 └── Resources/                        Assets.xcassets (MenuBarIcon, MarkBlades, MarkHousing, ant-*, Dock*Dark), AppIcon.icon and one for each other palette, AppIconRainbow.icon, Animations/, Fonts/, LaunchDaemons/
@@ -154,7 +155,7 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | `IntelligenceServiceTests.swift` | The service with a model that answers from a script: each draft as a proposal, a request refused before the model is asked, a model that fails or goes away, which apps the model is asked about, the system's availability in words |
 | `CoordinatorTests.swift` | The workspace's notifications (the app in front without AirFlow itself, apps that open and quit), a rule changed and deleted, a stored file that cannot be read or written, installed apps in a folder, the sampling loop from start to stop, the history as it grows |
 | `AppModelFlowTests.swift` | The model with a made-up Mac, helper, and system record: a stored preset that is gone, Autopilot going back to the person's preset, export names, a file read no further than its limit, start to quit, turning fan control on and off, a wake, the running apps measured. The App Intents against a model |
-| `ModelWordingTests.swift` | The words and identifiers of each enumeration, the built-in presets' identifiers, the forecaster after a clock change and after numbers that overflow, power that is not a number |
+| `ModelWordingTests.swift` | The words and identifiers of each enumeration, a preset's icon (the catalog, its name for a person, the icons kept for the built-in presets, the search, how it is stored), the built-in presets' identifiers, the forecaster after a clock change and after numbers that overflow, power that is not a number |
 | `scripts/coverage` | The LCOV records, the marks and their reasons, a line and a closure that did not run, a mark that ran in full, a file no test program holds, the report, the command's three ways to end |
 | `SnapshotTests.swift` | Skipped unless `AIRFLOW_SNAPSHOTS` is set. Draws each surface's layers off screen. The system draws nothing that sits on Liquid Glass there, so the drawings set `airFlatGlass`, and `antGlass` draws a flat fill |
 
@@ -175,7 +176,7 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | A design token | `DESIGN.md` and `Utilities/Theme.swift` together |
 | A font | `AirFlow/Resources/Fonts`, `AirType.textFamily` or `readingFamily`, `ReadingFontTests`, `licenses/`, `DESIGN.md`, the README's License section |
 | An animation | `scripts/make-animations.py`, rerun it, `Animations` (the name and `all`), `AnimationTests`, the table in `DESIGN.md` |
-| An icon | `ANT_ICONS` in `scripts/make-icons.py`, rerun it, and `PresetIcon` if a preset can carry it. The sparkles (`ant-sparkles`) and the airplane (`ant-airplane`) are drawn by the script itself. The sparkles mark Adaptive and every Apple Intelligence action, and no other preset takes them |
+| An icon | `scripts/make-icons.py` copies every outlined icon of Ant Design into the asset catalog as `ant-<name>` and writes their names to `Models/AntIconCatalog.swift`, so never edit that file: rerun the script with a checkout. A preset carries any of them (`PresetIcon`, whose raw value is the name), and a person chooses one in `IconPicker`. The sparkles (`ant-sparkles`) and the airplane (`ant-airplane`) are drawn by the script itself. Three icons mark the built-in presets and are not offered for another preset (`PresetIcon.reserved`): the Apple logo for Automatic, the thunderbolt for Full Blast, and the sparkles for Adaptive, which also mark every Apple Intelligence action. A name that is not a word gets its spelling in `PresetIcon.titles` |
 | A color of a palette | `ColorPalette`, the tables in `DESIGN.md`, and `PALETTES` in `scripts/make-icons.py` if it is the accent. `testEveryPaletteHasEveryColorAndTheFirstIsAqua` must still pass: a fan's line is no color of the CPU's or the GPU's, and white text is read on the accent |
 | A new palette | A case of `ColorPalette` with every color, an entry in `PALETTES`, then `python3 scripts/make-icons.py`, the new `AppIcon<Name>.icon` in `project.yml` (the resources, the excluded files, and `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`), `licenses/` if the colors come from a theme, `DESIGN.md`, the README |
 | The rainbow fan | `swift scripts/make-rainbow-icon.swift`, then `python3 scripts/make-icons.py` for its Dark picture, and `Rotor` in `AirAnimation.swift`, which draws the same pinwheel |

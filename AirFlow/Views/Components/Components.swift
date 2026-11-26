@@ -232,6 +232,49 @@ struct EmptyState: View {
     }
 }
 
+/// A search field as the Finder's: a magnifying glass, the text, and a button that clears it.
+struct SearchField: View {
+    @Binding var text: String
+    /// What the field searches, for VoiceOver: "Search apps".
+    let label: String
+
+    @Environment(\.colorSchemeContrast) private var contrast
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: Space.xxs + 2) {
+            AntIcon("ant-search", size: IconSize.inline)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            TextField("Search", text: $text)
+                .font(AirType.body.font)
+                .textFieldStyle(.plain)
+                .focused($isFocused)
+                .accessibilityLabel(label)
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Label("Clear the search", image: "ant-close-circle")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Clear the search")
+            }
+        }
+        .padding(.horizontal, Space.xs)
+        .frame(height: 28)
+        .background(Palette.fill(contrast), in: .rect(cornerRadius: Radius.sm))
+        .overlay {
+            RoundedRectangle(cornerRadius: Radius.sm)
+                .strokeBorder(isFocused ? Palette.accent : Palette.hairline(contrast), lineWidth: isFocused ? 2 : 1)
+        }
+        .contentShape(.rect(cornerRadius: Radius.sm))
+        .onTapGesture { isFocused = true }
+    }
+}
+
 /// One choice of a segmented control or a select.
 struct AntOption<Value: Hashable>: Identifiable {
     let value: Value

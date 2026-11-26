@@ -228,7 +228,7 @@ enum PresetCodec {
         return Preset(
             id: record.id.flatMap(UUID.init) ?? UUID(),
             name: label,
-            icon: record.icon.flatMap(PresetIcon.init) ?? .sliders,
+            icon: record.icon.flatMap { PresetIcon(rawValue: $0) } ?? .sliders,
             controls: controls,
             fallback: try control(record.fans, preset: label),
             summary: String((record.summary ?? "").trimmingCharacters(in: .whitespacesAndNewlines).prefix(160))

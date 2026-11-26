@@ -102,7 +102,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 ### Presets
 
 - You can keep as many presets as you want. AirFlow starts with Automatic, Adaptive, Full Blast, Quiet, Heavy Workload, and Travel.
-- A preset has a name, an icon, and a one-line summary. A new preset starts as a copy of the one you selected, and changing a preset never changes another one.
+- A preset has a name, an icon, and a one-line summary. Click the icon to choose another outlined icon from Ant Design. A new preset copies the selected preset, and changing one preset never changes another.
 - AirFlow stores presets as a YAML file that you can read and edit. See [The presets file](#the-presets-file).
 - You can export presets to a `.yaml` file and import them on another Mac. An import never replaces a preset you have.
 - AirFlow asks before it deletes a preset.

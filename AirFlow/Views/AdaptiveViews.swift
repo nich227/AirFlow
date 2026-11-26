@@ -12,7 +12,7 @@ struct AdaptiveSummary: View {
                 HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
                     Text("Workload")
                         .airFont(.title)
-                    StateTag(text: state.regime.title)
+                    StateTag(text: state.regime.title, color: Palette.workload(state.regime))
                     Spacer()
                 }
                 Text(readings: Self.explanation(state: state, hintApp: model.adaptive.hintAppName, hint: model.adaptive.hint))
@@ -119,6 +119,11 @@ struct AppWorkloadsEditor: View {
                 .disabled(suggestion == .working(bundleID: workload.bundleID))
                 .help("Ask Apple Intelligence to suggest a workload for \(workload.name)")
             }
+            // The color of the kind of work, beside its name in the menu.
+            Circle()
+                .fill(Palette.workload(workload.regime).gradient)
+                .frame(width: Layout.statusDot, height: Layout.statusDot)
+                .accessibilityHidden(true)
             AntSelect(title: "\(workload.name) workload", selection: Binding {
                 workload.regime
             } set: { regime in

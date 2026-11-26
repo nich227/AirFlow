@@ -86,6 +86,16 @@ enum Palette {
         }
     }
 
+    /// The color of a kind of work, from the temperature scale: emerald for light work, amber for
+    /// bursts, and orange for a long load. The word is always beside it.
+    static func workload(_ regime: WorkloadRegime) -> Color {
+        switch regime {
+        case .light: return temperature(.mild)
+        case .bursty: return temperature(.warm)
+        case .sustained: return temperature(.hot)
+        }
+    }
+
     static let success = Color("TempMild")
     static let caution = Color("TempWarm")
     static let danger = Color("TempCritical")

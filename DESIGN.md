@@ -109,7 +109,7 @@ While Adaptive is the current preset, the window and the menu bar panel sit on `
 
 ### The Dock icon
 
-While AirFlow runs, the fan's blades in the Dock icon have the system accent (`DockIcon`). The menu bar icon stays a plain template image. The alerts use three of its steps: `mild` for success, `warm` for caution, and `critical` for an error.
+While AirFlow runs, the fan's blades in the Dock icon have the system accent (`DockIcon`). The menu bar icon stays a plain template image. The Adaptive page's workload tag uses three more: `mild` for Light, `warm` for Bursty, and `hot` for Sustained (`Palette.workload`). The alerts use three of its steps: `mild` for success, `warm` for caution, and `critical` for an error.
 
 ### Neutral
 

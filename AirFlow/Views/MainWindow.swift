@@ -196,8 +196,8 @@ struct MainWindow: View {
 
     /// How far the toolbar's buttons sit below the middle of the bar and in from the window's
     /// edge, so the readings button lies inside the corner of the readings panel and not on it.
-    private static let toolbarDrop: CGFloat = 10
-    private static let toolbarInset: CGFloat = 10
+    private static let toolbarDrop: CGFloat = 15
+    private static let toolbarInset: CGFloat = 8
 
     /// The readings beside the page: a rounded panel a little in from the window's edges, which
     /// reaches up behind the toolbar as the sidebar does.

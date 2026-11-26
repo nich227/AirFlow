@@ -48,7 +48,7 @@ final class ModelWordingTests: XCTestCase {
         XCTAssertNil(PresetIcon(rawValue: "no-such-icon"))
         XCTAssertNil(PresetIcon(rawValue: ""))
         XCTAssertNil(PresetIcon(rawValue: "ant-fire"), "The name is the icon's own, without the prefix of its image")
-        for icon in [PresetIcon.apple, .thunderbolt, .sparkles, .airplane, .cloud, .coffee, .compass, .dashboard, .fire, .moon, .rocket, .sliders, .sound, .videoCamera] {
+        for icon in [PresetIcon.sync, .thunderbolt, .sparkles, .airplane, .cloud, .coffee, .compass, .dashboard, .fire, .moon, .rocket, .sliders, .sound, .videoCamera] {
             XCTAssertEqual(PresetIcon(rawValue: icon.rawValue), icon, "\(icon.rawValue) is in the catalog")
         }
     }
@@ -64,33 +64,33 @@ final class ModelWordingTests: XCTestCase {
         XCTAssertTrue(PresetIcon.allCases.allSatisfy { !$0.title.isEmpty && !$0.title.contains("-") || $0.rawValue == "wifi" })
     }
 
-    func testTheBuiltInPresetsKeepTheirIconsToThemselves() {
-        XCTAssertEqual(Preset.automatic.icon, .apple, "macOS runs the fans")
+    func testEveryIconIsOfferedForEveryPreset() {
+        XCTAssertEqual(Preset.automatic.icon, .sync)
         XCTAssertEqual(Preset.fullBlast.icon, .thunderbolt)
         XCTAssertEqual(Preset.adaptive.icon, .sparkles)
-        XCTAssertEqual(PresetIcon.reserved, [.apple, .thunderbolt, .sparkles])
-        XCTAssertEqual(PresetIcon.choices.count, PresetIcon.allCases.count - 3)
-        XCTAssertTrue(PresetIcon.choices.allSatisfy { !PresetIcon.reserved.contains($0) })
-        XCTAssertTrue(PresetIcon.choices.contains(.airplane))
+        // Two presets can have the same icon, a built-in preset's included.
+        XCTAssertEqual(PresetIcon.matching(""), PresetIcon.allCases)
+        XCTAssertEqual(PresetIcon.matching("   "), PresetIcon.allCases)
+        for icon in [PresetIcon.sync, .thunderbolt, .sparkles, .airplane] {
+            XCTAssertTrue(PresetIcon.matching(icon.title).contains(icon), icon.rawValue)
+        }
     }
 
     func testIconsAreFoundByTheWordsOfTheirNames() {
-        XCTAssertEqual(PresetIcon.choices(matching: ""), PresetIcon.choices)
-        XCTAssertEqual(PresetIcon.choices(matching: "   "), PresetIcon.choices)
-        XCTAssertEqual(PresetIcon.choices(matching: "Video").map(\.rawValue), ["video-camera", "video-camera-add"])
-        XCTAssertEqual(PresetIcon.choices(matching: "camera video add").map(\.rawValue), ["video-camera-add"], "Every word, in any order")
-        XCTAssertEqual(PresetIcon.choices(matching: "video-camera").map(\.rawValue), ["video-camera", "video-camera-add"])
-        XCTAssertEqual(PresetIcon.choices(matching: "openai").map(\.rawValue), ["open-a-i"], "By the name as a person writes it")
-        XCTAssertEqual(PresetIcon.choices(matching: "WI-FI").map(\.rawValue), ["wifi"])
-        XCTAssertTrue(PresetIcon.choices(matching: "apple").isEmpty, "Automatic's icon is not offered")
-        XCTAssertTrue(PresetIcon.choices(matching: "sparkles").isEmpty)
-        XCTAssertTrue(PresetIcon.choices(matching: "no such icon").isEmpty)
+        XCTAssertEqual(PresetIcon.matching("Video").map(\.rawValue), ["video-camera", "video-camera-add"])
+        XCTAssertEqual(PresetIcon.matching("camera video add").map(\.rawValue), ["video-camera-add"], "Every word, in any order")
+        XCTAssertEqual(PresetIcon.matching("video-camera").map(\.rawValue), ["video-camera", "video-camera-add"])
+        XCTAssertEqual(PresetIcon.matching("openai").map(\.rawValue), ["open-a-i"], "By the name as a person writes it")
+        XCTAssertEqual(PresetIcon.matching("WI-FI").map(\.rawValue), ["wifi"])
+        XCTAssertEqual(PresetIcon.matching("sync").map(\.rawValue), ["cloud-sync", "file-sync", "sync"])
+        XCTAssertEqual(PresetIcon.matching("sparkles"), [.sparkles])
+        XCTAssertTrue(PresetIcon.matching("no such icon").isEmpty)
     }
 
     func testAnIconIsStoredByItsName() throws {
-        let data = try JSONEncoder().encode([PresetIcon.videoCamera, .apple])
-        XCTAssertEqual(String(decoding: data, as: UTF8.self), #"["video-camera","apple"]"#)
-        XCTAssertEqual(try JSONDecoder().decode([PresetIcon].self, from: data), [.videoCamera, .apple])
+        let data = try JSONEncoder().encode([PresetIcon.videoCamera, .sync])
+        XCTAssertEqual(String(decoding: data, as: UTF8.self), #"["video-camera","sync"]"#)
+        XCTAssertEqual(try JSONDecoder().decode([PresetIcon].self, from: data), [.videoCamera, .sync])
         XCTAssertThrowsError(try JSONDecoder().decode([PresetIcon].self, from: Data(#"["not-an-icon"]"#.utf8))) { error in
             guard case DecodingError.dataCorrupted(let context) = error else { return XCTFail("\(error)") }
             XCTAssertEqual(context.debugDescription, "“not-an-icon” is not an icon AirFlow has.")

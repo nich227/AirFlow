@@ -14,7 +14,7 @@ struct IconPicker: View {
     private static let columns = [GridItem(.adaptive(minimum: cell, maximum: cell), spacing: Space.xxs)]
 
     var body: some View {
-        let shown = PresetIcon.choices(matching: search)
+        let shown = PresetIcon.matching(search)
         VStack(spacing: 0) {
             SearchField(text: $search, label: "Search icons")
                 .padding(Space.sm)

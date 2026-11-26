@@ -220,7 +220,7 @@ Rules:
 
 The mark is the fan from Bootstrap Icons: a housing with six blades. It is the app icon, the menu bar icon, and the rotor. The app icon is an Icon Composer document (`AppIcon.icon`). The blades and the housing are separate glass layers with specular highlights. The whole fan has the accent of the first palette (`#245EDC`, and `#5AA7F2` in the dark appearance), on a white or near-black ground. Each other palette has an icon of its own with the fan in its accent, and one more has the fan in the rainbow.
 
-Every other icon is an outlined icon from Ant Design Icons, drawn as a template image through `AntIcon`. AirFlow uses no SF Symbols in its own views. The app carries the whole outlined set, and a person chooses a preset's icon from it in `IconPicker`: a popover with a search field over a grid of 36 point cells, eight in a row, with the chosen icon in white on the accent. The grid opens at the chosen icon. The Apple logo from that set is Automatic's icon, because macOS runs the fans then. The two actions that appear in Shortcuts and Spotlight name SF Symbols, because those surfaces belong to the system.
+Every other icon is an outlined icon from Ant Design Icons, drawn as a template image through `AntIcon`. AirFlow uses no SF Symbols in its own views. The app carries the whole outlined set, and a person chooses a preset's icon from it in `IconPicker`: a popover with a search field over a grid of 36 point cells, eight in a row, with the chosen icon in white on the accent. The grid opens at the chosen icon. The two actions that appear in Shortcuts and Spotlight name SF Symbols, because those surfaces belong to the system.
 
 ## Motion
 

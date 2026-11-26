@@ -54,11 +54,11 @@ struct PresetIcon: RawRepresentable, Hashable, Codable, Sendable, Identifiable {
     /// Every icon, in the order of their names.
     static let allCases: [PresetIcon] = AntIconCatalog.names.map(PresetIcon.init(known:))
 
-    /// Automatic's icon: macOS runs the fans.
-    static let apple = PresetIcon(known: "apple")
+    /// Automatic's icon.
+    static let sync = PresetIcon(known: "sync")
     /// Full Blast's icon.
     static let thunderbolt = PresetIcon(known: "thunderbolt")
-    /// Adaptive's icon, and the mark of everything Apple Intelligence does. No other preset takes it.
+    /// Adaptive's icon, and the mark of everything Apple Intelligence does.
     static let sparkles = PresetIcon(known: "sparkles")
     static let airplane = PresetIcon(known: "airplane")
     static let cloud = PresetIcon(known: "cloud")
@@ -72,18 +72,11 @@ struct PresetIcon: RawRepresentable, Hashable, Codable, Sendable, Identifiable {
     static let sound = PresetIcon(known: "sound")
     static let videoCamera = PresetIcon(known: "video-camera")
 
-    /// The icons that mark the built-in presets. A preset a person makes takes none of them, so
-    /// it is never taken for a built-in one.
-    static let reserved: Set<PresetIcon> = [.apple, .thunderbolt, .sparkles]
-
-    /// The icons offered for a preset a person makes.
-    static let choices: [PresetIcon] = allCases.filter { !reserved.contains($0) }
-
-    /// The choices whose name holds every word of the text, whatever its case. No text is every
-    /// choice.
-    static func choices(matching text: String) -> [PresetIcon] {
+    /// The icons whose name holds every word of the text, whatever its case. No text is every
+    /// icon. Two presets can have the same icon, so every icon is offered for every preset.
+    static func matching(_ text: String) -> [PresetIcon] {
         let words = text.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber })
-        return choices.filter { icon in
+        return allCases.filter { icon in
             let name = (icon.title + " " + icon.rawValue).lowercased()
             return words.allSatisfy { name.contains($0) }
         }
@@ -152,7 +145,7 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
     static let fullBlastID = builtInID(2)
 
     static let automatic = Preset(
-        id: automaticID, name: "Automatic", icon: .apple, kind: .automatic,
+        id: automaticID, name: "Automatic", icon: .sync, kind: .automatic,
         summary: "macOS controls every fan."
     )
 

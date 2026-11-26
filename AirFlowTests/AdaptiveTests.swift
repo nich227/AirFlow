@@ -456,7 +456,6 @@ final class AdaptivePlanTests: XCTestCase {
     func testAdaptiveIsBuiltInAndItsCopyIsAnOrdinaryPreset() throws {
         XCTAssertEqual(Preset.builtIn.map(\.kind), [.automatic, .adaptive, .fullBlast])
         XCTAssertTrue(Preset.adaptive.isBuiltIn)
-        XCTAssertFalse(PresetIcon.choices.contains(.sparkles))
         let store = PresetStore(url: nil)
         let copy = try XCTUnwrap(store.duplicate(id: Preset.adaptiveID))
         XCTAssertEqual(copy.kind, .custom)

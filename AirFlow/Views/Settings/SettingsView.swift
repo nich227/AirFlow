@@ -2,6 +2,8 @@ import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(AppModel.self) private var model
+
     var body: some View {
         TabView {
             Tab {
@@ -26,6 +28,40 @@ struct SettingsView: View {
             }
         }
         .frame(width: Layout.settingsWidth)
+        // Settings shows the palette's main color at once, and the Dock icon changes with it.
+        .tint(Palette.accent)
+        .id(model.settings.colorPalette)
+        .onChange(of: model.settings.colorPalette) {
+            DockIcon.update()
+        }
+    }
+}
+
+/// A palette's colors side by side: the five steps of the temperature scale as beads, its main
+/// color, then the CPU's and the GPU's lines.
+struct PaletteSwatch: View {
+    let palette: ColorPalette
+
+    var body: some View {
+        HStack(spacing: Space.xs) {
+            ForEach(TemperatureBand.allCases, id: \.self) { band in
+                let color = Palette.temperature(band, in: palette)
+                Circle()
+                    .fill(color.gradient)
+                    .frame(width: Layout.statusDot + 4, height: Layout.statusDot + 4)
+                    .shadow(color: color.opacity(0.6), radius: 3)
+            }
+            RoundedRectangle(cornerRadius: Radius.xs)
+                .fill(Color(palette.accent).gradient)
+                .frame(width: 20, height: Layout.statusDot + 4)
+            ForEach([Palette.cpu(in: palette), Palette.gpu(in: palette)], id: \.self) { line in
+                Capsule()
+                    .fill(LinearGradient(colors: line, startPoint: .leading, endPoint: .trailing))
+                    .frame(width: 28, height: 4)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("The colors of \(palette.title)")
     }
 }
 
@@ -65,6 +101,20 @@ struct GeneralSettingsPane: View {
                     }
                 }
                 Toggle("Show Tenths of a Degree", isOn: $settings.preciseTemperatures)
+            }
+            Section {
+                Picker("Color Palette", selection: $settings.colorPalette) {
+                    ForEach(ColorPalette.allCases) { palette in
+                        Text(palette.title).tag(palette)
+                    }
+                }
+                LabeledContent("Preview") {
+                    PaletteSwatch(palette: settings.colorPalette)
+                }
+            } header: {
+                Text("Colors")
+            } footer: {
+                Text("The palette colors what is selected, the temperatures, the charts, and the fan in AirFlow's icon.")
             }
         }
         .formStyle(.grouped)

@@ -1,8 +1,8 @@
 import AppKit
 import QuartzCore
 
-/// The icon AirFlow shows in the Dock while it runs: the app icon, with the fan's blades in the
-/// accent the person chose in System Settings. The icon in the Finder and in a Dock where AirFlow
+/// The icon AirFlow shows in the Dock while it runs: the app icon, with the fan in the main color
+/// of the palette the person chose. The icon in the Finder and in a Dock where AirFlow
 /// is not running is the bundled one, because macOS draws that without asking the app.
 enum DockIcon {
     /// Draws the icon.
@@ -88,20 +88,16 @@ enum DockIcon {
         }
     }
 
-    /// Puts the icon in the Dock, in the accent and the appearance of this moment.
+    /// Puts the icon in the Dock: the one of the palette the person chose, or the one with the
+    /// fan in the rainbow while Adaptive is the current preset.
     @MainActor
     static func update() {
         let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        // The accent is read under the app's appearance, so it is the color the person sees.
-        var accent = NSColor.controlAccentColor
-        NSApp.effectiveAppearance.performAsCurrentDrawingAppearance {
-            accent = NSColor.controlAccentColor.usingColorSpace(.sRGB) ?? .controlAccentColor
-        }
-        let isRainbow = AppModel.shared.settings.activePresetID == Preset.adaptiveID
+        let settings = AppModel.shared.settings
+        let isRainbow = settings.activePresetID == Preset.adaptiveID
         // The bundled icons are Icon Composer documents, so macOS draws them in Liquid Glass: one
-        // with the fan in the rainbow, and one for each accent. The drawing above stands in only
-        // if a bundled icon is missing.
-        let name = bundledName(isRainbow: isRainbow)
+        // for each palette, and one with the fan in the rainbow.
+        let name = bundledName(isRainbow: isRainbow, palette: settings.colorPalette)
         // With the first icon, macOS draws the app's own icon, which also follows the icon style
         // the person chose (Dark, Clear, or Tinted). The other icons are set as pictures, so a
         // dark icon style gets the picture of the icon's Dark rendition.
@@ -110,8 +106,14 @@ enum DockIcon {
             return
         }
         let dark = showsDarkIcons(isDarkMode: isDark) ? NSImage(named: darkName(for: name)) : nil
+        // The drawing above stands in only if a bundled icon is missing.
         NSApp.applicationIconImage = dark ?? Bundle.main.image(forResource: name)
-            ?? image(accent: accent, isDark: isDark, isRainbow: isRainbow)
+            ?? image(accent: NSColor(Palette.accent), isDark: isDark, isRainbow: isRainbow)
+    }
+
+    /// The bundled icon to show: the rainbow one, or the palette's.
+    static func bundledName(isRainbow: Bool, palette: ColorPalette) -> String {
+        isRainbow ? "AppIconRainbow" : palette.iconName
     }
 
     /// The default of the whole system that holds the icon style from System Settings.
@@ -128,21 +130,5 @@ enum DockIcon {
     /// The picture of a bundled icon's Dark rendition: DockRainbowDark for AppIconRainbow.
     static func darkName(for bundled: String) -> String {
         "Dock" + bundled.dropFirst("AppIcon".count) + "Dark"
-    }
-
-    /// The bundled icon for the accent in System Settings. macOS stores the accent as a number,
-    /// and stores nothing for Multicolor, whose accent is blue.
-    static func bundledName(isRainbow: Bool, accent: Int? = UserDefaults.standard.object(forKey: "AppleAccentColor") as? Int) -> String {
-        if isRainbow { return "AppIconRainbow" }
-        switch accent {
-        case -1: return "AppIconGraphite"
-        case 0: return "AppIconRed"
-        case 1: return "AppIconOrange"
-        case 2: return "AppIconYellow"
-        case 3: return "AppIconGreen"
-        case 5: return "AppIconPurple"
-        case 6: return "AppIconPink"
-        default: return "AppIcon"
-        }
     }
 }

@@ -2,17 +2,18 @@
 name: AirFlow
 description: Fan control for the Mac in Liquid Glass, with Ant Design's components and a temperature scale that always sits beside a number.
 colors:
-  accent: "system accent"
-  temp-cool: "#0369A1"
-  temp-cool-dark: "#38BDF8"
-  temp-mild: "#047857"
-  temp-mild-dark: "#34D399"
-  temp-warm: "#B45309"
-  temp-warm-dark: "#FBBF24"
-  temp-hot: "#C2410C"
-  temp-hot-dark: "#FB923C"
-  temp-critical: "#BE123C"
-  temp-critical-dark: "#FB7185"
+  accent: "#245EDC"
+  accent-dark: "#3B82F6"
+  temp-cool: "#1F64C8"
+  temp-cool-dark: "#6CB4F5"
+  temp-mild: "#3F7D1A"
+  temp-mild-dark: "#7CC243"
+  temp-warm: "#8F8500"
+  temp-warm-dark: "#D9E04A"
+  temp-hot: "#C76A00"
+  temp-hot-dark: "#F5A623"
+  temp-critical: "#C8321A"
+  temp-critical-dark: "#F0563B"
 typography:
   display:
     fontFamily: "Hedvig Letters Sans"
@@ -81,23 +82,39 @@ The window has no color of its own. The glass takes the color of what is behind 
 
 ### Primary
 
-- **Accent** (`Color.accentColor`): the color the person picked in System Settings. It marks the selected row of the sidebar, the Apply button, the filled part of a fan's track, the fan chart, the curve's handles, and the Active tag. Multicolor resolves to blue.
+- **Accent** (`Palette.accent`): the main color of the palette the person chose in Settings, not the accent from System Settings. It marks the selected row of the sidebar, the Apply button, the filled part of a fan's track, the curve's handles, the Active tag, and a selected app in the grid of apps. Each scene sets it as its tint, so the system's own controls have it too. Every palette's accent is dark enough for white text.
+
+### Palettes
+
+A palette (`ColorPalette`) holds every color AirFlow has: the accent, the temperature scale, two colors for the CPU's line, two for the GPU's, and three for the fans' lines. A new copy starts with Bliss: a green hill under a blue sky.
+
+| Palette | Accent (Light, Dark) | The scale from cool to very hot (Dark) | From |
+|---|---|---|---|
+| Bliss | `#245EDC`, `#3B82F6` | sky `#6CB4F5`, grass `#7CC243`, sunlit `#D9E04A`, orange `#F5A623`, red `#F0563B` | AirFlow's own |
+| Aurora | `#0D9488`, `#0FA394` | `#38BDF8`, `#34D399`, `#FBBF24`, `#FB923C`, `#FB7185` | Tailwind's colors |
+| Matrix | `#008F11`, `#00A828` | `#008F11`, `#00C030`, `#00FF41`, `#A4F644`, `#E8FFE0` | The film's greens |
+| Girlypop | `#DB2777`, `#EC4899` | `#7DD3FC`, `#C4B5FD`, `#F9A8D4`, `#E879F9`, `#FB7185` | Tailwind's colors |
+| Synthwave | `#C2259B`, `#E23FB8` | `#36F9F6`, `#72F1B8`, `#FEDE5D`, `#F97E72`, `#FE4450` | SynthWave '84 |
+| Nord | `#4C6E96`, `#5E81AC` | `#88C0D0`, `#A3BE8C`, `#EBCB8B`, `#D08770`, `#BF616A` | Nord |
+| Catppuccin | `#8839EF`, `#9D6BF0` | `#89DCEB`, `#A6E3A1`, `#F9E2AF`, `#FAB387`, `#F38BA8` | Catppuccin: Latte in Light Mode, Mocha in Dark Mode |
+
+The Light Mode values are darker steps of the same hues, in `ColorPalette.swift`. A fan's line is never a color of the CPU's or the GPU's line. An alert keeps Aurora's emerald, amber, and rose in every palette, because what an alert means does not change.
 
 ### Temperature scale
 
-One step for each band. Each step has a darker Light Mode value, which holds 4.5:1 against a light window.
+One step for each band, here in Bliss. Each step has a darker Light Mode value.
 
 | Band | Word | Light | Dark | Hue |
 |---|---|---|---|---|
-| `cool` | Cool | `#0369A1` | `#38BDF8` | sky |
-| `mild` | Normal | `#047857` | `#34D399` | emerald |
-| `warm` | Warm | `#B45309` | `#FBBF24` | amber |
-| `hot` | Hot | `#C2410C` | `#FB923C` | orange |
-| `critical` | Very Hot | `#BE123C` | `#FB7185` | rose |
+| `cool` | Cool | `#1F64C8` | `#6CB4F5` | sky |
+| `mild` | Normal | `#3F7D1A` | `#7CC243` | grass |
+| `warm` | Warm | `#8F8500` | `#D9E04A` | sunlit yellow |
+| `hot` | Hot | `#C76A00` | `#F5A623` | orange |
+| `critical` | Very Hot | `#C8321A` | `#F0563B` | red |
 
 A reading's band depends on the part it belongs to (`TemperatureBand.thresholds`). The CPU and GPU change bands at 50, 70, 85, and 95 °C. The battery changes at 30, 35, 40, and 45 °C. Storage changes at 40, 50, 60, and 70 °C. Every other part changes at 45, 55, 65, and 80 °C.
 
-The scale appears in the status dot beside a temperature, the ground under a fan curve, the curve's own line, and the live point on the curve. The history chart's lines are not on the scale: the CPU runs from pink into violet (`#F472B6` to `#A78BFA` in Dark Mode) and the GPU from cyan into mint (`#22D3EE` to `#6EE7B7`), and the fan chart has one line for each fan (`Palette.fan`: the accent, then teal, pink, and amber).
+The scale appears in the status dot beside a temperature, the ground under a fan curve, the curve's own line, and the live point on the curve. The history chart's lines are not on the scale. In Bliss the CPU runs through blues and the GPU through greens, and the fan chart has one line for each fan in the palette's colors for fans (`Palette.fan`: orange, silver, and yellow in Bliss).
 
 ### What carries a reading is not flat
 
@@ -105,11 +122,11 @@ A status dot is a bead lit from above with a little of its own light. A fan's tr
 
 ### Adaptive's look
 
-While Adaptive is the current preset, the window and the menu bar panel sit on `AirBackdrop`: every color of the rainbow, turning slowly over the blurred desktop. It holds still with Reduce Motion on and in a window that is not in front. The fan itself is drawn in the six colors of the rainbow (green, yellow, orange, red, purple, blue from the top), in each fan's rotor and in the Dock icon. No other preset changes the window. Sparkles mark Adaptive and everything Apple Intelligence does.
+While Adaptive is the current preset, the window and the menu bar panel sit on `AirBackdrop`: every color of the rainbow over the blurred desktop, as two fields of color that turn about the window's middle. The wide one goes around in 24 seconds and the one inside it in 10, so the colors swirl. It turns wherever part of the window is on screen and holds still with Reduce Motion on. The fan itself is a pinwheel of the six colors of the rainbow (green, yellow, orange, red, purple, blue) around a solid, lit hub, in each fan's rotor and in the Dock icon. No other preset changes the window. Sparkles mark Adaptive and everything Apple Intelligence does.
 
 ### The Dock icon
 
-While AirFlow runs, the fan's blades in the Dock icon have the system accent (`DockIcon`). The menu bar icon stays a plain template image. The Adaptive page's workload tag uses three more: `mild` for Light, `warm` for Bursty, and `hot` for Sustained (`Palette.workload`). The alerts use three of its steps: `mild` for success, `warm` for caution, and `critical` for an error.
+While AirFlow runs, the Dock icon is the one of the person's palette: the whole fan in the palette's accent (`DockIcon`). Each is an Icon Composer document, in Liquid Glass, with a picture of its Dark rendition for a dark icon style. The menu bar icon stays a plain template image. The Adaptive page's workload tag uses three more: `mild` for Light, `warm` for Bursty, and `hot` for Sustained (`Palette.workload`). The alerts use three of its steps: `mild` for success, `warm` for caution, and `critical` for an error.
 
 ### Neutral
 
@@ -125,7 +142,7 @@ Text is `.primary` or `.secondary`. Never set text to white or black.
 
 **The Number Rule.** A temperature color never appears alone. A dot sits beside a temperature, and the curve's ground sits under a labeled axis. VoiceOver reads the band's word.
 
-**The One Accent Rule.** The accent means "this is selected" or "this acts". It never decorates.
+**The One Accent Rule.** The accent means "this is selected" or "this acts". It never decorates. It is the palette's, and text on it is white.
 
 ## Typography
 
@@ -154,7 +171,7 @@ Rules:
 
 ## Elevation
 
-AirFlow has no shadows of its own. Depth comes from Liquid Glass, which the system lights and shades. There are two layers: the translucent window (`containerBackground(.thinMaterial, for: .window)`), and the glass components on it.
+AirFlow has one shadow of its own: `SheetShadow`, which the window draws under the grid of apps, because macOS gives a sheet none. It is a wide soft shadow that falls below the sheet and a close dark one at its edge. All other depth comes from Liquid Glass, which the system lights and shades. There are two layers: the translucent window (`containerBackground(.thinMaterial, for: .window)`), and the glass components on it.
 
 ## Components
 
@@ -171,6 +188,7 @@ AirFlow draws each Ant Design component in glass through `antGlass` (`Theme.swif
 | `CurveEditor` | (AirFlow's own) | Handles are interactive glass circles | A sensor rule as speed against temperature, with the live point |
 | `AntSegmented` | Segmented | A flat track, with a pane of accent glass under the selected segment | How a fan runs: Automatic, Constant, Sensor-Based |
 | `AntSelect` | Select | A quiet fill, as wide as the chosen option's text. The menu is the system's. | A sensor, a preset, an app, or a power source in a sentence |
+| `AppPickerSheet` | (AirFlow's own) | None of its own: the sheet is the system's | The grid of apps, as the Applications folder is in the Finder's icon view: 64 point icons with names under them, a search field with a magnifying glass, and a selected app on a quiet ground with its name on the accent. Apple Intelligence can open it with apps selected. |
 | Slider, Stepper, Toggle, time field | The same | The system's | Native controls, unstyled |
 | Buttons | Button | `.glass`, and `.glassProminent` for Apply, Draft, and Save | |
 
@@ -185,14 +203,14 @@ Rules:
 ## Layout and spacing
 
 - Space: `4 8 12 16 24 32 48` (`Space.xxs` through `Space.xxl`), Ant Design's steps on a 4 point grid.
-- Radius: `4 6 8` (`Radius.xs`, `sm`, `md`) and 16 for a glass card (`Radius.card`). A tag is a capsule.
+- Radius: `4 6 8` (`Radius.xs`, `sm`, `md`), 16 for a glass card (`Radius.card`), and 26 for the shadow under a sheet (`Radius.sheet`). A tag is a capsule.
 - Icons: `14 16 20 28 44 72` (`IconSize.inline`, `row`, `title`, `state`, `rotor`, `illustration`).
 - The window opens at 1200 by 760 and is at least 1120 wide: sidebar 220, inspector 280. A page's content is at most 720 wide and is centered.
 - The menu bar panel is 340 wide. Settings is 520 wide.
 
 ## Icons
 
-The mark is the fan from Bootstrap Icons: a housing with six blades. It is the app icon, the menu bar icon, and the rotor. The app icon is an Icon Composer document (`AppIcon.icon`). The blades and the housing are separate glass layers with specular highlights. The blades are cyan (`#08979C`, and `#36CFC9` in the dark appearance), on a white or near-black ground.
+The mark is the fan from Bootstrap Icons: a housing with six blades. It is the app icon, the menu bar icon, and the rotor. The app icon is an Icon Composer document (`AppIcon.icon`). The blades and the housing are separate glass layers with specular highlights. The whole fan has the accent of the first palette (`#245EDC`, and `#5AA7F2` in the dark appearance), on a white or near-black ground. Each other palette has an icon of its own with the fan in its accent, and one more has the fan in the rainbow.
 
 Every other icon is an outlined icon from Ant Design Icons, drawn as a template image through `AntIcon`. AirFlow uses no SF Symbols in its own views. The two actions that appear in Shortcuts and Spotlight name SF Symbols, because those surfaces belong to the system.
 
@@ -213,12 +231,14 @@ AirFlow draws its own animations. `scripts/make-animations.py` generates each fi
 | `breeze.json` | 120 × 120 | 2.2 s | Loop, in an empty state | Three lines of air draw across, hold, and leave the way they came. | The three lines, at 1 s |
 | `spark.json` | 120 × 120 | 1.6 s | Loop, while the model works | Three four-pointed stars take turns swelling. | The largest star at full size |
 | `done.json` | 60 × 60 | 1 s | Once, when fan control comes on | A ring draws on, then a check draws on inside it with a small pop. | The ring and the check |
+| `readings.json` | 120 × 120 | 0.5 s | Forward when the readings column opens, back when it closes | A chart's two axes stay, and its line draws on from the left. | The axes and the whole line |
 
 All use white strokes or fills, tinted at run time through `AirAnimation`. Every drawn animation uses this component.
 
 ### Rules
 
 - Motion shows a state. A rotor's speed is its fan's speed, and a stopped fan does not turn.
+- The readings column slides in and out with `Anim.standard`, and its button's line draws on and off with it.
 - Nothing animates while it is off screen. Every `AirAnimation` takes `isActive`.
 - Reduce Motion turns every animation off. Each Lottie file shows its still frame.
 - Lottie uses only its Core Animation engine, so the app does no work for each frame.

@@ -33,6 +33,7 @@ final class AppSettings {
         static let showsInspector = "showsInspector"
         static let welcomeShown = "welcomeShown"
         static let setupShown = "setupShown"
+        static let colorPalette = "colorPalette"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -48,6 +49,13 @@ final class AppSettings {
     var welcomeShown: Bool { didSet { defaults.set(welcomeShown, forKey: Key.welcomeShown) } }
     /// True once the person has been through the setup sheet, which asks for every permission at once.
     var setupShown: Bool { didSet { defaults.set(setupShown, forKey: Key.setupShown) } }
+    /// The colors of the temperatures and the charts. The drawing code reads `ColorPalette.current`.
+    var colorPalette: ColorPalette {
+        didSet {
+            defaults.set(colorPalette.rawValue, forKey: Key.colorPalette)
+            ColorPalette.current = colorPalette
+        }
+    }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -62,6 +70,8 @@ final class AppSettings {
         showsInspector = defaults.object(forKey: Key.showsInspector) as? Bool ?? true
         welcomeShown = defaults.bool(forKey: Key.welcomeShown)
         setupShown = defaults.bool(forKey: Key.setupShown)
+        colorPalette = defaults.string(forKey: Key.colorPalette).flatMap(ColorPalette.init) ?? .standard
+        ColorPalette.current = colorPalette
     }
 
     var format: ReadingFormat {

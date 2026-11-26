@@ -113,15 +113,14 @@ def airplane_svg():
     )
 
 
-# The accents macOS offers besides blue, each as its Light Mode and Dark Mode color. The Dock shows
-# the icon that matches the person's accent, and every one is an Icon Composer document, so macOS
-# draws it in Liquid Glass.
-ACCENTS = {
-    "Purple": ("#953D96", "#A550A7"), "Pink": ("#F74F9E", "#F74F9E"), "Red": ("#E0383E", "#FF5257"),
-    "Orange": ("#F7821B", "#F7821B"), "Yellow": ("#E0A800", "#FFC600"), "Green": ("#62BA46", "#62BA46"),
-    "Graphite": ("#7D7D7D", "#9A9A9A"),
+# The fan's color in each palette's app icon, in the icon's Light and Dark renditions: the palette's
+# accent (ColorPalette.accent in the app), and a brighter step of it on the dark plate. The first is
+# the app's own icon. Every icon is an Icon Composer document, so macOS draws it in Liquid Glass.
+PALETTES = {
+    "": ("#245EDC", "#5AA7F2"),  # Bliss
+    "Aurora": ("#0D9488", "#2DD4BF"), "Matrix": ("#008F11", "#00FF41"), "Girlypop": ("#DB2777", "#F472B6"),
+    "Synthwave": ("#C2259B", "#FF7EDB"), "Nord": ("#4C6E96", "#88C0D0"), "Catppuccin": ("#8839EF", "#CBA6F7"),
 }
-BLUE = ("#007AFF", "#0A84FF")
 
 
 def icon_color(hex_color):
@@ -130,10 +129,11 @@ def icon_color(hex_color):
 
 
 def write_accent_icons():
-    """Colors the whole fan of AppIcon.icon blue, and writes a copy of it for each other accent."""
+    """Colors the whole fan of AppIcon.icon in the first palette's color, and writes a copy of it
+    for each other palette."""
     resources = APP_ICON.parent.parent
     base = json.loads((APP_ICON.parent / "icon.json").read_text())
-    for name, (light, dark) in {"": BLUE, **ACCENTS}.items():
+    for name, (light, dark) in PALETTES.items():
         document = json.loads(json.dumps(base))
         for group in document["groups"]:
             for layer in group["layers"]:
@@ -166,7 +166,7 @@ def write_dark_dock_icons():
         print("Icon Composer's ictool was not found, so the dark Dock icons were left as they are")
         return
     resources = APP_ICON.parent.parent
-    for name in ["Rainbow", *ACCENTS]:
+    for name in ["Rainbow", *[name for name in PALETTES if name]]:
         folder = CATALOG / f"Dock{name}Dark.imageset"
         folder.mkdir(parents=True, exist_ok=True)
         subprocess.run(
@@ -195,7 +195,7 @@ def main():
     (APP_ICON / "housing.svg").write_text(fan_geometry.svg(1024, parts=(fan_geometry.HOUSING,)))
     write_accent_icons()
     write_dark_dock_icons()
-    print("wrote the mark, the sparkles, the airplane, and an app icon for each accent")
+    print("wrote the mark, the sparkles, the airplane, and an app icon for each palette")
 
     if len(sys.argv) < 2:
         return

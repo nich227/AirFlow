@@ -93,12 +93,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
         let center = NotificationCenter.default
-        // The Dock icon's blades follow the accent, and its plate follows Light and Dark Mode.
+        // The Dock icon follows the palette, the icon style, and Light and Dark Mode.
         if !AppModel.isRunningTests {
             DockIcon.update()
-            observers.append(center.addObserver(forName: NSColor.systemColorsDidChangeNotification, object: nil, queue: .main) { _ in
-                MainActor.assumeIsolated { DockIcon.update() }
-            })
             appearance = NSApp.observe(\.effectiveAppearance) { _, _ in
                 Task { @MainActor in DockIcon.update() }
             }

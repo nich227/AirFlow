@@ -250,8 +250,15 @@ final class FormatTests: XCTestCase {
         first.temperatureUnit = .fahrenheit
         first.menuBarReadout = .cpu
         first.safeguardEnabled = false
+        XCTAssertEqual(first.colorPalette, .bliss, "A new copy starts with Bliss")
+        first.colorPalette = .matrix
+        XCTAssertEqual(ColorPalette.current, .matrix, "The drawing code reads the palette the person chose")
         defaults.set(500.0, forKey: AppSettings.Key.safeguardLimit)
         let second = AppSettings(defaults: defaults)
+        XCTAssertEqual(second.colorPalette, .matrix)
+        defaults.set("no such palette", forKey: AppSettings.Key.colorPalette)
+        XCTAssertEqual(AppSettings(defaults: defaults).colorPalette, .bliss)
+        XCTAssertEqual(ColorPalette.current, .bliss)
         XCTAssertEqual(second.temperatureUnit, .fahrenheit)
         XCTAssertTrue(second.setupShown)
         XCTAssertEqual(second.menuBarReadout, .cpu)

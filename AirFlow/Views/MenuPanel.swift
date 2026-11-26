@@ -123,6 +123,9 @@ struct MenuPanel: View {
             .padding(Space.sm)
         }
         .frame(width: Layout.panelWidth)
+        // The panel reads its colors as it is built, so a new palette builds it again.
+        .id(model.settings.colorPalette)
+        .tint(Palette.accent)
         .background {
             if model.settings.activePresetID == Preset.adaptiveID {
                 AirBackdrop()

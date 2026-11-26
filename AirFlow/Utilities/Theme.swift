@@ -68,15 +68,10 @@ enum Palette {
         Color.primary.opacity(contrast == .increased ? 0.40 : 0.12)
     }
 
-    /// The temperature scale, one step per band: sky, emerald, amber, orange, rose.
-    static func temperature(_ band: TemperatureBand) -> Color {
-        switch band {
-        case .cool: return Color("TempCool")
-        case .mild: return Color("TempMild")
-        case .warm: return Color("TempWarm")
-        case .hot: return Color("TempHot")
-        case .critical: return Color("TempCritical")
-        }
+    /// The temperature scale, one step per band, in the palette the person chose. In Aurora the
+    /// steps are sky, emerald, amber, orange, and rose.
+    static func temperature(_ band: TemperatureBand, in palette: ColorPalette = .current) -> Color {
+        Color(palette.temperatures[band.rawValue])
     }
 
     /// The temperature scale as a gradient across a range of temperatures, for a part's bands.
@@ -92,18 +87,19 @@ enum Palette {
         }
     }
 
-    /// The lines of the temperature chart, each a run of two colors from left to right: pink into
-    /// violet for the CPU, and cyan into mint for the GPU. They are not steps of the temperature
-    /// scale, so a line's color never reads as how hot the part is.
-    static let cpu = [Color(light: 0xDB2777, dark: 0xF472B6), Color(light: 0x7C3AED, dark: 0xA78BFA)]
-    static let gpu = [Color(light: 0x0891B2, dark: 0x22D3EE), Color(light: 0x059669, dark: 0x6EE7B7)]
+    /// The lines of the temperature chart, each a run of two colors from left to right. In Aurora
+    /// they are pink into violet for the CPU, and cyan into mint for the GPU. They are not steps
+    /// of the temperature scale, so a line's color never reads as how hot the part is.
+    static func cpu(in palette: ColorPalette = .current) -> [Color] { palette.cpu.map(Color.init) }
+    static func gpu(in palette: ColorPalette = .current) -> [Color] { palette.gpu.map(Color.init) }
+    static var cpu: [Color] { cpu() }
+    static var gpu: [Color] { gpu() }
 
-    /// The line of a fan in the fan chart, by the fan's index. The first fan has the accent, and
-    /// the next ones teal, pink, and amber. A Mac with more fans starts the colors again.
+    /// The line of a fan in the fan chart, by the fan's index, in the palette's colors for fans.
+    /// A Mac with more fans than colors starts the colors again.
     static func fan(_ index: Int) -> Color {
-        let others = [Color(light: 0x0D9488, dark: 0x2DD4BF), Color(light: 0xDB2777, dark: 0xF472B6), Color(light: 0xB45309, dark: 0xFBBF24)]
-        let place = ((index % (others.count + 1)) + others.count + 1) % (others.count + 1)
-        return place == 0 ? accent : others[place - 1]
+        let colors = ColorPalette.current.fans
+        return Color(colors[((index % colors.count) + colors.count) % colors.count])
     }
 
     /// The six colors of the rainbow, from the top down: green, yellow, orange, red, purple, blue.
@@ -120,12 +116,17 @@ enum Palette {
         }
     }
 
-    static let success = Color("TempMild")
-    static let caution = Color("TempWarm")
-    static let danger = Color("TempCritical")
+    /// What an alert means is the same in every palette, so these keep Aurora's colors.
+    static let success = temperature(.mild, in: .aurora)
+    static let caution = temperature(.warm, in: .aurora)
+    static let danger = temperature(.critical, in: .aurora)
 }
 
 extension Color {
+    init(_ shade: ColorPalette.Shade) {
+        self.init(light: shade.light, dark: shade.dark)
+    }
+
     /// A color with one value for Light Mode and one for Dark Mode, as sRGB hex.
     init(light: UInt32, dark: UInt32) {
         self.init(nsColor: NSColor(name: nil) { appearance in

@@ -142,6 +142,17 @@ final class FormatTests: XCTestCase {
     }
 
     @MainActor
+    func testTheDockIconFollowsTheAccentAndAdaptive() {
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, accent: nil), "AppIcon", "Multicolor is blue")
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, accent: 4), "AppIcon")
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, accent: 6), "AppIconPink")
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, accent: -1), "AppIconGraphite")
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: true, accent: 6), "AppIconRainbow")
+        for name in ["AppIconRainbow", "AppIconPurple", "AppIconPink", "AppIconRed", "AppIconOrange", "AppIconYellow", "AppIconGreen", "AppIconGraphite"] {
+            XCTAssertNotNil(Bundle.main.image(forResource: name), "\(name) is inside the app")
+        }
+    }
+
     func testSettingsRememberWhatWasChosenAndRefuseALimitOutOfRange() {
         let suite = "airflow-settings-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite) ?? .standard

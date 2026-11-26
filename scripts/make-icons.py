@@ -112,6 +112,41 @@ def airplane_svg():
     )
 
 
+# The accents macOS offers besides blue, each as its Light Mode and Dark Mode color. The Dock shows
+# the icon that matches the person's accent, and every one is an Icon Composer document, so macOS
+# draws it in Liquid Glass.
+ACCENTS = {
+    "Purple": ("#953D96", "#A550A7"), "Pink": ("#F74F9E", "#F74F9E"), "Red": ("#E0383E", "#FF5257"),
+    "Orange": ("#F7821B", "#F7821B"), "Yellow": ("#E0A800", "#FFC600"), "Green": ("#62BA46", "#62BA46"),
+    "Graphite": ("#7D7D7D", "#9A9A9A"),
+}
+BLUE = ("#007AFF", "#0A84FF")
+
+
+def icon_color(hex_color):
+    channels = ",".join(f"{int(hex_color[i:i + 2], 16) / 255:.5f}" for i in (1, 3, 5))
+    return f"extended-srgb:{channels},1.00000"
+
+
+def write_accent_icons():
+    """Colors the whole fan of AppIcon.icon blue, and writes a copy of it for each other accent."""
+    resources = APP_ICON.parent.parent
+    base = json.loads((APP_ICON.parent / "icon.json").read_text())
+    for name, (light, dark) in {"": BLUE, **ACCENTS}.items():
+        document = json.loads(json.dumps(base))
+        for group in document["groups"]:
+            for layer in group["layers"]:
+                layer["fill-specializations"] = [
+                    {"value": {"solid": icon_color(light)}},
+                    {"appearance": "dark", "value": {"solid": icon_color(dark)}},
+                ]
+        folder = resources / f"AppIcon{name}.icon"
+        (folder / "Assets").mkdir(parents=True, exist_ok=True)
+        (folder / "icon.json").write_text(json.dumps(document, indent=2) + "\n")
+        for part in ("blades.svg", "housing.svg"):
+            (folder / "Assets" / part).write_text((APP_ICON / part).read_text())
+
+
 def main():
     write_imageset("MenuBarIcon", "fan.svg", fan_geometry.svg(18))
     # The Dock icon paints the blades in the person's accent, so each part is also an image.
@@ -124,7 +159,8 @@ def main():
         stale.unlink()
     (APP_ICON / "blades.svg").write_text(fan_geometry.svg(1024, parts=(fan_geometry.BLADES,)))
     (APP_ICON / "housing.svg").write_text(fan_geometry.svg(1024, parts=(fan_geometry.HOUSING,)))
-    print("wrote the mark, the sparkles, and the airplane")
+    write_accent_icons()
+    print("wrote the mark, the sparkles, the airplane, and an app icon for each accent")
 
     if len(sys.argv) < 2:
         return

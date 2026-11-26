@@ -91,6 +91,7 @@ struct DescribePresetSheet: View {
         }
         .padding(Space.lg)
         .frame(width: 520)
+        .castsSheetShadow()
         .onAppear { requestIsFocused = true }
     }
 

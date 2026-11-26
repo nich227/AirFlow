@@ -97,6 +97,7 @@ struct SetupSheet: View {
         }
         .padding(Space.lg)
         .frame(width: 520)
+        .castsSheetShadow()
         .onAppear { model.helper.refresh() }
     }
 

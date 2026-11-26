@@ -171,7 +171,7 @@ Rules:
 
 ## Elevation
 
-AirFlow has one shadow of its own: `SheetShadow`, which the window draws under the grid of apps, because macOS gives a sheet none. It is a wide soft shadow that falls below the sheet and a close dark one at its edge. All other depth comes from Liquid Glass, which the system lights and shades. There are two layers: the translucent window (`containerBackground(.thinMaterial, for: .window)`), and the glass components on it.
+AirFlow has one shadow of its own: `SheetShadow`, which the window draws under every sheet (`castsSheetShadow`), because macOS gives a sheet none. It is a wide soft shadow that falls below the sheet and a close dark one at its edge. All other depth comes from Liquid Glass, which the system lights and shades. There are two layers: the translucent window (`containerBackground(.thinMaterial, for: .window)`), and the glass components on it.
 
 ## Components
 

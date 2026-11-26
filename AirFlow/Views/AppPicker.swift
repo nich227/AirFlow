@@ -49,6 +49,7 @@ struct AppPickerSheet: View {
                 .padding(.vertical, Space.md)
         }
         .frame(width: Layout.appPickerSize.width, height: Layout.appPickerSize.height)
+        .castsSheetShadow()
     }
 
     private var header: some View {

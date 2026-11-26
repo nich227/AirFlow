@@ -101,7 +101,7 @@ struct AppWorkloadsEditor: View {
             proposal
             HStack(spacing: Space.xs) {
                 Button {
-                    open(Picker())
+                    picker = Picker()
                 } label: {
                     Label("Add Apps…", image: "ant-plus")
                         .airFont(.body)
@@ -128,11 +128,11 @@ struct AppWorkloadsEditor: View {
             // A script that captures the grid of apps asks for it by name.
             if ProcessInfo.processInfo.environment["AIRFLOW_SHOW"]?.lowercased() == "apps" {
                 // The capture shows a suggestion, with the apps AirFlow knows itself standing in.
-                open(Picker(selected: Set(apps.filter { KnownWorkloads.regimes[$0.bundleID] != nil }.map(\.bundleID)), isSuggested: true))
+                picker = Picker(selected: Set(apps.filter { KnownWorkloads.regimes[$0.bundleID] != nil }.map(\.bundleID)), isSuggested: true)
             }
             #endif
         }
-        .sheet(item: $picker, onDismiss: { model.openSheetSize = nil }) { picker in
+        .sheet(item: $picker) { picker in
             AppPickerSheet(
                 apps: installed, added: Set(model.adaptive.workloads.map(\.bundleID)), isLoading: isLoading,
                 selected: picker.selected, isSuggested: picker.isSuggested
@@ -216,13 +216,6 @@ struct AppWorkloadsEditor: View {
         model.adaptive.setWorkload(AppWorkload(bundleID: bundleID, name: app.name, regime: regime))
     }
 
-    /// Opens the grid of apps. macOS gives a sheet no shadow, so the window is told the sheet's
-    /// size and draws one under it.
-    private func open(_ picker: Picker) {
-        model.openSheetSize = Layout.appPickerSize
-        self.picker = picker
-    }
-
     /// Asks which installed apps are known for heavy work, then opens the grid with them selected.
     /// Nothing is added until the person clicks Add there.
     private func suggestApps() {
@@ -235,7 +228,7 @@ struct AppWorkloadsEditor: View {
             do {
                 let proposal = try await model.intelligence.suggestHeavyApps(among: installed.map(\.name))
                 suggestion = .none
-                open(Picker(selected: Set(proposal.apps(among: installed, excluding: added).map(\.bundleID)), isSuggested: true))
+                picker = Picker(selected: Set(proposal.apps(among: installed, excluding: added).map(\.bundleID)), isSuggested: true)
             } catch {
                 suggestion = .failed(error.localizedDescription)
             }

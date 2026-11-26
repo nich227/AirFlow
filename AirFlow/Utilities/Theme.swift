@@ -412,6 +412,28 @@ extension EnvironmentValues {
     @Entry var airRainbow = false
 }
 
+extension View {
+    /// Makes a sheet cast a shadow on AirFlow's window. The sheet's content tells the window its
+    /// size, and the window draws the shadow (`SheetShadow`), because macOS gives a sheet none.
+    func castsSheetShadow() -> some View {
+        modifier(SheetShadowCaster())
+    }
+}
+
+private struct SheetShadowCaster: ViewModifier {
+    @Environment(AppModel.self) private var model
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGSize.self) { proxy in
+                proxy.size
+            } action: { size in
+                model.openSheetSize = size
+            }
+            .onDisappear { model.openSheetSize = nil }
+    }
+}
+
 /// The shadow a sheet casts on the window under it: a soft dark shape the size of the sheet, a
 /// little below it. macOS puts a sheet in the middle of its window, so the shape goes there too,
 /// and the sheet covers all of it but its edge.

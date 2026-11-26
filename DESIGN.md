@@ -70,7 +70,7 @@ AirFlow does not use the layout of Macs Fan Control: two flat tables and a dialo
 **Key Characteristics:**
 
 - A translucent window with glass components. No opaque panels, and no card inside a card.
-- One icon set at one weight, Ant Design's outlined icons, and one mark, the fan.
+- One icon set at one weight (Ant Design's outlined icons) and one mark (the fan).
 - A five-step temperature scale that is the only color with meaning.
 - Two faces that the app carries: Hedvig Letters Sans for text, and IBM Plex Mono for every reading, so a number that changes never moves its neighbors.
 - Motion that shows a state: a rotor turns as fast as its fan.
@@ -97,7 +97,7 @@ Ant Design's functional colors, one step for each band. Each step has a darker L
 
 A reading's band depends on the part it belongs to (`TemperatureBand.thresholds`). The CPU and GPU change bands at 50, 70, 85, and 95 °C. The battery changes at 30, 35, 40, and 45 °C. Storage changes at 40, 50, 60, and 70 °C. Every other part changes at 45, 55, 65, and 80 °C.
 
-The scale appears in four places: the status dot beside a temperature, the ground under a fan curve, the live point on the curve, and the two lines of the history chart (CPU in `hot`, GPU in `cool`). The alerts use three of its steps: `mild` for success, `warm` for caution, and `critical` for an error.
+The scale appears in the status dot beside a temperature, the ground under a fan curve, and the live point on the curve. It also appears in the two lines of the history chart (CPU in `hot`, GPU in `cool`). The alerts use three of its steps: `mild` for success, `warm` for caution, and `critical` for an error.
 
 ### Neutral
 
@@ -119,7 +119,7 @@ Text is `.primary` or `.secondary`. Never set text to white or black.
 
 **Text:** Hedvig Letters Sans. It has one weight, so the roles differ by size and by primary or secondary color, never by weight.
 
-**Readings:** IBM Plex Mono, regular and medium. A reading is a number a person reads off the Mac or sets for it: a fan speed with its RPM unit, a temperature, a percentage, a time on an axis, an SMC key. A reading inside a sentence is in IBM Plex Mono too (`Text(readings:)`).
+**Readings:** IBM Plex Mono, regular and medium. A reading is a number a person reads off the Mac or sets for it. It can be a fan speed with its RPM unit, a temperature, a percentage, a time on an axis, or an SMC key. A reading inside a sentence uses IBM Plex Mono too (`Text(readings:)`).
 
 The app carries both faces in `AirFlow/Resources/Fonts`, under the SIL Open Font License. The person chose both.
 
@@ -135,9 +135,9 @@ The app carries both faces in `AirFlow/Resources/Fonts`, under the SIL Open Font
 
 Rules:
 
-- Every reading is in IBM Plex Mono. Use `readingFont` for a value that stands alone and `Text(readings:)` for a sentence that holds one.
+- Every reading uses IBM Plex Mono. Use `readingFont` for a value that stands alone and `Text(readings:)` for a sentence that holds one.
 - Settings keeps the system's look for its numbers: they use `monospacedDigit()`.
-- AirFlow draws its own segmented control and select (`AntSegmented`, `AntSelect`), because the system's cannot be set in the app's typeface. What the system still draws stays in the system font: a menu's items, a table's header, a stepper's arrows, the time fields, and Settings' controls.
+- AirFlow draws its own segmented control and select (`AntSegmented`, `AntSelect`), because the system's cannot use the app's typeface. What the system still draws stays in the system font: a menu's items, a table's header, a stepper's arrows, the time fields, and Settings' controls.
 - No text is smaller than 11 points.
 
 ## Elevation
@@ -146,7 +146,7 @@ AirFlow has no shadows of its own. Depth comes from Liquid Glass, which the syst
 
 ## Components
 
-Each Ant Design component is drawn in glass through `antGlass` (`Theme.swift`), which is `glassEffect` with a shape and an optional tint at 0.28 opacity.
+AirFlow draws each Ant Design component in glass through `antGlass` (`Theme.swift`), which is `glassEffect` with a shape and an optional tint at 0.28 opacity.
 
 | Component | Ant Design | Glass | Use |
 |---|---|---|---|

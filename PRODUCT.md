@@ -10,15 +10,15 @@ AirFlow is a native macOS app. It follows the macOS Human Interface Guidelines a
 
 ## Stack
 
-Two parts. The backend is Rust: it reads and writes the SMC, names the sensors, and is the privileged helper that `SMAppService` registers. The user asked for the part that deals with the system to be Rust. The app is SwiftUI on macOS 26 or later, with Liquid Glass, and links the backend through a C interface. XcodeGen generates the Xcode project from `project.yml`. Lottie plays the drawn animations. The on-device model comes from the FoundationModels framework, and Siri and Shortcuts reach the app through App Intents. Presets are stored as YAML. The repository follows the layout of [ClipDeck](https://github.com/nich227/ClipDeck).
+The stack has two parts. The backend is Rust: it reads and writes the SMC, names the sensors, and is the privileged helper that `SMAppService` registers. The user asked for the part that deals with the system to be Rust. The app is SwiftUI on macOS 26 or later, with Liquid Glass, and links the backend through a C interface. XcodeGen generates the Xcode project from `project.yml`. Lottie plays the drawn animations. The on-device model comes from the FoundationModels framework, and Siri and Shortcuts reach the app through App Intents. AirFlow stores presets as YAML. The repository follows the layout of [ClipDeck](https://github.com/nich227/ClipDeck).
 
 ## Users
 
-People who own a Mac with fans and want to choose their own trade between noise and temperature. They open AirFlow when the Mac is too loud for a call, too hot under a long build or render, or about to go in a bag. Most of the time they only glance at the menu bar readout. Several times a day they change a preset. Now and then they tune one.
+AirFlow is for people who own a Mac with fans and want to choose their own trade between noise and temperature. They open AirFlow when the Mac is too loud for a call, too hot under a long build or render, or about to go in a bag. Most of the time they only glance at the menu bar readout. They change a preset several times a day and tune one now and then.
 
 ## Product Purpose
 
-AirFlow shows every fan and temperature sensor in the Mac and lets its owner control each fan: left to the system, held at a constant speed, or driven by a sensor between two temperatures. It saves any number of named presets and changes between them in one click. It succeeds when a person gets the fan behavior they asked for in a few seconds and never has to think about whether the Mac is safe.
+AirFlow shows every fan and temperature sensor in the Mac. It lets the owner leave each fan to the system, hold it at a constant speed, or have a sensor drive it between two temperatures. It saves any number of named presets and changes between them in one click. It succeeds when a person gets the fan behavior they asked for in a few seconds and never has to think about whether the Mac is safe.
 
 ## Positioning
 
@@ -34,19 +34,19 @@ Macs Fan Control keeps one custom state in its free version and loses it when an
 
 ## Capabilities and Constraints
 
-- Reads fan speed (minimum, current, maximum, target) and temperature sensors from the SMC without privileges. Reads drive temperatures where the system reports them.
-- Controls each fan in one of three ways: Automatic (the system), Constant (a fixed RPM), or Sensor-Based (a chosen sensor, the temperature where the speed starts to rise, and the temperature of full speed).
+- AirFlow reads fan speed (minimum, current, maximum, target) and temperature sensors from the SMC without privileges. It reads drive temperatures where the system reports them.
+- AirFlow controls each fan in one of three ways: Automatic (the system), Constant (a fixed RPM), or Sensor-Based. Sensor-Based uses a chosen sensor, the temperature where the speed starts to rise, and the temperature of full speed.
 - Built-in presets: Automatic and Full Blast. Starter presets a person can edit or delete: Quiet, Heavy Workload, and Travel.
 - Automation rules change presets from the frontmost app, the power source, a sensor threshold, or the time of day. Autopilot runs approved rules by itself and is off until the person turns it on.
 - The on-device model drafts presets and rules and explains recent thermal behavior. It never writes to a fan. Every draft is validated and clamped by the same code as a hand-made preset, and the person approves it.
-- Safety: the helper clamps every target to the fan's own minimum and maximum, accepts connections only from the signed app, and returns every fan to the system when the app disconnects or quits. A temperature safeguard returns fans to the system when a sensor passes its limit.
-- Presets are stored as a YAML file a person can read and edit. Presets can be exported to a `.yaml` file and imported from one. An import never replaces a preset.
+- Safety: the helper clamps every target to the fan's own minimum and maximum. It accepts connections only from the signed app and returns every fan to the system when the app disconnects or quits. A temperature safeguard returns fans to the system when a sensor passes its limit.
+- AirFlow stores presets as a YAML file a person can read and edit. Presets can be exported to a `.yaml` file and imported from one. An import never replaces a preset.
 - Readings and the history chart update every second while they are on screen.
 - Settings: launch at login, Celsius or Fahrenheit, precise temperatures, what the menu bar shows, the safeguard limit, and the helper.
-- Requires macOS 26. Apple Intelligence features need a Mac and a region where the model is available, and the app says so when it is not.
-- Adaptive is a built-in preset: a detector of the kind of work (light, bursty, sustained) from the Mac's power and its open apps, and a controller that forecasts the temperature 15 seconds ahead and weighs heat against noise. The user specified it and chose these: a built-in preset, total system power from the SMC, a forecaster fitted on the Mac with no stored readings, and Apple Intelligence that suggests what an app is known for while the person decides.
+- AirFlow requires macOS 26. Apple Intelligence features need a Mac and a region where the model is available, and the app says so when it is not.
+- Adaptive is a built-in preset that the user specified. It detects the kind of work (light, bursty, sustained) from the Mac's power and its open apps. Its controller forecasts the temperature 15 seconds ahead and weighs heat against noise. The user chose a built-in preset, total system power from the SMC, and a forecaster fitted on the Mac with no stored readings. The user also chose Apple Intelligence that suggests what an app is known for while the person decides.
 - Updates come through Sparkle, and releases are signed with the Developer ID certificate and notarized, by the same workflow as Gailan and ClipDeck. The user asked for both.
-- Undecided: Intel support. The first version is built for Apple silicon only and is tested on a MacBook Pro with two fans.
+- Intel support is undecided. The first version is built for Apple silicon only and is tested on a MacBook Pro with two fans.
 
 ## Brand Commitments
 
@@ -73,4 +73,4 @@ Macs Fan Control keeps one custom state in its free version and loses it when an
 
 ## Accessibility & Inclusion
 
-VoiceOver names every fan, sensor, and control with its value and unit. The app works from the keyboard. It follows Reduce Motion, Reduce Transparency, and Increase Contrast. Temperature state is never shown by color alone.
+VoiceOver names every fan, sensor, and control with its value and unit. The app works from the keyboard. It follows Reduce Motion, Reduce Transparency, and Increase Contrast. It never shows temperature state by color alone.

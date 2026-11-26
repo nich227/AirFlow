@@ -125,9 +125,10 @@ struct MenuPanel: View {
         .frame(width: Layout.panelWidth)
         .background {
             if model.settings.activePresetID == Preset.adaptiveID {
-                AirBackdrop(band: snapshot.summary(of: .cpu).map { TemperatureBand.band(for: $0.average, in: .cpu) })
+                AirBackdrop()
             }
         }
+        .environment(\.airRainbow, model.settings.activePresetID == Preset.adaptiveID)
         .onAppear {
             isShowing = true
             model.monitor.visibleSurfaces += 1

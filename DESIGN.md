@@ -105,7 +105,7 @@ A status dot is a bead lit from above with a little of its own light. A fan's tr
 
 ### Adaptive's look
 
-While Adaptive is the current preset, the window and the menu bar panel sit on `AirBackdrop`: soft fields of indigo, violet, and teal over the blurred desktop, with one field in the color of the CPU's band. No other preset changes the window. Sparkles mark Adaptive and everything Apple Intelligence does.
+While Adaptive is the current preset, the window and the menu bar panel sit on `AirBackdrop`: every color of the rainbow, turning slowly over the blurred desktop. It holds still with Reduce Motion on and in a window that is not in front. The fan itself is drawn in the six colors of the rainbow (green, yellow, orange, red, purple, blue from the top), in each fan's rotor and in the Dock icon. No other preset changes the window. Sparkles mark Adaptive and everything Apple Intelligence does.
 
 ### The Dock icon
 

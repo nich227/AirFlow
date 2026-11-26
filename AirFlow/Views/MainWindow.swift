@@ -35,7 +35,7 @@ struct MainWindow: View {
         // While Adaptive is on, fields of color lie over it.
         .containerBackground(for: .window) {
             if model.settings.activePresetID == Preset.adaptiveID {
-                AirBackdrop(band: model.monitor.snapshot.summary(of: .cpu).map { TemperatureBand.band(for: $0.average, in: .cpu) })
+                AirBackdrop()
                     .transition(.opacity)
             } else {
                 Rectangle().fill(.ultraThinMaterial).ignoresSafeArea()
@@ -43,6 +43,7 @@ struct MainWindow: View {
         }
         // Each page has its own heading, so the title bar does not repeat it. The title still
         // names the window in the Window menu and to VoiceOver.
+        .environment(\.airRainbow, model.settings.activePresetID == Preset.adaptiveID)
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .navigationTitle(title)

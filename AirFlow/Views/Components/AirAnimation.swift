@@ -215,6 +215,7 @@ struct Rotor: View {
     var size: CGFloat = IconSize.rotor
     var isActive = true
     var tint: Color = .primary
+    @Environment(\.airRainbow) private var isRainbow
 
     /// Turns per second at a fan's minimum and maximum speed. A real fan turns far too fast to
     /// read, so the drawing maps the fan's range onto speeds the eye can compare.
@@ -224,8 +225,17 @@ struct Rotor: View {
     static let stoppedRPM: Double = 100
 
     var body: some View {
-        AirAnimation(name: Animations.rotor, loops: true, isActive: isActive, speed: Self.turnsPerSecond(for: fan), tint: tint)
-            .frame(width: size, height: size)
+        if isRainbow {
+            // The rotor is the stencil, and the rainbow shows through it.
+            LinearGradient(colors: Palette.rainbow, startPoint: .top, endPoint: .bottom)
+                .mask {
+                    AirAnimation(name: Animations.rotor, loops: true, isActive: isActive, speed: Self.turnsPerSecond(for: fan), tint: .white)
+                }
+                .frame(width: size, height: size)
+        } else {
+            AirAnimation(name: Animations.rotor, loops: true, isActive: isActive, speed: Self.turnsPerSecond(for: fan), tint: tint)
+                .frame(width: size, height: size)
+        }
     }
 
     static func turnsPerSecond(for fan: Fan?) -> Double {

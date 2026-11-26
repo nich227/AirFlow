@@ -95,7 +95,7 @@ final class SnapshotTests: XCTestCase {
     func testTheDockIcon() throws {
         let folder = try XCTUnwrap(folder)
         for (name, accent, isDark) in [("dock-blue", NSColor.systemBlue, false), ("dock-pink-dark", NSColor.systemPink, true)] {
-            let image = DockIcon.image(accent: accent, isDark: isDark)
+            let image = DockIcon.image(accent: accent, isDark: isDark, isRainbow: name == "dock-pink-dark")
             let bitmap = try XCTUnwrap(NSBitmapImageRep(
                 bitmapDataPlanes: nil, pixelsWide: 512, pixelsHigh: 512, bitsPerSample: 8, samplesPerPixel: 4,
                 hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0

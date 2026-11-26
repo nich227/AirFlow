@@ -100,6 +100,10 @@ enum Palette {
         return place == 0 ? accent : others[place - 1]
     }
 
+    /// The six colors of the rainbow, from the top down: green, yellow, orange, red, purple, blue.
+    /// They color the fan while Adaptive is the current preset.
+    static let rainbow: [Color] = [0x61BB46, 0xFDB827, 0xF5821F, 0xE03A3E, 0x963D97, 0x009DDC].map { Color(light: $0, dark: $0) }
+
     /// The color of a kind of work, from the temperature scale: emerald for light work, amber for
     /// bursts, and orange for a long load. The word is always beside it.
     static func workload(_ regime: WorkloadRegime) -> Color {
@@ -115,7 +119,7 @@ enum Palette {
     static let danger = Color("TempCritical")
 }
 
-private extension Color {
+extension Color {
     /// A color with one value for Light Mode and one for Dark Mode, as sRGB hex.
     init(light: UInt32, dark: UInt32) {
         self.init(nsColor: NSColor(name: nil) { appearance in
@@ -278,46 +282,53 @@ extension EnvironmentValues {
     @Entry var airFlatGlass = false
 }
 
-/// The look of the window while Adaptive is on: soft fields of indigo, violet, and teal over the
-/// blurred desktop. One field takes the color of the CPU's temperature band, so the window warms as
-/// the Mac does. The number that says so is always on the page as well.
+/// The look of the window while Adaptive is on: every color of the rainbow, turning slowly over
+/// the blurred desktop. It holds still with Reduce Motion on and in a window that is not in front,
+/// so it costs nothing when nobody is looking.
 struct AirBackdrop: View {
-    /// The CPU's band, or nil before the first reading.
-    var band: TemperatureBand?
-
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.controlActiveState) private var activity
 
     var body: some View {
-        let dark = scheme == .dark
-        let base = dark ? Color(red: 0.035, green: 0.043, blue: 0.11) : Color(red: 0.955, green: 0.96, blue: 1.0)
-        let indigo = dark ? Color(red: 0.19, green: 0.20, blue: 0.62) : Color(red: 0.80, green: 0.83, blue: 1.0)
-        let violet = dark ? Color(red: 0.36, green: 0.20, blue: 0.70) : Color(red: 0.90, green: 0.83, blue: 1.0)
-        let teal = dark ? Color(red: 0.04, green: 0.42, blue: 0.48) : Color(red: 0.78, green: 0.93, blue: 0.95)
-        let heat = band.map { Palette.temperature($0) } ?? teal
         ZStack {
             Rectangle().fill(.ultraThinMaterial)
-            MeshGradient(
-                width: 3, height: 3,
-                points: [
-                    [0, 0], [0.5, 0], [1, 0],
-                    [0, 0.45], [0.55, 0.5], [1, 0.4],
-                    [0, 1], [0.45, 1], [1, 1],
-                ],
-                colors: [
-                    indigo, base, heat.opacity(dark ? 0.55 : 0.35),
-                    base, violet, base,
-                    teal, base, indigo,
-                ]
-            )
+            TimelineView(.animation(minimumInterval: 1.0 / 20, paused: reduceMotion || activity == .inactive)) { timeline in
+                mesh(at: reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate)
+            }
             // More contrast asks for a calmer ground under the text.
-            .opacity(contrast == .increased ? 0.35 : (dark ? 0.78 : 0.9))
+            .opacity(contrast == .increased ? 0.3 : (scheme == .dark ? 0.72 : 0.85))
         }
         .ignoresSafeArea()
-        .animation(reduceMotion ? nil : .easeInOut(duration: 1.5), value: band)
         .accessibilityHidden(true)
     }
+
+    /// Nine fields of color a ninth of the rainbow apart. The hues move on with time, and the
+    /// points between the corners turn about the middle, so the colors swirl.
+    private func mesh(at time: TimeInterval) -> MeshGradient {
+        let turn = time / 9
+        let drift = Float(time / 14)
+        func hue(_ place: Int) -> Color {
+            let value = (Double(place) / 9 + time / 45).truncatingRemainder(dividingBy: 1)
+            return Color(hue: value, saturation: scheme == .dark ? 0.72 : 0.42, brightness: scheme == .dark ? 0.5 : 1)
+        }
+        let x = Float(cos(turn)) * 0.2, y = Float(sin(turn)) * 0.2
+        return MeshGradient(
+            width: 3, height: 3,
+            points: [
+                [0, 0], [0.5 + 0.25 * sin(drift), 0], [1, 0],
+                [0, 0.5 + 0.25 * cos(drift)], [0.5 + x, 0.5 + y], [1, 0.5 - 0.25 * cos(drift)],
+                [0, 1], [0.5 - 0.25 * sin(drift), 1], [1, 1],
+            ],
+            colors: [hue(0), hue(1), hue(2), hue(7), hue(8), hue(3), hue(6), hue(5), hue(4)]
+        )
+    }
+}
+
+extension EnvironmentValues {
+    /// True while Adaptive is the current preset. The fans' rotors are then drawn in the rainbow.
+    @Entry var airRainbow = false
 }
 
 /// Ant Design's card as a pane of glass.

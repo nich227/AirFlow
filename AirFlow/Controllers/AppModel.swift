@@ -107,6 +107,8 @@ final class AppModel {
             automation.userChosePreset()
         }
         runControlLoop()
+        // The Dock icon's fan has the rainbow while Adaptive is the current preset.
+        if !Self.isRunningTests { DockIcon.update() }
     }
 
     /// Asks the window to save presets to a YAML file: the ones named, or all of them.

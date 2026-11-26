@@ -42,9 +42,9 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 | Frameworks | FoundationModels, AppIntents, Charts, ServiceManagement, XPC |
 | Forecaster | Adaptive's forecast is the app's own recursive least squares, not an Apple model. `rise` mixes it with the slope carried on, each by `1 / mean squared error` over its last 300 answers (`learnedShare`), because the learned forecast alone lost to the slope in a Mac's first ten minutes and after the Mac changed. Apple's `LinearRegressor` (Create ML Components) was measured against it on 2026-11-25 with `ForecasterComparisonTests`: its `update` leaves a model unchanged after the first fit, a smaller `stepSize` makes the coefficients diverge, and fitting a window again never forecast better (1.15 to 3.03 degrees of mean error against 0.98 to 1.25). Run the comparison again before changing this |
 | Storage | `~/Library/Application Support/AirFlow/presets.yaml`, `rules.json`, `adaptive.json` (what the forecaster learned), and `workloads.json` (what the person says an app is known for). A Debug build uses the `Debug/` folder inside it |
-| UserDefaults keys | `temperatureUnit`, `preciseTemperatures`, `menuBarReadout`, `safeguardEnabled`, `safeguardLimit`, `autopilotEnabled`, `activePresetID`, `userPresetID`, `showsInspector`, `welcomeShown` |
+| UserDefaults keys | `temperatureUnit`, `preciseTemperatures`, `menuBarReadout`, `safeguardEnabled`, `safeguardLimit`, `autopilotEnabled`, `activePresetID`, `userPresetID`, `showsInspector`, `welcomeShown`, `setupShown` |
 | Signing | Ad hoc by default, which can only monitor. `scripts/build.sh --sign` takes the Developer ID Application identity from the keychain (team `8ZUR795GTN`), the one a release is signed with, and passes `AIRFLOW_SIGN_IDENTITY` and `AIRFLOW_TEAM`. `CODE_SIGN_IDENTITY` on the command line needs `CODE_SIGN_STYLE=Manual` beside it, as the release workflow passes them, or the Swift packages refuse it |
-| Lifecycle | SwiftUI `App`: a `Window` that does not open at launch, a `MenuBarExtra` with the window style, and `Settings`. The app has no Dock icon until its window or Settings is open (`AppDelegate.updateDockPresence`). Opening the app again shows the window (`WindowOpener`) |
+| Lifecycle | SwiftUI `App`: a `Window` that does not open at launch, a `MenuBarExtra` with the window style, and `Settings`. The app has no Dock icon until its window or Settings is open (`AppDelegate.updateDockPresence`). Opening the app again shows the window (`WindowOpener`). The first time the window opens, `SetupSheet` asks for fan control, opening at login, and automatic updates |
 | Sampling | `ThermalMonitor` reads every second while a window or the panel shows readings, and every four seconds otherwise. History holds 15 minutes |
 | SMC keys | Fans: `FNum`, `F<n>Ac`, `F<n>Mn`, `F<n>Mx`, `F<n>Tg`, `F<n>Md`, `Ftst`. Power: `PSTR`, the whole Mac's draw in watts. Temperatures: every `T???` key with a plausible value. Names and groups are in `backend/src/sensors.rs`. A key with no known meaning gets its group's name and a number in key order, and `is_known` is false |
 | Mark | The fan from Bootstrap Icons, in `scripts/fan_geometry.py`. The app icon is `AirFlow/Resources/AppIcon.icon`, an Icon Composer document with the blades and the housing as two glass layers. While AirFlow runs, `DockIcon` draws the Dock's icon itself, with the blades in the system accent, and draws it again when the accent or the appearance changes. The menu bar icon is a template image: white on a dark menu bar, dark on a light one, and never the accent |
@@ -63,7 +63,7 @@ swift scripts/make-brand.swift                          # docs/images/airflow-br
 scripts/make-screenshots.sh                             # the README's screenshots into docs/images, from the Debug build, without taking the keyboard
 TEST_RUNNER_AIRFLOW_SNAPSHOTS=/tmp/airflow-shots scripts/test.sh   # draws each surface with made-up readings
 TEST_RUNNER_AIRFLOW_COMPARE=1 scripts/test.sh 2>&1 | grep COMPARE   # the forecaster against Apple's LinearRegressor on the made-up Mac
-open -g --env AIRFLOW_SHOW=rules build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: opens the window on a page (rules, sensors, or a preset's name) without taking the keyboard
+open -g --env AIRFLOW_SHOW=rules build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: opens the window on a page (rules, sensors, a preset's name, or setup for the setup sheet) without taking the keyboard
 open -g --env AIRFLOW_SHOW=Quiet --env AIRFLOW_APPEARANCE=light build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: the same, in Light Mode (or dark)
 ```
 
@@ -100,7 +100,7 @@ AirFlow/
 ├── Intelligence/                     IntelligenceService (FoundationModels), Proposals, FanIntents (App Intents)
 ├── Views/                            MainWindow (Sidebar), PresetDetail (FanSentence, FanSection, SensorRuleEditor), LiveInspector
 │   │                                 (HistoryChart, SensorsView), AutomationView (RuleRow), AdaptiveViews (AdaptiveSummary,
-│   │                                 AppWorkloadsEditor), DescribePresetSheet, MenuPanel
+│   │                                 AppWorkloadsEditor), DescribePresetSheet, SetupSheet (LoginItem), MenuPanel
 │   ├── Components/                   AirAnimation (Rotor), Components (StateTag, Statistic, FanTrack, StatusBanner, EmptyState, AntSegmented, AntSelect, FlowLayout), CurveEditor
 │   └── Settings/SettingsView.swift   General, Fan Control, Intelligence, About
 ├── Utilities/                        Theme (tokens, AirType, ReadingText, antGlass, AirBackdrop, GlassCard, AntIcon), DockIcon, Log
@@ -153,6 +153,7 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | The mark | `scripts/fan_geometry.py`, then both scripts, `AppIcon.icon/icon.json`, and `swift scripts/make-brand.swift` |
 | A page, a banner, or a control that a README picture shows | `scripts/make-screenshots.sh` after `scripts/build.sh`, and the picture's `alt` text in `README.md` |
 | A UserDefaults key | `AppSettings`, the pane that writes it, the Facts table |
+| Something AirFlow needs permission for | A row in `SetupSheet`, which asks for all of them the first time the window opens (`setupShown`), and the Settings pane that changes it later |
 | A new page in the window | `SidebarItem`, `MainWindow.detail`, `MainWindow.launchSelection`, invariant 11 |
 | A sentence or a label that shows a number | `Text(readings:)` or `readingFont`, invariant 17 |
 | A dependency | `project.yml` or `Cargo.toml`, `licenses/`, the README's License section. Check its license against the License row in Facts first |

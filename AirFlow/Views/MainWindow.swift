@@ -12,6 +12,7 @@ struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @State private var selection: SidebarItem?
     @State private var isDescribing = false
+    @State private var isSettingUp = false
 
     var body: some View {
         @Bindable var settings = model.settings
@@ -45,6 +46,9 @@ struct MainWindow: View {
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .navigationTitle(title)
+        .sheet(isPresented: $isSettingUp, onDismiss: { model.settings.setupShown = true }) {
+            SetupSheet()
+        }
         .sheet(isPresented: $isDescribing) {
             DescribePresetSheet { preset in
                 selection = .preset(preset.id)
@@ -70,6 +74,8 @@ struct MainWindow: View {
         .onAppear {
             model.monitor.visibleSurfaces += 1
             if selection == nil { selection = Self.launchSelection(model) ?? .preset(model.settings.activePresetID) }
+            // The first time the window opens, it asks for everything AirFlow needs at once.
+            isSettingUp = Self.showsSetup(model)
         }
         .onDisappear { model.monitor.visibleSurfaces -= 1 }
         .onChange(of: model.presets.custom.map(\.id)) { _, ids in
@@ -90,6 +96,14 @@ struct MainWindow: View {
 
     /// A Debug build opens on the page that AIRFLOW_SHOW names: rules, sensors, or a preset's
     /// name. The scripts that capture the window use it. A Release build ignores it.
+    /// A script that captures the window never gets the sheet, unless it asks for it by name.
+    private static func showsSetup(_ model: AppModel) -> Bool {
+        #if DEBUG
+        if let wanted = ProcessInfo.processInfo.environment["AIRFLOW_SHOW"] { return wanted.lowercased() == "setup" }
+        #endif
+        return !AppModel.isRunningTests && !model.settings.setupShown
+    }
+
     private static func launchSelection(_ model: AppModel) -> SidebarItem? {
         #if DEBUG
         guard let wanted = ProcessInfo.processInfo.environment["AIRFLOW_SHOW"] else { return nil }

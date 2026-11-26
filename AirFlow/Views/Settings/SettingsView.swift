@@ -12,7 +12,7 @@ struct SettingsView: View {
             Tab {
                 FanControlSettingsPane()
             } label: {
-                Label("Fan Control", image: "ant-safety-certificate")
+                Label("Fan Control", image: "MenuBarIcon")
             }
             Tab {
                 IntelligenceSettingsPane()
@@ -72,16 +72,12 @@ struct GeneralSettingsPane: View {
 
     private func setLaunchAtLogin(_ enabled: Bool) {
         do {
-            if enabled {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
+            try LoginItem.set(enabled)
             loginError = nil
         } catch {
             loginError = "AirFlow couldn't change the login item. \(error.localizedDescription)"
         }
-        launchesAtLogin = SMAppService.mainApp.status == .enabled
+        launchesAtLogin = LoginItem.isEnabled
     }
 }
 

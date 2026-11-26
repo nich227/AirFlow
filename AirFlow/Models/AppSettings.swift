@@ -32,6 +32,7 @@ final class AppSettings {
         static let activePresetID = "activePresetID"
         static let showsInspector = "showsInspector"
         static let welcomeShown = "welcomeShown"
+        static let setupShown = "setupShown"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -45,6 +46,8 @@ final class AppSettings {
     var activePresetID: UUID { didSet { defaults.set(activePresetID.uuidString, forKey: Key.activePresetID) } }
     var showsInspector: Bool { didSet { defaults.set(showsInspector, forKey: Key.showsInspector) } }
     var welcomeShown: Bool { didSet { defaults.set(welcomeShown, forKey: Key.welcomeShown) } }
+    /// True once the person has been through the setup sheet, which asks for every permission at once.
+    var setupShown: Bool { didSet { defaults.set(setupShown, forKey: Key.setupShown) } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -58,6 +61,7 @@ final class AppSettings {
         activePresetID = defaults.string(forKey: Key.activePresetID).flatMap(UUID.init) ?? Preset.automaticID
         showsInspector = defaults.object(forKey: Key.showsInspector) as? Bool ?? true
         welcomeShown = defaults.bool(forKey: Key.welcomeShown)
+        setupShown = defaults.bool(forKey: Key.setupShown)
     }
 
     var format: ReadingFormat {

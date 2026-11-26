@@ -149,12 +149,15 @@ final class FormatTests: XCTestCase {
         XCTAssertTrue(first.safeguardEnabled)
         XCTAssertEqual(first.safeguardLimit, Safeguard.defaultLimit)
         XCTAssertFalse(first.autopilotEnabled, "Autopilot is off until a person turns it on")
+        XCTAssertFalse(first.setupShown, "A new copy asks for its permissions first")
+        first.setupShown = true
         first.temperatureUnit = .fahrenheit
         first.menuBarReadout = .cpu
         first.safeguardEnabled = false
         defaults.set(500.0, forKey: AppSettings.Key.safeguardLimit)
         let second = AppSettings(defaults: defaults)
         XCTAssertEqual(second.temperatureUnit, .fahrenheit)
+        XCTAssertTrue(second.setupShown)
         XCTAssertEqual(second.menuBarReadout, .cpu)
         XCTAssertFalse(second.safeguardEnabled)
         XCTAssertEqual(second.safeguardLimit, Safeguard.limitRange.upperBound)

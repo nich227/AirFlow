@@ -138,5 +138,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let wanted: NSApplication.ActivationPolicy = hasWindow ? .regular : .accessory
         guard NSApp.activationPolicy() != wanted else { return }
         NSApp.setActivationPolicy(wanted)
+        // A Dock tile that has just appeared starts with the bundled icon, so the blades are
+        // painted in the accent again.
+        if wanted == .regular, !AppModel.isRunningTests {
+            DockIcon.update()
+        }
     }
 }

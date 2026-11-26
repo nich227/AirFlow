@@ -127,6 +127,7 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 
 | To do this | Do this |
 | --- | --- |
+| Set up AirFlow | The first time AirFlow opens, it asks for fan control, opening at login, and automatic updates in one place. Turn on what you want, then click Continue. |
 | Change presets | Click the fan in the menu bar, then click a preset. |
 | Open the window | Click the fan in the menu bar, then click Open AirFlow. |
 | Change how a fan runs | Select a preset you made in the sidebar. Click Automatic, Constant, or Sensor-Based under the fan. |

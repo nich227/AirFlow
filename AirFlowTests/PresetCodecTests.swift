@@ -22,7 +22,7 @@ final class PresetCodecTests: XCTestCase {
     func testTheFileReadsLikeAPersonWroteIt() throws {
         let text = try PresetCodec.encode([everyKind])
         for line in [
-            "airflow: 1", "name: Render", "icon: video-camera", "summary: Keeps the GPU cool while a render runs.",
+            "airflow: 2", "name: Render", "icon: video-camera", "summary: Keeps the GPU cool while a render runs.",
             "mode: sensor", "sensor: gpu hottest", "start: 60", "full: 90",
             "fan: 1", "mode: constant", "rpm: 3200", "fan: 2", "mode: automatic", "fan: 3", "percent: 50",
             "fan: 4", "sensor: key TaLP", "start: 35.5",
@@ -78,6 +78,28 @@ final class PresetCodecTests: XCTestCase {
         XCTAssertTrue(presets.allSatisfy { $0.kind == .custom })
     }
 
+    func testARuleThatLeavesTheFanToTheSystemBelowItsStartSurvivesARoundTrip() throws {
+        let rule = SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43, belowStart: .automatic)
+        let travel = Preset(name: "Lap", icon: .airplane, fallback: .sensorBased(rule))
+        let text = try PresetCodec.encode([travel])
+        XCTAssertTrue(text.contains("        below: automatic\n") || text.contains("      below: automatic\n"), text)
+        XCTAssertEqual(try PresetCodec.decode(text), [travel])
+        let plain = try PresetCodec.encode([Preset(name: "Plain", icon: .moon, fallback: .sensorBased(SensorRule(source: .cpuAverage, startCelsius: 70, maxCelsius: 95)))])
+        XCTAssertTrue(plain.hasPrefix(PresetCodec.header))
+        XCTAssertFalse(plain.dropFirst(PresetCodec.header.count).contains("below"), "A rule that holds the minimum is written as before")
+    }
+
+    func testAFileOfTheOlderFormatIsRead() throws {
+        let older = "airflow: 1\npresets:\n  - name: Old\n    fans: {mode: sensor, sensor: battery average, start: 33, full: 43}\n"
+        let rule = SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43)
+        XCTAssertEqual(try PresetCodec.decode(older).first?.fallback, .sensorBased(rule), "Format 1 had no below, so the fan holds its minimum")
+        XCTAssertEqual(rule.belowStart, .minimum)
+        let written = "airflow: 2\npresets:\n  - name: New\n    fans: {mode: sensor, sensor: battery average, start: 33, full: 43, below: Auto}\n"
+        guard case .sensorBased(let read)? = try PresetCodec.decode(written).first?.fallback else { return XCTFail("not a sensor rule") }
+        XCTAssertEqual(read.belowStart, .automatic)
+        XCTAssertEqual(PresetCodec.version, 2)
+    }
+
     func testNumbersInAFileGoThroughTheSameLimitsAsAnyPreset() throws {
         let text = """
             airflow: 1
@@ -112,7 +134,7 @@ final class PresetCodecTests: XCTestCase {
     }
 
     func testAFileThatIsNotPresetsIsRefusedWithAReason() {
-        XCTAssertEqual(failure("airflow: 2\npresets:\n  - name: A\n    fans: {mode: automatic}\n"), .newerVersion(2))
+        XCTAssertEqual(failure("airflow: 3\npresets:\n  - name: A\n    fans: {mode: automatic}\n"), .newerVersion(3))
         XCTAssertEqual(failure("airflow: 1\npresets: []\n"), .noPresets)
         XCTAssertEqual(failure(String(repeating: "#", count: PresetCodec.maximumBytes + 1)), .tooLarge)
         guard case .notYAML = failure("just some text") else { return XCTFail("plain text was read as presets") }
@@ -133,6 +155,7 @@ final class PresetCodecTests: XCTestCase {
         XCTAssertEqual(reason(document("{mode: constant}")), "a constant speed needs rpm or percent.")
         XCTAssertEqual(reason(document("{mode: sensor, start: 50}")), "a sensor mode needs start and full temperatures.")
         XCTAssertEqual(reason(document("{mode: sensor, sensor: toaster, start: 50, full: 80}")), "“toaster” isn't a sensor AirFlow knows.")
+        XCTAssertEqual(reason(document("{mode: sensor, start: 50, full: 80, below: off}")), "“off” isn't a choice for below. Use minimum or automatic.")
         XCTAssertEqual(
             reason(document("{mode: automatic}", overrides: "    overrides:\n      - {mode: automatic}\n")),
             "an override needs a fan number from 1 to 16."

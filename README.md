@@ -95,6 +95,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 
 - Each fan can be Automatic (macOS controls it), Constant (one speed), or Sensor-Based (the fan follows a sensor between two temperatures).
 - A sensor-based fan follows the average or the hottest sensor of a part, or one sensor that you choose.
+- Below the temperature where a sensor-based fan starts to speed up, AirFlow either holds the fan at minimum speed or lets macOS control it. Travel lets macOS control the fans until the battery warms up, so macOS still cools a hot CPU.
 - AirFlow draws a sensor-based fan as a curve with the sensor's current temperature marked on it. Drag the two handles to change where the fan starts to rise and where it reaches full speed.
 - Each fan in a preset can run in its own way.
 
@@ -158,6 +159,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 | Open the window | Click the fan in the menu bar, then click Open AirFlow. |
 | Change how a fan runs | Select a preset you made in the sidebar. Click Automatic, Constant, or Sensor-Based under the fan. |
 | Change a fan curve | Drag either handle on the curve, or click the arrows beside "Starts speeding up at" and "Full speed at". |
+| Let macOS control a fan until a sensor warms up | Under the curve, choose Automatic beside "Below". |
 | Use a preset | Select it in the sidebar, then click Apply. |
 | Make a preset | Click the Add button at the bottom of the sidebar. The new preset starts as a copy of the selected one. |
 | Describe a preset | Click the sparkles at the bottom of the sidebar. |
@@ -216,7 +218,7 @@ AirFlow doesn't collect any data. Its one network connection is the check for a 
 AirFlow keeps your presets in `~/Library/Application Support/AirFlow/presets.yaml`. An exported file has the same format:
 
 ```yaml
-airflow: 1
+airflow: 2
 presets:
   - name: Quiet
     icon: coffee
@@ -240,8 +242,9 @@ presets:
 | `rpm` or `percent` | For `constant`: a speed, or a share of the fan's range from 0 to 100. |
 | `sensor` | For `sensor`: a part and `average` or `hottest`, such as `gpu hottest`, or `key` and an SMC key, such as `key TaLP`. The parts are `cpu`, `gpu`, `memory`, `storage`, `battery`, `enclosure`, `power`, and `wireless`. |
 | `start` and `full` | For `sensor`: the temperatures, in degrees Celsius, where the fan starts to rise and where it reaches full speed. |
+| `below` | For `sensor`: `minimum` holds the fan at minimum speed below `start`, and `automatic` lets macOS control it there. Without the key, the fan holds minimum speed. |
 
-AirFlow checks every value in a file it reads. A number outside its range is moved into range, and a file that AirFlow can't read is refused with the reason. An imported preset never replaces one you have: it gets its own name. If the presets file itself can't be read, AirFlow sets it aside as `presets.yaml.unreadable` and starts again with the presets it ships with.
+AirFlow also reads a file with `airflow: 1`, which was the format before `below`. AirFlow checks every value in a file it reads. A number outside its range is moved into range, and a file that AirFlow can't read is refused with the reason. An imported preset never replaces one you have: it gets its own name. If the presets file itself can't be read, AirFlow sets it aside as `presets.yaml.unreadable` and starts again with the presets it ships with.
 
 ## Requirements
 

@@ -479,6 +479,20 @@ final class FanSentenceTests: XCTestCase {
         XCTAssertEqual(FanSentence.who(mode: .monitoring, heldElsewhereAt: 5349), " macOS controls the fan now.")
     }
 
+    func testARuleThatRestsSaysThatMacOSHasTheFan() {
+        let resting = SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43, belowStart: .automatic)
+        func text(isActive: Bool, mode: FanController.Mode) -> String {
+            FanSentence.text(
+                control: .sensorBased(resting), command: .automatic, sourceName: { _ in "Battery Average" }, format: format,
+                isActive: isActive, mode: mode, isResting: true
+            )
+        }
+        XCTAssertEqual(text(isActive: true, mode: .controlling), "Follows Battery Average, from 33° to full speed at 43°. It's below 33° now, so macOS controls the fan.")
+        XCTAssertEqual(text(isActive: false, mode: .controlling), "This preset follows Battery Average, from 33° to full speed at 43°. It's below 33° now, so macOS would control the fan.")
+        XCTAssertEqual(text(isActive: true, mode: .monitoring), "This preset follows Battery Average, from 33° to full speed at 43°. It's below 33° now, so macOS controls the fan.")
+        XCTAssertEqual(SensorRule.BelowStart.allCases.map(\.title), ["Minimum Speed", "Automatic"])
+    }
+
     func testAPresetThatIsNotActiveSaysWhatItWouldAskFor() {
         XCTAssertEqual(
             sentence(.sensorBased(rule), .speed(2010), isActive: false, mode: .controlling),

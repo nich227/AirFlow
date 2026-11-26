@@ -218,7 +218,7 @@ final class PresetStoreTests: XCTestCase {
         _ = PresetStore(url: url)
         let text = try String(contentsOf: url, encoding: .utf8)
         XCTAssertTrue(text.hasPrefix("# AirFlow fan presets."))
-        XCTAssertTrue(text.contains("airflow: 1"))
+        XCTAssertTrue(text.contains("airflow: 2"))
         XCTAssertTrue(text.contains("- name: Quiet") || text.contains("name: Quiet"))
         XCTAssertTrue(text.contains("mode: sensor"))
         XCTAssertTrue(text.contains("sensor: cpu average"))

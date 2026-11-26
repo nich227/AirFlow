@@ -106,7 +106,8 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
             ),
             Preset(
                 name: "Travel", icon: .airplane,
-                fallback: .sensorBased(SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43)),
+                // Below the start, macOS has the fans, so a hot CPU is still cooled on a cool battery.
+                fallback: .sensorBased(SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43, belowStart: .automatic)),
                 summary: "Fans follow the battery temperature, for a Mac on your lap."
             ),
         ]

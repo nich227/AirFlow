@@ -4,7 +4,7 @@ import Yams
 
 /// Presets as a YAML document that a person can read, edit, and share.
 ///
-///     airflow: 1
+///     airflow: 2
 ///     presets:
 ///       - name: Quiet
 ///         icon: coffee
@@ -20,10 +20,13 @@ import Yams
 ///             rpm: 3200
 ///
 /// `fans` is the control for every fan, and `overrides` changes it for one fan, counted from 1. A
-/// file is only data. Every number in it goes through the same limits as a preset made in the app.
+/// sensor mode can add `below: automatic`, which leaves the fan to the system below `start`.
+/// Format 1 had no `below`.
+///
+/// A file is only data. Every number in it goes through the same limits as a preset made in the app.
 /// Nothing in a file can name a command or a path.
 enum PresetCodec {
-    static let version = 1
+    static let version = 2
     static let fileExtension = "yaml"
     static let contentType = UTType.yaml
     /// Limits on a file that is read, so a mistaken or hostile file cannot stall the app.
@@ -34,7 +37,8 @@ enum PresetCodec {
     static let header = """
         # AirFlow fan presets.
         # mode is automatic, constant (with rpm, or percent of the fan's range), or sensor
-        # (with sensor, start, and full, in degrees Celsius).
+        # (with sensor, start, and full, in degrees Celsius, and below: automatic to leave the
+        # fan to macOS below start).
 
         """
 
@@ -83,6 +87,7 @@ enum PresetCodec {
         var sensor: String?
         var start: Number?
         var full: Number?
+        var below: String?
     }
 
     /// A number that a person may have written with or without a decimal point.
@@ -140,7 +145,7 @@ enum PresetCodec {
             return [
                 "mode: sensor", "sensor: \(scalar(name(of: rule.source)))",
                 "start: \(number(rule.startCelsius))", "full: \(number(rule.maxCelsius))",
-            ]
+            ] + (rule.belowStart == .automatic ? ["below: automatic"] : [])
         }
     }
 
@@ -249,7 +254,14 @@ enum PresetCodec {
             guard let source = source(named: control.sensor ?? "cpu average") else {
                 throw Failure.invalid(preset: preset, reason: "“\(control.sensor ?? "")” isn't a sensor AirFlow knows.")
             }
-            return .sensorBased(SensorRule(source: source, startCelsius: start, maxCelsius: full))
+            let below: SensorRule.BelowStart
+            switch control.below?.lowercased() {
+            case nil, "minimum", "min": below = .minimum
+            case "automatic", "auto": below = .automatic
+            default:
+                throw Failure.invalid(preset: preset, reason: "“\(control.below ?? "")” isn't a choice for below. Use minimum or automatic.")
+            }
+            return .sensorBased(SensorRule(source: source, startCelsius: start, maxCelsius: full, belowStart: below))
         default:
             throw Failure.invalid(preset: preset, reason: "“\(control.mode)” isn't a mode. Use automatic, constant, or sensor.")
         }

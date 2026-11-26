@@ -48,6 +48,12 @@ final class FanController {
         sent.values.contains { $0 != .automatic }
     }
 
+    /// Whether AirFlow holds one fan at a speed.
+    func holds(_ index: Int) -> Bool {
+        if case .speed? = sent[index] { return true }
+        return false
+    }
+
     /// - Parameter adaptiveFraction: what the adaptive controller asks for now. Only the
     ///   Adaptive preset uses it.
     func tick(
@@ -56,7 +62,10 @@ final class FanController {
     ) {
         safeguard.update(snapshot: snapshot, limit: safeguardLimit, isEnabled: safeguardEnabled)
         let effective = safeguard.isEngaged ? Preset.automatic : preset
-        plan = FanPlanner.plan(preset: effective, snapshot: snapshot, adaptiveFraction: adaptiveFraction)
+        plan = FanPlanner.plan(
+            preset: effective, snapshot: snapshot, adaptiveFraction: adaptiveFraction,
+            held: Set(snapshot.fans.map(\.index).filter(holds))
+        )
 
         guard isControlAllowed else {
             mode = .monitoring

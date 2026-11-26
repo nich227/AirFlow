@@ -170,7 +170,7 @@ struct PresetDetail: View {
 enum FanSentence {
     static func text(
         control: FanControl, command: FanCommand, sourceName: (SensorSource) -> String, format: ReadingFormat,
-        isActive: Bool, mode: FanController.Mode, heldElsewhereAt: Double? = nil
+        isActive: Bool, mode: FanController.Mode, heldElsewhereAt: Double? = nil, isResting: Bool = false
     ) -> String {
         let inEffect = isActive && mode == .controlling && heldElsewhereAt == nil
         var text: String
@@ -189,6 +189,11 @@ enum FanSentence {
             text = inEffect ? "Follows \(sourceName(rule.source)), \(range)." : "This preset follows \(sourceName(rule.source)), \(range)."
             switch command {
             case .automatic:
+                // The rule leaves the fan to macOS below its start temperature.
+                if isResting {
+                    let below = " It's below \(format.temperature(rule.startCelsius)) now, so macOS"
+                    return text + below + (isActive ? " controls the fan." : " would control the fan.")
+                }
                 return text + " This Mac doesn't report that sensor, so macOS controls the fan."
             case .speed(let rpm):
                 // A constant speed is in the sentence already. A rule's speed moves, so it is added.
@@ -245,7 +250,15 @@ struct FanSection: View {
         if preset.kind == .adaptive {
             return FanPlanner.adaptiveCommand(fan: fan, fraction: model.adaptive.fraction)
         }
-        return FanPlanner.command(for: control, fan: fan, snapshot: snapshot)
+        return FanPlanner.command(
+            for: control, fan: fan, snapshot: snapshot, isHeld: isActive && model.controller.holds(fan.index)
+        )
+    }
+
+    /// Whether the preset's rule leaves this fan to macOS now, below its start temperature.
+    private var isResting: Bool {
+        guard case .sensorBased(let rule) = control, command == .automatic else { return false }
+        return snapshot.celsius(for: rule.source) != nil
     }
 
     var body: some View {
@@ -288,7 +301,7 @@ struct FanSection: View {
         }
         return FanSentence.text(
             control: control, command: command, sourceName: { snapshot.name(of: $0) }, format: model.settings.format,
-            isActive: isActive, mode: model.controller.mode, heldElsewhereAt: heldElsewhereAt
+            isActive: isActive, mode: model.controller.mode, heldElsewhereAt: heldElsewhereAt, isResting: isResting
         )
     }
 
@@ -410,6 +423,15 @@ struct SensorRuleEditor: View {
                 }
             }
             .airFont(.body)
+            HStack(spacing: Space.xs) {
+                Text(readings: "Below \(format.temperature(rule.startCelsius))")
+                    .airFont(.body)
+                AntSelect(
+                    title: "Below the start temperature", selection: belowStart,
+                    options: SensorRule.BelowStart.allCases.map { AntOption(value: $0, title: $0.title) }
+                )
+                .help("Minimum Speed holds the fan at its lowest speed. Automatic lets macOS control the fan until the sensor reaches the start temperature.")
+            }
         }
     }
 
@@ -429,7 +451,7 @@ struct SensorRuleEditor: View {
         Binding {
             rule.source
         } set: { new in
-            rule = SensorRule(source: new, startCelsius: rule.startCelsius, maxCelsius: rule.maxCelsius)
+            rule = SensorRule(source: new, startCelsius: rule.startCelsius, maxCelsius: rule.maxCelsius, belowStart: rule.belowStart)
         }
     }
 
@@ -437,7 +459,7 @@ struct SensorRuleEditor: View {
         Binding {
             rule.startCelsius
         } set: { new in
-            rule = SensorRule(source: rule.source, startCelsius: new, maxCelsius: rule.maxCelsius)
+            rule = SensorRule(source: rule.source, startCelsius: new, maxCelsius: rule.maxCelsius, belowStart: rule.belowStart)
         }
     }
 
@@ -445,7 +467,15 @@ struct SensorRuleEditor: View {
         Binding {
             rule.maxCelsius
         } set: { new in
-            rule = SensorRule(source: rule.source, startCelsius: rule.startCelsius, maxCelsius: new)
+            rule = SensorRule(source: rule.source, startCelsius: rule.startCelsius, maxCelsius: new, belowStart: rule.belowStart)
+        }
+    }
+
+    private var belowStart: Binding<SensorRule.BelowStart> {
+        Binding {
+            rule.belowStart
+        } set: { new in
+            rule = SensorRule(source: rule.source, startCelsius: rule.startCelsius, maxCelsius: rule.maxCelsius, belowStart: new)
         }
     }
 }

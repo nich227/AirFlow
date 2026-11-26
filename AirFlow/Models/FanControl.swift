@@ -1,22 +1,66 @@
 import Foundation
 
 /// A fan that follows a sensor. The speed stays at the minimum up to `startCelsius`, then rises in
-/// a straight line to the maximum at `maxCelsius`.
+/// a straight line to the maximum at `maxCelsius`. A rule can also leave the fan to the system
+/// below `startCelsius`.
 struct SensorRule: Equatable, Codable, Sendable {
+    /// What the fan does while the sensor is below the start temperature.
+    enum BelowStart: String, Codable, CaseIterable, Sendable {
+        /// AirFlow holds the fan at its minimum speed.
+        case minimum
+        /// The system controls the fan, so it can still cool a part the rule does not follow.
+        case automatic
+
+        var title: String {
+            switch self {
+            case .minimum: return "Minimum Speed"
+            case .automatic: return "Automatic"
+            }
+        }
+    }
+
     var source: SensorSource
     var startCelsius: Double
     var maxCelsius: Double
+    var belowStart: BelowStart
 
     static let temperatureRange: ClosedRange<Double> = 20...110
     /// The least distance between the two temperatures, so the rise is never a jump.
     static let minimumSpan: Double = 5
+    /// A fan that the system has below the start temperature is taken at that temperature and
+    /// given back this far below it, so it does not change hands at each small change.
+    static let restMargin: Double = 2
 
-    init(source: SensorSource, startCelsius: Double, maxCelsius: Double) {
+    init(source: SensorSource, startCelsius: Double, maxCelsius: Double, belowStart: BelowStart = .minimum) {
         self.source = source
+        self.belowStart = belowStart
         let range = Self.temperatureRange
         let start = min(max(startCelsius, range.lowerBound), range.upperBound - Self.minimumSpan)
         self.startCelsius = start
         self.maxCelsius = min(max(maxCelsius, start + Self.minimumSpan), range.upperBound)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case source, startCelsius, maxCelsius, belowStart
+    }
+
+    /// A stored rule goes through the same limits as any other, and one stored before
+    /// `belowStart` existed holds the fan at its minimum.
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            source: try values.decode(SensorSource.self, forKey: .source),
+            startCelsius: try values.decode(Double.self, forKey: .startCelsius),
+            maxCelsius: try values.decode(Double.self, forKey: .maxCelsius),
+            belowStart: try values.decodeIfPresent(BelowStart.self, forKey: .belowStart) ?? .minimum
+        )
+    }
+
+    /// Whether the rule leaves the fan to the system at a temperature.
+    /// - Parameter isHeld: whether AirFlow holds the fan now.
+    func rests(at celsius: Double, isHeld: Bool) -> Bool {
+        guard belowStart == .automatic else { return false }
+        return celsius < (isHeld ? startCelsius - Self.restMargin : startCelsius)
     }
 
     /// How far up its range the fan runs at a temperature, from 0 to 1.
@@ -70,7 +114,9 @@ enum FanCommand: Equatable, Sendable {
 enum FanPlanner {
     static let rpmStep: Double = 10
 
-    static func command(for control: FanControl, fan: Fan, snapshot: ThermalSnapshot) -> FanCommand {
+    /// - Parameter isHeld: whether AirFlow holds the fan now. Only a sensor rule that leaves the
+    ///   fan to the system below its start temperature uses it.
+    static func command(for control: FanControl, fan: Fan, snapshot: ThermalSnapshot, isHeld: Bool = false) -> FanCommand {
         guard fan.hasUsableRange else { return .automatic }
         switch control {
         case .automatic:
@@ -82,6 +128,7 @@ enum FanPlanner {
         case .sensorBased(let rule):
             // A rule whose sensor is gone cannot be followed, so the system takes the fan.
             guard let celsius = snapshot.celsius(for: rule.source) else { return .automatic }
+            if rule.rests(at: celsius, isHeld: isHeld) { return .automatic }
             return .speed(rule.rpm(at: celsius, fan: fan))
         }
     }
@@ -89,13 +136,18 @@ enum FanPlanner {
     /// - Parameter adaptiveFraction: the share of each fan's range that the adaptive controller
     ///   asks for. Only the Adaptive preset uses it. Without it, that preset leaves every fan
     ///   to the system.
-    static func plan(preset: Preset, snapshot: ThermalSnapshot, adaptiveFraction: Double? = nil) -> [Int: FanCommand] {
+    /// - Parameter held: the fans AirFlow holds now, by fan index.
+    static func plan(
+        preset: Preset, snapshot: ThermalSnapshot, adaptiveFraction: Double? = nil, held: Set<Int> = []
+    ) -> [Int: FanCommand] {
         var commands: [Int: FanCommand] = [:]
         for fan in snapshot.fans {
             if preset.kind == .adaptive {
                 commands[fan.index] = adaptiveCommand(fan: fan, fraction: adaptiveFraction)
             } else {
-                commands[fan.index] = command(for: preset.control(for: fan), fan: fan, snapshot: snapshot)
+                commands[fan.index] = command(
+                    for: preset.control(for: fan), fan: fan, snapshot: snapshot, isHeld: held.contains(fan.index)
+                )
             }
         }
         return commands

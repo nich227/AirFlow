@@ -168,6 +168,51 @@ final class FanControllerTests: XCTestCase {
         XCTAssertEqual(recorder.calls.count, 3)
     }
 
+    func testARuleCanLeaveTheFanToTheSystemBelowItsStart() throws {
+        let fan = Fixtures.fan()
+        let resting = SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43, belowStart: .automatic)
+        func command(_ battery: Double, held: Bool) -> FanCommand {
+            FanPlanner.command(for: .sensorBased(resting), fan: fan, snapshot: Fixtures.snapshot(battery: battery), isHeld: held)
+        }
+        XCTAssertEqual(command(30, held: false), .automatic)
+        XCTAssertEqual(command(32.9, held: false), .automatic)
+        XCTAssertEqual(command(33, held: false), .speed(1000), "AirFlow takes the fan at the start temperature")
+        XCTAssertEqual(command(38, held: false), .speed(3000))
+        XCTAssertEqual(command(32, held: true), .speed(1000), "A fan AirFlow holds stays held just below the start")
+        XCTAssertEqual(command(31, held: true), .speed(1000))
+        XCTAssertEqual(command(30.9, held: true), .automatic, "It goes back \(SensorRule.restMargin) degrees below the start")
+        let holding = SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43)
+        XCTAssertEqual(FanPlanner.command(for: .sensorBased(holding), fan: fan, snapshot: Fixtures.snapshot(battery: 20)), .speed(1000))
+        XCTAssertFalse(holding.rests(at: 0, isHeld: false))
+        // A rule kept as JSON before the choice existed holds the minimum, and its numbers go through the limits.
+        let stored = try JSONDecoder().decode(SensorRule.self, from: Data(#"{"source":{"group":{"_0":"battery","_1":"average"}},"startCelsius":-40,"maxCelsius":43}"#.utf8))
+        XCTAssertEqual(stored.belowStart, .minimum)
+        XCTAssertEqual(stored.startCelsius, SensorRule.temperatureRange.lowerBound)
+        XCTAssertEqual(try JSONDecoder().decode(SensorRule.self, from: JSONEncoder().encode(resting)), resting)
+        let travel = try XCTUnwrap(Preset.starters().last)
+        XCTAssertEqual(travel.name, "Travel")
+        XCTAssertEqual(FanPlanner.plan(preset: travel, snapshot: Fixtures.snapshot(cpu: 90, battery: 30)), [0: .automatic, 1: .automatic], "Travel leaves a cool battery's fans to the system")
+    }
+
+    func testAFanThatRestsIsTakenAtTheStartAndGivenBackBelowIt() async {
+        controller.isControlAllowed = true
+        let rule = SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43, belowStart: .automatic)
+        let lap = Preset(name: "Lap", icon: .airplane, fallback: .sensorBased(rule))
+        await tick(Fixtures.snapshot(battery: 30), lap)
+        XCTAssertTrue(recorder.calls.isEmpty, "A cool battery sends nothing")
+        XCTAssertFalse(controller.holdsAnyFan)
+        await tick(Fixtures.snapshot(battery: 38), lap)
+        XCTAssertEqual(recorder.calls, [.speed(0, 3000), .speed(1, 3000)])
+        XCTAssertTrue(controller.holds(0))
+        var held = [Fixtures.fan(0, manual: true), Fixtures.fan(1, manual: true)]
+        for index in held.indices { held[index].targetRPM = 1000 }
+        await tick(Fixtures.snapshot(battery: 32, fans: held), lap)
+        XCTAssertEqual(recorder.calls.suffix(2), [.speed(0, 1000), .speed(1, 1000)], "Just below the start the fans stay held, at their minimum")
+        await tick(Fixtures.snapshot(battery: 30, fans: held), lap)
+        XCTAssertEqual(recorder.calls.last, .resetAll)
+        XCTAssertFalse(controller.holds(0))
+    }
+
     func testAFanSetToAnotherSpeedIsNotedAndNotWrittenOver() async {
         controller.isControlAllowed = true
         await tick(Fixtures.snapshot(), quiet)

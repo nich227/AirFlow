@@ -34,14 +34,14 @@ struct CurveEditor: View {
                         rule = SensorRule(
                             source: rule.source,
                             startCelsius: min(celsius, rule.maxCelsius - SensorRule.minimumSpan),
-                            maxCelsius: rule.maxCelsius
+                            maxCelsius: rule.maxCelsius, belowStart: rule.belowStart
                         )
                     }
                     handle(at: plot.point(celsius: rule.maxCelsius, fraction: 1), plot: plot) { celsius in
                         rule = SensorRule(
                             source: rule.source,
                             startCelsius: rule.startCelsius,
-                            maxCelsius: max(celsius, rule.startCelsius + SensorRule.minimumSpan)
+                            maxCelsius: max(celsius, rule.startCelsius + SensorRule.minimumSpan), belowStart: rule.belowStart
                         )
                     }
                 }

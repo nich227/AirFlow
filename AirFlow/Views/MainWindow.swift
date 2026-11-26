@@ -46,6 +46,11 @@ struct MainWindow: View {
         .overlay {
             SheetShadow(size: model.openSheetSize)
         }
+        // The window says when its sheet has gone, whatever the sheet's own view reports. Without
+        // this, a sheet that closed left its shadow on the window.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEndSheetNotification)) { _ in
+            model.openSheetSize = nil
+        }
         // The palette's main color is the accent of every control in the window.
         .tint(Palette.accent)
         // The window lets the desktop show through, so the glass components have something to bend.

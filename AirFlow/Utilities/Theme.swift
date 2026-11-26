@@ -434,15 +434,22 @@ extension View {
 
 private struct SheetShadowCaster: ViewModifier {
     @Environment(AppModel.self) private var model
+    /// True from the sheet's appearing to its disappearing. A sheet reports its size once more
+    /// as it closes, and that size must not bring the shadow back.
+    @State private var isOpen = false
 
     func body(content: Content) -> some View {
         content
             .onGeometryChange(for: CGSize.self) { proxy in
                 proxy.size
             } action: { size in
-                model.openSheetSize = size
+                if isOpen { model.openSheetSize = size }
             }
-            .onDisappear { model.openSheetSize = nil }
+            .onAppear { isOpen = true }
+            .onDisappear {
+                isOpen = false
+                model.openSheetSize = nil
+            }
     }
 }
 

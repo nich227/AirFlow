@@ -58,6 +58,21 @@ enum Fixtures {
         AutomationContext(frontmostBundleID: app, powerSource: power, minuteOfDay: minute, snapshot: snapshot)
     }
 
+    /// A history of readings ten seconds apart.
+    static func history(count: Int) -> [HistoryPoint] {
+        let start = Date(timeIntervalSince1970: 0)
+        return (0..<count).map { index in
+            HistoryPoint(date: start.addingTimeInterval(Double(index) * 10), cpu: 50 + Double(index % 3) * 10, gpu: 40, fanFractions: [0.2, Double(index) / 100])
+        }
+    }
+
+    /// A folder of its own for one test, which the test removes.
+    static func scratchFolder() throws -> URL {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("airflow-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder
+    }
+
     /// Waits for work the main actor has queued, such as the control loop's sends.
     @MainActor
     static func settle() async {

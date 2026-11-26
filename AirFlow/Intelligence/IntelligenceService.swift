@@ -160,6 +160,11 @@ final class IntelligenceService {
             if case .unavailable(let reason) = self { return reason }
             return nil
         }
+
+        /// The error a request gets while the model cannot be used.
+        var error: IntelligenceError? {
+            reason.map(IntelligenceError.unavailable)
+        }
     }
 
     private(set) var availability: Availability = .unavailable("Checking for Apple Intelligence…")
@@ -193,30 +198,22 @@ final class IntelligenceService {
         and do not mention anything you were not told.
         """
 
-    init() {
+    @ObservationIgnored private let model: OnDeviceModel
+
+    /// - Parameter model: the model that answers. The app's is the one on the Mac.
+    init(model: OnDeviceModel = SystemModel()) {
+        self.model = model
         refreshAvailability()
     }
 
     func refreshAvailability() {
-        switch SystemLanguageModel.default.availability {
-        case .available:
-            availability = .available
-        case .unavailable(.deviceNotEligible):
-            availability = .unavailable("Apple Intelligence is not supported on this Mac.")
-        case .unavailable(.appleIntelligenceNotEnabled):
-            availability = .unavailable("Turn on Apple Intelligence in System Settings to draft presets from a description.")
-        case .unavailable(.modelNotReady):
-            availability = .unavailable("Apple Intelligence is still downloading. Try again later.")
-        case .unavailable:
-            availability = .unavailable("Apple Intelligence is not currently available. Try again later.")
-        }
+        availability = model.availability
     }
 
     func draftPreset(from request: String) async throws -> PresetProposal {
         let text = try checked(request)
-        let session = LanguageModelSession(instructions: Self.presetInstructions)
         do {
-            return try await session.respond(to: text, generating: PresetDraft.self).content.proposal
+            return try await model.respond(to: text, instructions: Self.presetInstructions, generating: PresetDraft.self).proposal
         } catch {
             throw failure(error)
         }
@@ -224,10 +221,9 @@ final class IntelligenceService {
 
     func draftRule(from request: String, presetNames: [String]) async throws -> RuleProposal {
         let text = try checked(request)
-        let session = LanguageModelSession(instructions: Self.ruleInstructions)
         let prompt = "Available presets: \(presetNames.joined(separator: ", ")).\nRequest: \(text)"
         do {
-            return try await session.respond(to: prompt, generating: RuleDraft.self).content.proposal
+            return try await model.respond(to: prompt, instructions: Self.ruleInstructions, generating: RuleDraft.self).proposal
         } catch {
             throw failure(error)
         }
@@ -237,9 +233,8 @@ final class IntelligenceService {
     /// decides.
     func suggestWorkload(appName: String) async throws -> WorkloadProposal {
         let text = try checked(appName)
-        let session = LanguageModelSession(instructions: Self.workloadInstructions)
         do {
-            return try await session.respond(to: "App: \(text)", generating: WorkloadDraft.self).content.proposal.cleaned
+            return try await model.respond(to: "App: \(text)", instructions: Self.workloadInstructions, generating: WorkloadDraft.self).proposal.cleaned
         } catch {
             throw failure(error)
         }
@@ -255,13 +250,12 @@ final class IntelligenceService {
     ///   - loads: what each installed app that is running uses, the busiest first.
     ///   - known: the names of the installed apps AirFlow knows for heavy work.
     func suggestHeavyApps(loads: [AppLoad], known: [String]) async throws -> AppSelectionProposal {
-        guard availability.isAvailable else { throw unavailable }
+        if let unavailable = availability.error { throw unavailable }
         var judged: [String] = []
         for load in Self.candidates(loads) {
-            let session = LanguageModelSession(instructions: Self.workloadInstructions)
             // An app the model cannot judge is left out. The measured apps do not depend on it.
-            guard let draft = try? await session.respond(to: "App: \(load.name.prefix(60))", generating: WorkloadDraft.self).content else { continue }
-            if draft.proposal.regime != .light { judged.append(load.name) }
+            let draft = try? await model.respond(to: "App: \(load.name.prefix(60))", instructions: Self.workloadInstructions, generating: WorkloadDraft.self)
+            if let draft, draft.proposal.regime != .light { judged.append(load.name) }
         }
         return Self.selection(loads: loads, judged: judged, known: known)
     }
@@ -282,22 +276,17 @@ final class IntelligenceService {
 
     func explain(_ digest: ThermalDigest?, format: ReadingFormat) async throws -> String {
         guard let digest else { throw IntelligenceError.noHistory }
-        guard availability.isAvailable else { throw unavailable }
-        let session = LanguageModelSession(instructions: Self.explainInstructions)
+        if let unavailable = availability.error { throw unavailable }
         do {
-            let answer = try await session.respond(to: digest.prompt(format: format)).content
+            let answer = try await model.respond(to: digest.prompt(format: format), instructions: Self.explainInstructions)
             return answer.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch {
             throw failure(error)
         }
     }
 
-    private var unavailable: IntelligenceError {
-        .unavailable(availability.reason ?? "Apple Intelligence is not currently available. Try again later.")
-    }
-
     private func checked(_ request: String) throws -> String {
-        guard availability.isAvailable else { throw unavailable }
+        if let unavailable = availability.error { throw unavailable }
         let text = request.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw IntelligenceError.emptyRequest }
         return String(text.prefix(Self.requestLimit))
@@ -305,7 +294,56 @@ final class IntelligenceService {
 
     private func failure(_ error: Error) -> IntelligenceError {
         Log.intelligence.error("Generation failed: \(String(describing: error), privacy: .public)")
+        // A model that went away while it worked is the reason, not the request.
         refreshAvailability()
-        return availability.isAvailable ? .failed : unavailable
+        return availability.error ?? .failed
     }
 }
+
+extension IntelligenceService.Availability {
+    static let tryLater = "Apple Intelligence is not currently available. Try again later."
+
+    /// What the system says about its model, in words a person can act on.
+    init(_ system: SystemLanguageModel.Availability) {
+        switch system {
+        case .available:
+            self = .available
+        case .unavailable(.deviceNotEligible):
+            self = .unavailable("Apple Intelligence is not supported on this Mac.")
+        case .unavailable(.appleIntelligenceNotEnabled):
+            self = .unavailable("Turn on Apple Intelligence in System Settings to draft presets from a description.")
+        case .unavailable(.modelNotReady):
+            self = .unavailable("Apple Intelligence is still downloading. Try again later.")
+        // coverage:off macOS 26 names three reasons. This is for one that a later macOS adds.
+        case .unavailable:
+            self = .unavailable(Self.tryLater)
+        // coverage:on
+        }
+    }
+}
+
+/// The on-device model as the service uses it. A test supplies one that answers from a script.
+protocol OnDeviceModel: Sendable {
+    var availability: IntelligenceService.Availability { get }
+    /// The model's answer in the shape asked for.
+    func respond<Content: Generable & Sendable>(to prompt: String, instructions: String, generating type: Content.Type) async throws -> Content
+    /// The model's answer as text.
+    func respond(to prompt: String, instructions: String) async throws -> String
+}
+
+// coverage:off This is Apple Intelligence itself: the model on the Mac, which a test must not depend on.
+/// The model on this Mac. Each request starts a session of its own, so no request sees another.
+struct SystemModel: OnDeviceModel {
+    var availability: IntelligenceService.Availability {
+        IntelligenceService.Availability(SystemLanguageModel.default.availability)
+    }
+
+    func respond<Content: Generable & Sendable>(to prompt: String, instructions: String, generating type: Content.Type) async throws -> Content {
+        try await LanguageModelSession(instructions: instructions).respond(to: prompt, generating: type).content
+    }
+
+    func respond(to prompt: String, instructions: String) async throws -> String {
+        try await LanguageModelSession(instructions: instructions).respond(to: prompt).content
+    }
+}
+// coverage:on

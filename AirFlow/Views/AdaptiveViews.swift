@@ -228,8 +228,8 @@ struct AppWorkloadsEditor: View {
         model.adaptive.setWorkload(AppWorkload(bundleID: bundleID, name: app.name, regime: regime))
     }
 
-    /// Asks which installed apps are known for heavy work, then opens the grid with them selected.
-    /// Nothing is added until the person clicks Add there.
+    /// Measures what the running apps use, asks which installed apps work the Mac hard, then
+    /// opens the grid with them selected. Nothing is added until the person clicks Add there.
     private func suggestApps() {
         isSuggestingApps = true
         suggestion = .choosing
@@ -238,7 +238,8 @@ struct AppWorkloadsEditor: View {
         Task {
             defer { isSuggestingApps = false }
             do {
-                let proposal = try await model.intelligence.suggestHeavyApps(among: installed.map(\.name))
+                let loads = await model.measureAppLoads(installed: installed)
+                let proposal = try await model.intelligence.suggestHeavyApps(among: installed.map(\.name), loads: loads)
                 suggestion = .none
                 picker = Picker(selected: Set(proposal.apps(among: installed, excluding: added).map(\.bundleID)), isSuggested: true)
             } catch {

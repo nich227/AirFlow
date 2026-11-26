@@ -227,8 +227,8 @@ struct AppPickerSheet: View {
     static func subtitle(isSuggested: Bool, selected: Int) -> String {
         guard isSuggested else { return "Choose the apps that put a heavy load on your Mac." }
         return selected == 0
-            ? "Apple Intelligence found no app it knows for heavy work. Choose the apps yourself."
-            : "Apple Intelligence selected the apps it knows for heavy work. Change the selection, then click Add."
+            ? "Apple Intelligence found no app that works your Mac hard. Choose the apps yourself."
+            : "Apple Intelligence selected the apps that use your Mac’s processor most and the apps it knows for heavy work. Change the selection, then click Add."
     }
 
     /// The line beside the buttons: what to do, or how many apps are selected.

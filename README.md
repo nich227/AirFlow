@@ -124,7 +124,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 
 - Describe a preset or a rule, such as "Stay quiet until the CPU reaches 80°", and the model on your Mac drafts it. You decide whether to keep it.
 - Click Explain These Readings, and the model says in plain words what the recent temperatures and fan speeds show.
-- Click Suggest Apps on the Adaptive page to have the model select the apps on your Mac that it knows are used for heavy work. You can change the selection before you add the apps.
+- Click Suggest Apps on the Adaptive page. AirFlow measures how much of your Mac's processor each open app uses, and the model selects the apps that use the most and the apps it knows are used for heavy work. You can change the selection before you add the apps.
 - The model never changes a fan. Nothing you type and no reading leaves your Mac.
 
 ### Siri and Shortcuts
@@ -211,7 +211,7 @@ Changing fan speeds changes how your Mac cools itself. You are responsible for t
 
 ## Privacy
 
-AirFlow doesn't collect any data. Its one network connection is the check for a newer version, which reads a list of releases from GitHub and sends nothing about you or your Mac. You can turn the check off in Preferences > About. Apple Intelligence runs on your Mac. Your presets and rules, the apps you told Adaptive about, and the coefficients Adaptive has learned are stored in your Library folder. You can delete them there at any time.
+AirFlow doesn't collect any data. Its one network connection is the check for a newer version, which reads a list of releases from GitHub and sends nothing about you or your Mac. You can turn the check off in Preferences > About. Apple Intelligence runs on your Mac. When you click Suggest Apps, AirFlow reads how much processor time each open app has used, and it keeps none of it. Your presets and rules, the apps you told Adaptive about, and the coefficients Adaptive has learned are stored in your Library folder. You can delete them there at any time.
 
 ## The presets file
 

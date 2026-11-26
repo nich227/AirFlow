@@ -80,6 +80,22 @@ int32_t airflow_reader_read_sensors_in(AirflowReader *reader, AirflowSensor *sen
 // The power the whole Mac draws, in watts, or a negative number where the SMC does not report it.
 double airflow_reader_read_system_power(AirflowReader *reader);
 
+// One running app with what its processes use, added up. A helper process counts for the
+// outermost app bundle that holds it. The path is NUL-terminated UTF-8.
+typedef struct AirflowAppUsage {
+    char bundle_path[1024];
+    // The processor time the app's processes have used since they started.
+    double cpu_seconds;
+    // How long ago the app's oldest process started.
+    double running_seconds;
+    uint64_t memory_bytes;
+    int32_t processes;
+} AirflowAppUsage;
+
+// Fills at most `capacity` entries with the running apps, the one with the most processor time
+// first, and returns how many it filled. Reading this needs no privilege.
+int32_t airflow_app_usage(AirflowAppUsage *apps, int32_t capacity);
+
 // 1 when the Mac runs on its battery, and 0 when it is plugged in or has no battery.
 int32_t airflow_power_source_is_battery(void);
 

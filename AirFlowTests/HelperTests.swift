@@ -6,6 +6,15 @@ import XCTest
 /// the SMC's byte formats, the sensor names, the fan writer's limits, and the trust rule. These
 /// tests cover what crosses the C interface and how the app is put together around it.
 final class BackendBridgeTests: XCTestCase {
+    func testTheRunningAppsCrossTheBridge() {
+        let apps = Backend.appUsage()
+        XCTAssertLessThanOrEqual(apps.count, Backend.maximumApps)
+        XCTAssertTrue(apps.allSatisfy { $0.bundlePath.hasSuffix(".app") && $0.cpuSeconds >= 0 && $0.runningSeconds >= 0 })
+        XCTAssertEqual(apps.map(\.cpuSeconds), apps.map(\.cpuSeconds).sorted(by: >), "The busiest app is first")
+        // The tests run inside the app, so the app itself is among the running ones.
+        XCTAssertTrue(apps.contains { Bundle(path: $0.bundlePath)?.bundleIdentifier == Bundle.main.bundleIdentifier })
+    }
+
     func testTheBackendsSampleMacCrossesTheBridge() throws {
         let reader = try XCTUnwrap(BackendReader(sample: true))
         let snapshot = reader.snapshot(at: Date(timeIntervalSince1970: 10))

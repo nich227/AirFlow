@@ -197,6 +197,22 @@ final class AppModel {
         client?.disconnect()
     }
 
+    /// How long the two readings of the running apps are apart.
+    static let appLoadInterval: Duration = .milliseconds(1500)
+
+    /// What each installed app that is running uses: two readings of the running apps, a
+    /// moment apart, off the main thread. AirFlow itself is left out.
+    func measureAppLoads(installed: [AppDirectory.App]) async -> [AppLoad] {
+        let before = await Task.detached { Backend.appUsage() }.value
+        try? await Task.sleep(for: Self.appLoadInterval)
+        let after = await Task.detached { Backend.appUsage() }.value
+        let seconds = Double(Self.appLoadInterval.components.seconds) + Double(Self.appLoadInterval.components.attoseconds) / 1e18
+        return AppLoad.loads(
+            before: before, after: after, seconds: seconds, installed: installed, own: Bundle.main.bundleIdentifier,
+            bundleID: { Bundle(path: $0)?.bundleIdentifier }
+        )
+    }
+
     /// The parts that a preset's fan or a rule follows, so the monitor reads them on every
     /// sample. A single sensor counts as its part. One that the Mac does not report counts as
     /// every part, because its part is not known.

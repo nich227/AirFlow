@@ -6,7 +6,8 @@
 use crate::sensors::{FanReading, Reader, SensorReading, ALL_GROUPS};
 use crate::smc::{SmcAccess, SmcConnection};
 use crate::testing::FakeSmc;
-use crate::{power, protocol, signing};
+use crate::usage::AppUsage;
+use crate::{power, protocol, signing, usage};
 use std::ffi::c_char;
 
 #[repr(C)]
@@ -26,6 +27,27 @@ pub struct AirflowSensor {
     pub group: u8,
     pub is_known: bool,
     pub celsius: f64,
+}
+
+#[repr(C)]
+pub struct AirflowAppUsage {
+    pub bundle_path: [c_char; 1024],
+    pub cpu_seconds: f64,
+    pub running_seconds: f64,
+    pub memory_bytes: u64,
+    pub processes: i32,
+}
+
+fn app_usage(app: &AppUsage) -> AirflowAppUsage {
+    let mut out = AirflowAppUsage {
+        bundle_path: [0; 1024],
+        cpu_seconds: app.cpu_seconds,
+        running_seconds: app.running_seconds,
+        memory_bytes: app.memory_bytes,
+        processes: i32::try_from(app.processes).unwrap_or(i32::MAX),
+    };
+    fill(&mut out.bundle_path, &app.bundle_path);
+    out
 }
 
 pub struct AirflowReader {
@@ -147,6 +169,24 @@ pub unsafe extern "C" fn airflow_reader_read_system_power(reader: *mut AirflowRe
     reader.as_mut().and_then(|reader| reader.reader.system_power()).unwrap_or(-1.0)
 }
 
+/// The running apps with the processor time and the memory each one's processes use, the app
+/// with the most processor time first.
+///
+/// # Safety
+/// `apps` is null or points at `capacity` entries.
+#[no_mangle]
+pub unsafe extern "C" fn airflow_app_usage(apps: *mut AirflowAppUsage, capacity: i32) -> i32 {
+    let (false, Ok(capacity)) = (apps.is_null(), usize::try_from(capacity)) else {
+        return 0;
+    };
+    let running = usage::apps();
+    let count = running.len().min(capacity);
+    for (offset, app) in running.iter().take(count).enumerate() {
+        apps.add(offset).write(app_usage(app));
+    }
+    count as i32
+}
+
 #[no_mangle]
 pub extern "C" fn airflow_power_source_is_battery() -> i32 {
     i32::from(power::is_on_battery())
@@ -211,6 +251,28 @@ mod tests {
     }
 
     #[test]
+    fn the_running_apps_cross_the_interface() {
+        unsafe {
+            let mut apps: Vec<AirflowAppUsage> = (0..64).map(|_| std::mem::zeroed()).collect();
+            let count = airflow_app_usage(apps.as_mut_ptr(), 64);
+            assert!((0..=64).contains(&count));
+            for app in &apps[..count as usize] {
+                let path = CStr::from_ptr(app.bundle_path.as_ptr()).to_str().expect("utf8");
+                assert!(path.ends_with(".app"), "{path}");
+                assert!(app.processes > 0 && app.cpu_seconds >= 0.0 && app.running_seconds >= 0.0);
+            }
+            assert!(apps[..count as usize].windows(2).all(|pair| pair[0].cpu_seconds >= pair[1].cpu_seconds), "The busiest app is first");
+            assert!(airflow_app_usage(apps.as_mut_ptr(), 1) <= 1, "No more than the caller has room for");
+            assert_eq!(airflow_app_usage(std::ptr::null_mut(), 64), 0);
+            assert_eq!(airflow_app_usage(apps.as_mut_ptr(), -1), 0);
+        }
+        let long = AppUsage { bundle_path: "/".to_owned() + &"a".repeat(2_000) + ".app", cpu_seconds: 1.0, running_seconds: 2.0, memory_bytes: 3, processes: usize::MAX };
+        let out = app_usage(&long);
+        assert_eq!(unsafe { CStr::from_ptr(out.bundle_path.as_ptr()) }.to_bytes().len(), 1023, "A path that does not fit is cut, and still ends");
+        assert_eq!(out.processes, i32::MAX);
+    }
+
+    #[test]
     fn text_is_cut_to_fit_and_terminated() {
         let mut field = [1 as c_char; 8];
         fill(&mut field, "Performance");
@@ -232,7 +294,7 @@ mod tests {
             "airflow_reader_open(void)", "airflow_reader_open_sample(void)", "airflow_reader_close(",
             "airflow_reader_read_fans(", "airflow_reader_read_sensors(", "airflow_reader_read_sensors_in(",
             "airflow_reader_read_system_power(",
-            "airflow_power_source_is_battery(void)",
+            "airflow_power_source_is_battery(void)", "airflow_app_usage(",
             "airflow_helper_requirement(",
         ] {
             assert!(header.contains(name), "{name} is missing from airflow.h");

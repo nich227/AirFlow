@@ -4,6 +4,7 @@
 //! - `sensors` reads the fans and the temperature sensors and names them.
 //! - `fans` sets fan targets, clamped to each fan's own limits. Only the helper runs it.
 //! - `power` says whether the Mac is on its battery.
+//! - `usage` adds up the processor time and memory of each running app.
 //! - `signing` decides which code the app and the helper trust.
 //! - `protocol` names the messages the app sends the helper.
 //! - `ffi` is the C interface the Swift app links.
@@ -21,3 +22,4 @@ pub mod sensors;
 pub mod signing;
 pub mod smc;
 pub mod testing;
+pub mod usage;

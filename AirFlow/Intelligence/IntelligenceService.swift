@@ -69,9 +69,9 @@ enum DraftWorkload {
     case sustained
 }
 
-@Generable(description: "The apps on a Mac that are known for heavy work")
+@Generable(description: "The apps on a Mac that work it hard")
 struct AppSelectionDraft {
-    @Guide(description: "The names of the apps known for heavy work, each copied exactly from the list. Empty if none fit.")
+    @Guide(description: "The names of the running apps that use a large share of a processor core and of the apps known for heavy work, each copied exactly from the lists without its numbers. Empty if none fit.")
     var names: [String]
 }
 
@@ -194,10 +194,14 @@ final class IntelligenceService {
         """
 
     static let heavyAppsInstructions = """
-        You are given the names of the apps on a Mac, one on each line. Choose only the apps that are \
-        known to work the computer hard for more than a moment: video editing and export, 3D, games, \
-        building code, virtual machines, photo editing, and running language models. \
-        Copy each name exactly as it is given. Leave out an app you do not know. If none fit, choose none.
+        You are given the apps on a Mac in two lists. The first list has the apps that are running, \
+        the busiest first, each with the share of one processor core it uses now and since it opened. \
+        The second list has the other apps. Choose the running apps that use a large share of a core. \
+        Also choose the apps that are known to work a computer hard for more than a moment: video \
+        editing and export, 3D, games, building code, virtual machines, photo editing, and running \
+        language models. Leave out a running app that uses a small share and is not known for such work. \
+        Copy each name exactly as it is given, without the numbers. Leave out an app you do not know. \
+        If none fit, choose none.
         """
 
     static let explainInstructions = """
@@ -258,26 +262,41 @@ final class IntelligenceService {
         }
     }
 
-    /// Picks the apps known for heavy work out of the installed ones. Nothing is saved. The grid
-    /// of apps opens with them selected, and the person decides.
-    func suggestHeavyApps(among names: [String]) async throws -> AppSelectionProposal {
+    /// Picks the apps that work the Mac hard out of the installed ones: the running apps measured
+    /// as heavy, and the apps the model chooses from what each running app uses and from what it
+    /// knows of the others. Nothing is saved. The grid of apps opens with them selected, and the
+    /// person decides.
+    /// - Parameter loads: what each running app uses, the busiest first.
+    func suggestHeavyApps(among names: [String], loads: [AppLoad] = []) async throws -> AppSelectionProposal {
         guard availability.isAvailable else { throw unavailable }
         let session = LanguageModelSession(instructions: Self.heavyAppsInstructions)
         do {
-            let draft = try await session.respond(to: Self.heavyAppsPrompt(names), generating: AppSelectionDraft.self).content
-            return AppSelectionProposal(names: draft.names)
+            let draft = try await session.respond(to: Self.heavyAppsPrompt(names, loads: loads), generating: AppSelectionDraft.self).content
+            return Self.selection(loads: loads, chosen: draft.names)
         } catch {
             throw failure(error)
         }
     }
 
-    /// The installed apps as a list the model can copy names from. The list is cut so that it
-    /// fits what the model on the Mac can read at once.
-    static func heavyAppsPrompt(_ names: [String]) -> String {
-        "Apps:\n" + names.prefix(heavyAppsListLimit).map { String($0.prefix(60)) }.joined(separator: "\n")
+    /// The apps measured as heavy come first, so the model cannot leave one out, and the model's
+    /// own choices follow.
+    static func selection(loads: [AppLoad], chosen: [String]) -> AppSelectionProposal {
+        AppSelectionProposal(names: loads.filter(\.isHeavy).map(\.name) + chosen)
+    }
+
+    /// The apps as two lists the model can copy names from: the running apps with what each
+    /// uses, then the other apps. The lists are cut so that they fit what the model on the Mac
+    /// can read at once.
+    static func heavyAppsPrompt(_ names: [String], loads: [AppLoad] = []) -> String {
+        let running = loads.filter { $0.cores >= AppLoad.listedCores }.prefix(runningAppsListLimit)
+        let listed = Set(running.map(\.name))
+        var lines = ["Running apps:"] + (running.isEmpty ? ["None"] : running.map(\.promptLine))
+        lines += ["Other apps:"] + names.filter { !listed.contains($0) }.prefix(heavyAppsListLimit).map { String($0.prefix(60)) }
+        return lines.joined(separator: "\n")
     }
 
     static let heavyAppsListLimit = 240
+    static let runningAppsListLimit = 30
 
     func explain(_ digest: ThermalDigest?, format: ReadingFormat) async throws -> String {
         guard let digest else { throw IntelligenceError.noHistory }

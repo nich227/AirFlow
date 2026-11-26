@@ -68,8 +68,74 @@ struct WorkloadProposal: Equatable, Sendable {
     }
 }
 
-/// The apps the model picked out of the installed ones as known for heavy work. The person sees
-/// them selected in the grid of apps and decides which to add.
+/// How hard one installed app works the Mac, measured from its processes. A share of 1 is one
+/// whole processor core.
+struct AppLoad: Equatable, Sendable {
+    var name: String
+    var bundleID: String
+    /// The share of a core the app used between two readings a moment apart.
+    var coresNow: Double
+    /// The share of a core the app has used on average since it opened.
+    var coresOverall: Double
+    /// The processor time the app has used since it opened.
+    var cpuSeconds: Double
+
+    /// An app counts as heavy if it uses half a core now, or a quarter of a core on average
+    /// over at least a minute of processor time. The minute keeps out an app that just opened.
+    static let heavyCoresNow = 0.5
+    static let heavyCoresOverall = 0.25
+    static let heavyCPUSeconds: Double = 60
+    /// An app below this share now and on average is not listed as running for the model.
+    static let listedCores = 0.05
+
+    var isHeavy: Bool {
+        coresNow >= Self.heavyCoresNow || (coresOverall >= Self.heavyCoresOverall && cpuSeconds >= Self.heavyCPUSeconds)
+    }
+
+    /// The larger of the two shares, by which the apps are ordered.
+    var cores: Double { max(coresNow, coresOverall) }
+
+    /// The app as one line the model reads: "OpenCode: 95% of a core now, 67% since it opened".
+    var promptLine: String {
+        "\(name.prefix(60)): \(Self.percent(coresNow)) of a core now, \(Self.percent(coresOverall)) since it opened"
+    }
+
+    static func percent(_ share: Double) -> String {
+        "\(Int((max(share, 0) * 100).rounded()))%"
+    }
+
+    /// The loads of the installed apps that are running, the busiest first.
+    /// - Parameters:
+    ///   - before: the running apps at one moment.
+    ///   - after: the running apps `seconds` later.
+    ///   - bundleID: the identifier of the app at a path, or nil if it is not an app.
+    ///   - own: AirFlow's own identifier, which is left out.
+    static func loads(
+        before: [AppUsage], after: [AppUsage], seconds: Double, installed: [AppDirectory.App], own: String?,
+        bundleID: (String) -> String?
+    ) -> [AppLoad] {
+        let earlier = Dictionary(before.map { ($0.bundlePath, $0.cpuSeconds) }, uniquingKeysWith: { first, _ in first })
+        let names = Dictionary(installed.map { ($0.bundleID, $0.name) }, uniquingKeysWith: { first, _ in first })
+        var loads: [String: AppLoad] = [:]
+        for usage in after {
+            guard let id = bundleID(usage.bundlePath), id != own, let name = names[id] else { continue }
+            // An app that opened between the two readings has no earlier time, so it has no share now.
+            let used = earlier[usage.bundlePath].map { max(usage.cpuSeconds - $0, 0) } ?? 0
+            let now = seconds > 0 ? used / seconds : 0
+            let overall = usage.runningSeconds > 0 ? usage.cpuSeconds / usage.runningSeconds : 0
+            // Two copies of one app count as one.
+            var load = loads[id] ?? AppLoad(name: name, bundleID: id, coresNow: 0, coresOverall: 0, cpuSeconds: 0)
+            load.coresNow += now
+            load.coresOverall += overall
+            load.cpuSeconds += usage.cpuSeconds
+            loads[id] = load
+        }
+        return loads.values.sorted { ($0.cores, $1.name) > ($1.cores, $0.name) }
+    }
+}
+
+/// The apps to select in the grid of apps: the ones measured as heavy, then the ones the model
+/// picked. The person sees them selected and decides which to add.
 struct AppSelectionProposal: Equatable, Sendable {
     var names: [String]
 

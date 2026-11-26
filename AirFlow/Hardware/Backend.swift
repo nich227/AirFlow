@@ -96,9 +96,36 @@ extension SensorGroup {
     var sortIndex: Int { Int(backendCode) }
 }
 
+/// One running app with what its processes use, added up. The backend counts a helper process
+/// for the outermost app that holds it.
+struct AppUsage: Equatable, Sendable {
+    /// The app's bundle, such as `/Applications/Xcode.app`.
+    var bundlePath: String
+    /// The processor time the app's processes have used since they started.
+    var cpuSeconds: Double
+    /// How long ago the app's oldest process started.
+    var runningSeconds: Double
+    var memoryBytes: UInt64 = 0
+}
+
 enum Backend {
     static var isOnBattery: Bool {
         airflow_power_source_is_battery() == 1
+    }
+
+    /// More running apps than a Mac has open at once.
+    static let maximumApps = 512
+
+    /// The running apps, the one with the most processor time first. Reading needs no privilege.
+    static func appUsage() -> [AppUsage] {
+        var buffer = [AirflowAppUsage](repeating: AirflowAppUsage(), count: maximumApps)
+        let count = Int(airflow_app_usage(&buffer, Int32(buffer.count)))
+        return buffer.prefix(count).map { raw in
+            AppUsage(
+                bundlePath: withUnsafeBytes(of: raw.bundle_path) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) },
+                cpuSeconds: raw.cpu_seconds, runningSeconds: raw.running_seconds, memoryBytes: raw.memory_bytes
+            )
+        }
     }
 
     /// The code signing requirement the app sets on its connection to the helper. Nil when this

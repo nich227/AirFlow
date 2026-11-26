@@ -154,7 +154,7 @@ First, Adaptive works out what kind of work your Mac is doing. It reads the powe
 | Bursty | A photo filter or a build: seconds of load | Your Mac's own mass takes up the burst. The fans rise only if the average load over 15 seconds stays high. |
 | Sustained | A video export or a local language model: a high average load over 30 seconds, or a few seconds of load while a known app is open | The fans rise to at least 30% of their range before the heat arrives, and then hold steady. |
 
-Second, it forecasts the temperature 15 seconds ahead for each speed it could choose. It takes the speed that best balances heat against noise for that kind of work. The forecast is fitted to your Mac while it runs. AirFlow keeps the fitted coefficients and no history of readings.
+Second, it forecasts the temperature 15 seconds ahead for each speed it could choose. It takes the speed that best balances heat against noise for that kind of work. The forecast is fitted to your Mac while it runs. Until the fitted forecast is closer than the recent trend, the trend counts for more. AirFlow keeps the fitted coefficients and no history of readings.
 
 Four limits hold whatever Adaptive decides:
 

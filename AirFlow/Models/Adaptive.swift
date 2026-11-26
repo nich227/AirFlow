@@ -181,6 +181,12 @@ struct ThermalForecaster: Codable, Equatable, Sendable {
     private(set) var weights: [Double]
     private var covariance: [Double]
     private(set) var updates: Int
+    /// How far off each forecast has been lately, as a mean of squared degrees: the learned one,
+    /// and the slope carried on. Each answer scores both before the forecaster learns from it.
+    private(set) var learnedSquare: Double?
+    private(set) var carriedSquare: Double?
+    /// How many answers the two averages look back over.
+    private static let scoreSpan = 300.0
 
     /// The readings that wait for their answer, which is the temperature 15 seconds later.
     private var pending: [Pending] = []
@@ -190,10 +196,12 @@ struct ThermalForecaster: Codable, Equatable, Sendable {
         let time: TimeInterval
         let celsius: Double
         let features: [Double]
+        /// The learned forecast made for this reading, or nil while the forecaster was not warm.
+        let learned: Double?
     }
 
     private enum CodingKeys: String, CodingKey {
-        case weights, covariance, updates
+        case weights, covariance, updates, learnedSquare, carriedSquare
     }
 
     init() {
@@ -204,10 +212,21 @@ struct ThermalForecaster: Codable, Equatable, Sendable {
 
     var isWarm: Bool { updates >= Self.warmUp }
 
+    /// The learned forecast's share of the forecast, from 0 to 1. The rest is the slope carried
+    /// on. Each has a share in proportion to how close it has lately been, so the slope leads on a
+    /// Mac the forecaster has only just met and for a while after the Mac changes, and the learned
+    /// forecast leads once it has settled.
+    var learnedShare: Double {
+        guard isWarm, let learnedSquare, let carriedSquare else { return 0 }
+        let learned = 1 / max(learnedSquare, 0.01), carried = 1 / max(carriedSquare, 0.01)
+        return learned / (learned + carried)
+    }
+
     /// False for stored numbers that cannot be a forecaster, which then starts again.
     var isValid: Bool {
         weights.count == Self.size && covariance.count == Self.size * Self.size && updates >= 0
             && weights.allSatisfy(\.isFinite) && covariance.allSatisfy(\.isFinite)
+            && (learnedSquare ?? 0).isFinite && (carriedSquare ?? 0).isFinite
     }
 
     /// The last feature is the fans' speed times the temperature, as air takes more heat from a hot
@@ -220,19 +239,47 @@ struct ThermalForecaster: Codable, Equatable, Sendable {
 
     /// How far full fans cool the Mac within the horizon at a temperature, in degrees.
     func fanEffect(celsius: Double) -> Double {
-        guard isWarm else { return Self.defaultFanEffect }
+        let share = learnedShare
+        guard share > 0 else { return Self.defaultFanEffect }
         let learned = -(weights[Self.fanIndex] + weights[Self.fanHeatIndex] * (celsius - 50) / 50)
         guard learned.isFinite else { return Self.defaultFanEffect }
-        return min(max(learned, Self.fanEffectRange.lowerBound), Self.fanEffectRange.upperBound)
+        // What was learned about the fans counts as far as the learned forecast does.
+        let effect = share * learned + (1 - share) * Self.defaultFanEffect
+        return min(max(effect, Self.fanEffectRange.lowerBound), Self.fanEffectRange.upperBound)
     }
 
     /// The change in temperature expected over the horizon, in degrees.
     func rise(features: [Double]) -> Double {
         guard features.count == Self.size else { return 0 }
-        let learned = zip(weights, features).reduce(0) { $0 + $1.0 * $1.1 }
-        let carried = features[2] * Self.horizon
-        let rise = isWarm && learned.isFinite ? learned : carried
-        return min(max(rise, Self.plausibleRise.lowerBound), Self.plausibleRise.upperBound)
+        let carried = Self.plausible(Self.carriedRise(features: features))
+        let learned = Self.plausible(Self.learnedRise(weights: weights, features: features))
+        let share = learnedShare
+        guard share > 0, learned.isFinite else { return carried }
+        return share * learned + (1 - share) * carried
+    }
+
+    private static func learnedRise(weights: [Double], features: [Double]) -> Double {
+        zip(weights, features).reduce(0) { $0 + $1.0 * $1.1 }
+    }
+
+    /// The slope of the last few seconds, carried on over the horizon.
+    private static func carriedRise(features: [Double]) -> Double {
+        features[2] * horizon
+    }
+
+    private static func plausible(_ rise: Double) -> Double {
+        min(max(rise, plausibleRise.lowerBound), plausibleRise.upperBound)
+    }
+
+    /// Scores both forecasts that were made for a reading against its answer. The scores start
+    /// once the forecaster is warm, because its first forecasts say nothing about its later ones.
+    private mutating func score(_ reading: Pending, target: Double) {
+        guard let forecast = reading.learned, target.isFinite, abs(target) <= 60 else { return }
+        let learned = target - forecast
+        let carried = target - Self.plausible(Self.carriedRise(features: reading.features))
+        guard learned.isFinite, carried.isFinite else { return }
+        learnedSquare = learnedSquare.map { $0 + (learned * learned - $0) / Self.scoreSpan } ?? learned * learned
+        carriedSquare = carriedSquare.map { $0 + (carried * carried - $0) / Self.scoreSpan } ?? carried * carried
     }
 
     /// Takes a reading. The reading from one horizon ago now has its answer, and the forecaster
@@ -248,6 +295,7 @@ struct ThermalForecaster: Codable, Equatable, Sendable {
             firstPending += 1
             // A reading whose answer came far too late (e.g. after sleep) teaches nothing.
             if time - old.time <= Self.horizon + 5 {
+                score(old, target: celsius - old.celsius)
                 learn(features: old.features, target: celsius - old.celsius)
             }
         }
@@ -255,7 +303,8 @@ struct ThermalForecaster: Codable, Equatable, Sendable {
             pending.removeFirst(firstPending)
             firstPending = 0
         }
-        pending.append(Pending(time: time, celsius: celsius, features: features))
+        let learned = isWarm ? Self.plausible(Self.learnedRise(weights: weights, features: features)) : nil
+        pending.append(Pending(time: time, celsius: celsius, features: features, learned: learned))
     }
 
     /// One step of recursive least squares with forgetting.

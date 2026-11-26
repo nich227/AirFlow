@@ -185,6 +185,46 @@ final class ThermalForecasterTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(forecaster.fanEffect(celsius: 90), forecaster.fanEffect(celsius: 45), "Air takes more heat from a hot Mac")
     }
 
+    func testTheSlopeLeadsUntilTheLearnedForecastIsTheCloserOne() throws {
+        var forecaster = ThermalForecaster()
+        var plant = Plant()
+        var recent = RollingWindow(span: 6)
+        var asked: [(time: TimeInterval, celsius: Double, forecast: Double, carried: Double)] = []
+        var forecastError = 0.0, carriedError = 0.0
+        var shareWhenNew: Double?
+        for second in 0..<3000 {
+            let watts: Double = (second / 300) % 2 == 0 ? 12 : 60
+            plant.fraction = (second / 170) % 3 == 0 ? 0 : ((second / 170) % 3 == 1 ? 0.5 : 1)
+            plant.advance(watts: watts)
+            recent.add(plant.celsius, at: plant.time)
+            let slope = recent.oldest.map { plant.time - $0.time >= 1 ? (plant.celsius - $0.value) / (plant.time - $0.time) : 0 } ?? 0
+            let features = ThermalForecaster.features(celsius: plant.celsius, slope: slope, load: watts > 30 ? 1 : 0, fanFraction: plant.fraction)
+            forecaster.observe(features: features, celsius: plant.celsius, at: plant.time)
+            if second == 50 { shareWhenNew = forecaster.learnedShare }
+            // The first ten minutes, when the forecaster has only just met this Mac.
+            if (100..<600).contains(second) {
+                asked.append((plant.time, plant.celsius, forecaster.rise(features: features), min(max(slope * ThermalForecaster.horizon, -15), 25)))
+            }
+            while let first = asked.first, plant.time - first.time >= ThermalForecaster.horizon {
+                asked.removeFirst()
+                forecastError += abs(plant.celsius - first.celsius - first.forecast)
+                carriedError += abs(plant.celsius - first.celsius - first.carried)
+            }
+        }
+        XCTAssertEqual(shareWhenNew, 0, "Before it is warm, the forecast is the slope")
+        XCTAssertLessThanOrEqual(forecastError, carriedError, "No worse than the slope while it is new")
+        XCTAssertGreaterThan(forecaster.learnedShare, 0.5, "The learned forecast leads once it has settled")
+    }
+
+    func testAForecasterStoredBeforeItKeptScoresStillReads() throws {
+        let weights = Array(repeating: "0.1", count: 6).joined(separator: ",")
+        let covariance = Array(repeating: "1", count: 36).joined(separator: ",")
+        let old = try JSONDecoder().decode(ThermalForecaster.self, from: Data(#"{"weights":[\#(weights)],"covariance":[\#(covariance)],"updates":500}"#.utf8))
+        XCTAssertTrue(old.isValid)
+        XCTAssertTrue(old.isWarm)
+        XCTAssertEqual(old.learnedShare, 0, "It has no scores yet, so the slope leads")
+    }
+
     func testWhatItLearnedSurvivesBeingStoredAndABrokenFileStartsItAgain() throws {
         var forecaster = ThermalForecaster()
         for second in 0..<200 {
@@ -195,6 +235,7 @@ final class ThermalForecasterTests: XCTestCase {
         let read = try JSONDecoder().decode(ThermalForecaster.self, from: stored)
         XCTAssertEqual(read.weights, forecaster.weights)
         XCTAssertEqual(read.updates, forecaster.updates)
+        XCTAssertEqual(read.learnedShare, forecaster.learnedShare)
         XCTAssertTrue(read.isValid)
 
         let broken = try JSONDecoder().decode(ThermalForecaster.self, from: Data(#"{"weights":[1,2],"covariance":[1],"updates":5}"#.utf8))
@@ -650,7 +691,7 @@ final class ForecasterComparisonTests: XCTestCase {
             }
             print("COMPARE == \(scenario): mean error in degrees for \(spans.map(\.0).joined(separator: " | "))")
             print("COMPARE " + row("slope carried on", carriedError))
-            print("COMPARE " + row("AirFlow's forecaster (RLS)", oursError))
+            print("COMPARE " + row("AirFlow's forecast", oursError))
             for (index, variant) in variants.enumerated() {
                 print("COMPARE " + row(variant.0, appleError[index]) + String(format: "   %d fits, %.2f ms each", apples[index].fits, apples[index].fitSeconds / Double(max(apples[index].fits, 1)) * 1000))
             }

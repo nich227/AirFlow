@@ -43,14 +43,18 @@ fn function_name(name: &str) -> &str {
 
 /// Adds one LCOV file to what is known. Counts for a line or a function that appears twice
 /// are added up.
-fn read_lcov(text: &str, into: &mut BTreeMap<PathBuf, FileCoverage>) -> Result<(), String> {
+fn read_lcov(
+    text: &str,
+    real: &dyn Fn(&Path) -> PathBuf,
+    into: &mut BTreeMap<PathBuf, FileCoverage>,
+) -> Result<(), String> {
     let mut current: Option<PathBuf> = None;
     // A function's line comes in an FN record, and its count in a later FNDA record.
     let mut starts: BTreeMap<String, usize> = BTreeMap::new();
     for (index, line) in text.lines().enumerate() {
         let bad = || format!("line {} is not an LCOV record: {line}", index + 1);
         if let Some(path) = line.strip_prefix("SF:") {
-            current = Some(PathBuf::from(path));
+            current = Some(real(Path::new(path)));
             starts.clear();
             continue;
         }
@@ -367,6 +371,13 @@ fn arguments(mut given: impl Iterator<Item = String>) -> Result<Arguments, Strin
     }
 }
 
+/// A path with every link in it followed. Xcode and Cargo name one file by different paths when a
+/// folder above it is a link, and the check has to know them as one. A path that is not there
+/// stays as it is.
+fn real_path(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
 fn run(given: impl Iterator<Item = String>) -> Result<(String, bool), String> {
     let arguments = arguments(given)?;
     let read = |path: &Path| {
@@ -374,11 +385,11 @@ fn run(given: impl Iterator<Item = String>) -> Result<(String, bool), String> {
     };
     let mut coverage = BTreeMap::new();
     for file in &arguments.files {
-        read_lcov(&read(file)?, &mut coverage)
+        read_lcov(&read(file)?, &real_path, &mut coverage)
             .map_err(|problem| format!("{}: {problem}", file.display()))?;
     }
     let findings = check(
-        &arguments.root,
+        &real_path(&arguments.root),
         &arguments.gates,
         &coverage,
         &source_files,
@@ -412,7 +423,7 @@ mod tests {
 
     fn coverage(lcov: &str) -> BTreeMap<PathBuf, FileCoverage> {
         let mut found = BTreeMap::new();
-        read_lcov(lcov, &mut found).unwrap();
+        read_lcov(lcov, &|path| path.to_path_buf(), &mut found).unwrap();
         found
     }
 
@@ -438,6 +449,27 @@ mod tests {
     }
 
     #[test]
+    fn a_file_named_by_two_paths_is_one_file() {
+        let real = |path: &Path| PathBuf::from(path.to_string_lossy().replacen("/link/", "/r/", 1));
+        let mut found = BTreeMap::new();
+        read_lcov(
+            "SF:/link/src/a.rs\nDA:1,2\nend_of_record\nSF:/r/src/a.rs\nDA:1,3\nend_of_record\n",
+            &real,
+            &mut found,
+        )
+        .unwrap();
+        assert_eq!(found.keys().collect::<Vec<_>>(), [Path::new("/r/src/a.rs")]);
+        assert_eq!(
+            found[Path::new("/r/src/a.rs")].lines,
+            BTreeMap::from([(1, 5)])
+        );
+        assert_eq!(
+            real_path(Path::new("/nonexistent/airflow/x.rs")),
+            Path::new("/nonexistent/airflow/x.rs")
+        );
+    }
+
+    #[test]
     fn a_record_that_is_not_lcov_is_refused_with_its_line() {
         for text in [
             "SF:/a\nDA:x,1\n",
@@ -449,7 +481,8 @@ mod tests {
             "SF:/a\nFN:1,a\nFNDA:x,a\n",
             "SF:/a\nFNDA:1\n",
         ] {
-            let problem = read_lcov(text, &mut BTreeMap::new()).unwrap_err();
+            let problem =
+                read_lcov(text, &|path| path.to_path_buf(), &mut BTreeMap::new()).unwrap_err();
             assert!(problem.starts_with("line "), "{text:?} gave {problem}");
         }
         // Records outside a file, and kinds this check does not use, are passed over.

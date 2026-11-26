@@ -53,6 +53,29 @@ fn it_ends_with_1_and_names_the_line_that_did_not_run() {
 }
 
 #[test]
+fn it_knows_a_file_that_is_named_through_a_link() {
+    // The coverage names the file through a link to the root, and the root is given as it is.
+    let real = root("linked", 2);
+    let link = real.with_extension("link");
+    std::os::unix::fs::symlink(&real, &link).unwrap();
+    let through = link.join("src/a.rs").display().to_string();
+    std::fs::write(
+        real.join("a.lcov"),
+        format!("SF:{through}\nFN:1,a\nFNDA:2,a\nDA:2,2\nend_of_record\n"),
+    )
+    .unwrap();
+    let output = check(&real, "src");
+    std::fs::remove_file(&link).unwrap();
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("lines     1/1"));
+}
+
+#[test]
 fn it_ends_with_2_when_it_cannot_check() {
     let output = check(&root("nothing", 1), "elsewhere");
     assert_eq!(output.status.code(), Some(2));

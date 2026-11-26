@@ -104,6 +104,11 @@ enum Palette {
     /// They color the fan while Adaptive is the current preset.
     static let rainbow: [Color] = [0x61BB46, 0xFDB827, 0xF5821F, 0xE03A3E, 0x963D97, 0x009DDC].map { Color(light: $0, dark: $0) }
 
+    /// The rainbow as rings from a fan's hub outward. The hub and the housing share the first color.
+    static let rainbowRings: [Gradient.Stop] = zip([0, 0.19, 0.27, 0.39, 0.51, 0.63, 0.75, 0.86, 1], [0, 0, 1, 2, 3, 4, 5, 0, 0]).map {
+        Gradient.Stop(color: rainbow[$1], location: $0)
+    }
+
     /// The color of a kind of work, from the temperature scale: emerald for light work, amber for
     /// bursts, and orange for a long load. The word is always beside it.
     static func workload(_ regime: WorkloadRegime) -> Color {

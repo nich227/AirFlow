@@ -227,14 +227,15 @@ struct Rotor: View {
     var body: some View {
         if isRainbow {
             // The rotor is the stencil, and the rainbow shows through it.
-            AngularGradient(colors: Palette.rainbow + Palette.rainbow.prefix(1), center: .center)
+            // The rainbow runs outward in rings: the hub is one color, the blades step through the
+            // others, and the housing comes back to the hub's color.
+            RadialGradient(stops: Palette.rainbowRings, center: .center, startRadius: 0, endRadius: size / 2)
                 .mask {
                     ZStack {
                         AirAnimation(name: Animations.rotor, loops: true, isActive: isActive, speed: Self.turnsPerSecond(for: fan), tint: .white)
-                        // The dot in the middle is cut out, so the rainbow fan has an open hub.
-                        Circle().frame(width: size * 0.2, height: size * 0.2).blendMode(.destinationOut)
+                        // The hub is one solid disc, with a gap left before the blades.
+                        Circle().frame(width: size * 0.1875, height: size * 0.1875)
                     }
-                    .compositingGroup()
                 }
                 .frame(width: size, height: size)
         } else {

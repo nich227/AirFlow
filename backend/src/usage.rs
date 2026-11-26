@@ -84,11 +84,11 @@ pub fn apps() -> Vec<AppUsage> {
 
 /// Every process this user may ask about.
 pub fn samples() -> Vec<ProcessSample> {
+    // A clock whose rate cannot be read leaves the rate at zero, and `seconds` then gives
+    // every time as zero.
     let mut timebase = Timebase { numer: 0, denom: 0 };
     // SAFETY: the call fills the structure it is given, which lives until the call returns.
-    if unsafe { mach_timebase_info(&mut timebase) } != 0 {
-        return Vec::new();
-    }
+    unsafe { mach_timebase_info(&mut timebase) };
     // SAFETY: the call takes no argument and returns a number.
     let now = unsafe { mach_absolute_time() };
     process_ids().into_iter().filter_map(|pid| sample(pid, now, &timebase)).collect()

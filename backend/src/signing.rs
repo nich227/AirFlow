@@ -26,6 +26,27 @@ pub fn is_team_identifier(value: &str) -> bool {
 
 /// The team that signed the running program, or None for an ad hoc or unsigned build.
 pub fn own_team_identifier() -> Option<String> {
+    team_identifier(signed_team())
+}
+
+/// What the signature names as its team, if that is a team identifier.
+fn team_identifier(named: Option<String>) -> Option<String> {
+    named.filter(|team| is_team_identifier(team))
+}
+
+/// A requirement that only the running program's own team satisfies, for code with one of the
+/// identifiers. None for a program that no team signed, which therefore trusts no one.
+pub fn own_requirement(identifiers: &[&str]) -> Option<String> {
+    requirement_for(identifiers, own_team_identifier())
+}
+
+fn requirement_for(identifiers: &[&str], team: Option<String>) -> Option<String> {
+    requirement(identifiers, &team?)
+}
+
+// coverage:off The test program has no team's signature, and the Security framework's calls do not fail on request.
+/// The team the running program's signature names, as the Security framework reports it.
+fn signed_team() -> Option<String> {
     // SAFETY: each object the Security framework returns is checked for null and released. The team
     // identifier is copied out of the dictionary before the dictionary goes.
     unsafe {
@@ -46,10 +67,10 @@ pub fn own_team_identifier() -> Option<String> {
         if !copied {
             return None;
         }
-        let team = CStr::from_ptr(buffer.as_ptr()).to_str().ok()?.to_owned();
-        is_team_identifier(&team).then_some(team)
+        Some(CStr::from_ptr(buffer.as_ptr()).to_str().ok()?.to_owned())
     }
 }
+// coverage:on
 
 /// A requirement that only code with one of the identifiers, signed by the team through an
 /// Apple-issued certificate, satisfies. None when the team or an identifier is malformed.
@@ -92,5 +113,27 @@ mod tests {
     fn a_test_binary_has_no_team() {
         // cargo signs test binaries ad hoc, which is the case the helper must refuse.
         assert_eq!(own_team_identifier(), None);
+        assert_eq!(own_requirement(&["com.kevster.airflow"]), None, "A program that no team signed trusts no one");
+    }
+
+    #[test]
+    fn only_a_team_identifier_counts_as_a_team() {
+        assert_eq!(team_identifier(Some("ABCDE12345".to_owned())).as_deref(), Some("ABCDE12345"));
+        assert_eq!(team_identifier(Some("not a team".to_owned())), None);
+        assert_eq!(team_identifier(Some(String::new())), None);
+        assert_eq!(team_identifier(None), None);
+        assert!(!is_team_identifier("ABCDE1234"));
+        assert!(!is_team_identifier("ABCDE12345F"));
+    }
+
+    #[test]
+    fn a_requirement_needs_a_team() {
+        let app = ["com.kevster.airflow"];
+        assert_eq!(
+            requirement_for(&app, Some("ABCDE12345".to_owned())).as_deref(),
+            Some("anchor apple generic and certificate leaf[subject.OU] = \"ABCDE12345\" and (identifier \"com.kevster.airflow\")")
+        );
+        assert_eq!(requirement_for(&app, None), None);
+        assert_eq!(requirement_for(&app, Some("abc".to_owned())), None);
     }
 }

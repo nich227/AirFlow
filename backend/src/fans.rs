@@ -364,6 +364,82 @@ mod tests {
     }
 
     #[test]
+    fn each_refusal_says_what_went_wrong() {
+        let said = |error: FanWriteError| error.to_string();
+        assert_eq!(said(FanWriteError::NoSuchFan(2)), "This Mac has no fan 3.");
+        assert_eq!(said(FanWriteError::InvalidLimits(0)), "Fan 1 reports the same minimum and maximum speed.");
+        assert_eq!(said(FanWriteError::InvalidSpeed), "The speed is not a number.");
+        assert_eq!(said(FanWriteError::ControlRefused(1)), "The system did not hand over fan 2.");
+        assert_eq!(said(FanWriteError::ReleaseRefused(1)), "The system did not take back fan 2.");
+        assert_eq!(said(FanWriteError::WriteFailed("F0Tg".into())), "The SMC refused a write to F0Tg.");
+    }
+
+    #[test]
+    fn a_writer_made_for_the_helper_holds_a_fan_without_waiting() {
+        let smc = FakeSmc::two_fans();
+        let mut writer = FanWriter::new(&smc);
+        assert_eq!(writer.set_target(0, 2000.0), Ok(2000.0));
+        assert_eq!(writer.manual_fans().iter().copied().collect::<Vec<_>>(), [0]);
+    }
+
+    #[test]
+    fn a_target_the_smc_refuses_is_reported() {
+        let smc = FakeSmc::two_fans();
+        smc.refuse("F0Tg");
+        assert_eq!(writer(&smc).set_target(0, 3000.0), Err(FanWriteError::WriteFailed("F0Tg".into())));
+        assert_eq!(smc.number("F0Tg"), Some(1350.0));
+    }
+
+    #[test]
+    fn a_mac_with_no_way_to_ask_for_a_fan_refuses() {
+        // The system holds the fan, and there is no key that asks it to yield.
+        let held = FakeSmc::two_fans();
+        held.remove("Ftst");
+        held.hold_fans_for(usize::MAX);
+        assert_eq!(writer(&held).set_target(0, 3000.0), Err(FanWriteError::ControlRefused(0)));
+        assert_eq!(held.writes().iter().filter(|(key, _)| key == "F0Md").count(), 1, "It is asked once, with no wait");
+
+        // No mode key, and no shared key either.
+        let neither = FakeSmc::two_fans();
+        for key in ["F0Md", "F1Md", "Ftst"] {
+            neither.remove(key);
+        }
+        assert_eq!(writer(&neither).set_target(0, 3000.0), Err(FanWriteError::ControlRefused(0)));
+        assert_eq!(neither.number("F0Tg"), Some(1350.0));
+    }
+
+    #[test]
+    fn a_fan_the_system_never_yields_leaves_the_fans_already_held_alone() {
+        let smc = FakeSmc::two_fans();
+        let mut writer = writer(&smc);
+        writer.set_target(0, 3000.0).expect("set");
+        smc.hold_fans_for(usize::MAX);
+        assert_eq!(writer.set_target(1, 3000.0), Err(FanWriteError::ControlRefused(1)));
+        assert_eq!(smc.number("F0Md"), Some(1.0), "The fan that was held is still held");
+        assert_eq!(smc.number("Ftst"), Some(1.0), "The system's control stays off while a fan is held");
+        assert_eq!(writer.manual_fans().iter().copied().collect::<Vec<_>>(), [0]);
+        writer.set_automatic(0).expect("automatic");
+        assert_eq!(smc.number("Ftst"), Some(0.0));
+    }
+
+    #[test]
+    fn an_intel_mac_that_ignores_the_shared_key_refuses() {
+        let smc = FakeSmc::two_fans();
+        for key in ["F0Md", "F1Md", "Ftst"] {
+            smc.remove(key);
+        }
+        smc.set("FS! ", 0.0, b"ui16");
+        let mut writer = writer(&smc);
+        writer.set_target(0, 3000.0).expect("set");
+        writer.set_target(0, 3200.0).expect("a fan that is already held is not asked for again");
+        assert_eq!(smc.writes().iter().filter(|(key, _)| key == "FS! ").count(), 1);
+        smc.refuse("FS! ");
+        assert_eq!(writer.set_target(1, 3000.0), Err(FanWriteError::ControlRefused(1)));
+        assert_eq!(smc.number("FS! "), Some(1.0));
+        assert_eq!(smc.number("F1Tg"), Some(1458.0));
+    }
+
+    #[test]
     fn intel_macs_use_one_bit_per_fan() {
         let smc = FakeSmc::two_fans();
         for key in ["F0Md", "F1Md", "Ftst"] {

@@ -292,6 +292,62 @@ mod tests {
     use super::*;
     use crate::testing::FakeSmc;
 
+    #[test]
+    fn a_key_with_no_known_meaning_gets_its_parts_group_and_noun() {
+        let named = |key: &str, apple_silicon: bool| definition(key, apple_silicon).map(|found| (found.group, found.name, found.is_known));
+        for (key, group, noun) in [
+            ("TpZ9", Group::Cpu, "Performance Core Sensor"),
+            ("TeZ9", Group::Cpu, "Efficiency Core Sensor"),
+            ("Tf0Z", Group::Cpu, "Performance Core Sensor"),
+            ("Tf4Z", Group::Cpu, "Performance Core Sensor"),
+            ("Tf9Z", Group::Gpu, "GPU Sensor"),
+            ("TgZ9", Group::Gpu, "GPU Sensor"),
+            ("TmZ9", Group::Memory, "Memory Sensor"),
+            ("TMZ9", Group::Memory, "Memory Sensor"),
+            ("THZ9", Group::Storage, "Storage Sensor"),
+            ("TBZ9", Group::Battery, "Battery Sensor"),
+            ("TaZ9", Group::Enclosure, "Enclosure Sensor"),
+            ("TWZ9", Group::Wireless, "Wireless Sensor"),
+            ("TPZ9", Group::Power, "Power Sensor"),
+            ("TRZ9", Group::Power, "Power Sensor"),
+            ("TZZ9", Group::Other, "Sensor"),
+        ] {
+            assert_eq!(named(key, true), Some((group, noun.to_owned(), false)), "{key} on Apple silicon");
+        }
+        for (key, group, noun) in [
+            ("TCZ9", Group::Cpu, "CPU Sensor"),
+            ("TGZ9", Group::Gpu, "GPU Sensor"),
+            ("TMZ9", Group::Memory, "Memory Sensor"),
+            ("TmZ9", Group::Memory, "Memory Sensor"),
+            ("THZ9", Group::Storage, "Storage Sensor"),
+            ("TBZ9", Group::Battery, "Battery Sensor"),
+            ("TAZ9", Group::Enclosure, "Enclosure Sensor"),
+            ("TsZ9", Group::Enclosure, "Enclosure Sensor"),
+            ("TWZ9", Group::Wireless, "Wireless Sensor"),
+            ("TpZ9", Group::Power, "Power Sensor"),
+            ("TPZ9", Group::Power, "Power Sensor"),
+            ("TZZ9", Group::Other, "Sensor"),
+        ] {
+            assert_eq!(named(key, false), Some((group, noun.to_owned(), false)), "{key} on Intel");
+        }
+        for key in ["Tp0", "Tp012", "Fp01", "Tp°"] {
+            assert_eq!(named(key, true), None, "{key} is not a temperature key");
+        }
+    }
+
+    #[test]
+    fn an_intel_fan_is_held_when_its_bit_of_the_shared_key_is_set() {
+        let smc = FakeSmc::two_fans();
+        for key in ["F0Md", "F1Md"] {
+            smc.remove(key);
+        }
+        smc.set("FS! ", 2.0, b"ui16");
+        let mut reader = Reader::new(&smc, false);
+        assert_eq!(reader.fans().iter().map(|fan| fan.is_manual).collect::<Vec<_>>(), [false, true]);
+        smc.remove("FS! ");
+        assert_eq!(reader.fans().iter().map(|fan| fan.is_manual).collect::<Vec<_>>(), [false, false]);
+    }
+
     fn smc_with_sensors() -> FakeSmc {
         let smc = FakeSmc::two_fans();
         smc.set("F0Ac", 2400.0, b"flt ");

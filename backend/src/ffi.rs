@@ -95,6 +95,7 @@ fn sensor(reading: &SensorReading) -> AirflowSensor {
     out
 }
 
+// coverage:off It opens the Mac's own SMC, which a test must not depend on.
 #[no_mangle]
 pub extern "C" fn airflow_reader_open() -> *mut AirflowReader {
     match SmcConnection::open() {
@@ -102,6 +103,7 @@ pub extern "C" fn airflow_reader_open() -> *mut AirflowReader {
         Err(_) => std::ptr::null_mut(),
     }
 }
+// coverage:on
 
 #[no_mangle]
 pub extern "C" fn airflow_reader_open_sample() -> *mut AirflowReader {
@@ -196,7 +198,15 @@ pub extern "C" fn airflow_power_source_is_battery() -> i32 {
 /// `buffer` is null or points at `capacity` bytes.
 #[no_mangle]
 pub unsafe extern "C" fn airflow_helper_requirement(buffer: *mut c_char, capacity: i32) -> i32 {
-    let requirement = signing::own_team_identifier().and_then(|team| signing::requirement(&[protocol::HELPER_IDENTIFIER], &team));
+    write_requirement(signing::own_requirement(&[protocol::HELPER_IDENTIFIER]), buffer, capacity)
+}
+
+/// Writes a requirement as a NUL-terminated string and returns its length, or 0 when there is
+/// none or it does not fit.
+///
+/// # Safety
+/// `buffer` is null or points at `capacity` bytes.
+unsafe fn write_requirement(requirement: Option<String>, buffer: *mut c_char, capacity: i32) -> i32 {
     let (Some(requirement), false, Ok(capacity)) = (requirement, buffer.is_null(), usize::try_from(capacity)) else {
         return 0;
     };
@@ -279,6 +289,32 @@ mod tests {
         assert_eq!(unsafe { CStr::from_ptr(field.as_ptr()) }.to_str(), Ok("Perform"));
         fill(&mut field, "ab°cdefg");
         assert_eq!(unsafe { CStr::from_ptr(field.as_ptr()) }.to_str(), Ok("ab°cde"));
+        fill(&mut field, "abcdef°g");
+        assert_eq!(unsafe { CStr::from_ptr(field.as_ptr()) }.to_str(), Ok("abcdef"), "A character is never cut in half");
+        fill(&mut field, "");
+        assert_eq!(unsafe { CStr::from_ptr(field.as_ptr()) }.to_str(), Ok(""));
+    }
+
+    #[test]
+    fn a_requirement_is_written_whole_or_not_at_all() {
+        let requirement = || Some("anchor apple".to_owned());
+        let mut buffer = [1 as c_char; 32];
+        unsafe {
+            assert_eq!(write_requirement(requirement(), buffer.as_mut_ptr(), 32), 12);
+            assert_eq!(CStr::from_ptr(buffer.as_ptr()).to_str(), Ok("anchor apple"));
+            assert_eq!(write_requirement(requirement(), buffer.as_mut_ptr(), 13), 12, "It fits with its terminator");
+            let mut small = [1 as c_char; 12];
+            assert_eq!(write_requirement(requirement(), small.as_mut_ptr(), 12), 0, "A requirement cut short would be a weaker one");
+            assert_eq!(small, [1; 12], "Nothing is written");
+            assert_eq!(write_requirement(requirement(), std::ptr::null_mut(), 32), 0);
+            assert_eq!(write_requirement(requirement(), buffer.as_mut_ptr(), -1), 0);
+            assert_eq!(write_requirement(None, buffer.as_mut_ptr(), 32), 0);
+        }
+    }
+
+    #[test]
+    fn the_power_source_is_one_of_two() {
+        assert!((0..=1).contains(&airflow_power_source_is_battery()));
     }
 
     #[test]

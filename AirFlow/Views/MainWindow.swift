@@ -221,8 +221,33 @@ struct Sidebar: View {
     @Environment(AppModel.self) private var model
     @Binding var selection: SidebarItem?
     @Binding var isDescribing: Bool
+    /// The preset the person asked to delete, until they confirm or cancel.
+    @State private var deleting: Preset?
 
     var body: some View {
+        list
+            .confirmationDialog(
+                "Are you sure you want to delete “\(deleting?.name ?? "")”?",
+                isPresented: Binding { deleting != nil } set: { if !$0 { deleting = nil } },
+                titleVisibility: .visible, presenting: deleting
+            ) { preset in
+                Button("Delete", role: .destructive) { model.deletePreset(id: preset.id) }
+                Button("Cancel", role: .cancel) {}
+            } message: { preset in
+                Text(Self.deleteWarning(rules: model.automation.rules.count(where: { $0.presetID == preset.id })))
+            }
+    }
+
+    /// What deleting a preset costs, in the words of the dialog.
+    static func deleteWarning(rules: Int) -> String {
+        switch rules {
+        case 0: return "You can’t undo this action."
+        case 1: return "The rule that uses this preset is deleted too. You can’t undo this action."
+        default: return "The \(rules) rules that use this preset are deleted too. You can’t undo this action."
+        }
+    }
+
+    private var list: some View {
         List(selection: $selection) {
             Section {
                 ForEach(Preset.builtIn) { preset in
@@ -313,15 +338,30 @@ struct Sidebar: View {
         .selectedInAccent(selection == .preset(preset.id))
         .accessibilityLabel(isActive ? "\(preset.name), active" : preset.name)
         .contextMenu {
-            Button("Apply") { model.apply(preset.id) }
-                .disabled(isActive)
-            Button("Duplicate") {
+            Button {
+                model.apply(preset.id)
+            } label: {
+                Label("Apply", image: "ant-check")
+            }
+            .disabled(isActive)
+            Button {
                 if let copy = model.presets.duplicate(id: preset.id) { selection = .preset(copy.id) }
+            } label: {
+                Label("Duplicate", image: "ant-copy")
             }
             if !preset.isBuiltIn {
-                Button("Export…") { model.beginExport(ids: [preset.id]) }
+                Button {
+                    model.beginExport(ids: [preset.id])
+                } label: {
+                    Label("Export…", image: "ant-export")
+                }
                 Divider()
-                Button("Delete", role: .destructive) { model.deletePreset(id: preset.id) }
+                // The dialog asks first, so the menu item ends in an ellipsis.
+                Button(role: .destructive) {
+                    deleting = preset
+                } label: {
+                    Label("Delete…", image: "ant-delete")
+                }
             }
         }
     }

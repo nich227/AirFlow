@@ -19,29 +19,23 @@ AirFlow shows every fan and temperature sensor in your Mac and lets you control 
 AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 
 <p align="center">
-  <picture>
-    <source
-      srcset="docs/images/preset-curve-dark.png"
-      media="(prefers-color-scheme: dark)"
-    />
-    <img
-      src="docs/images/preset-curve.png"
-      alt="The AirFlow window on the Quiet preset. The left fan follows the CPU's average temperature on a curve that starts to rise at 70 degrees and reaches full speed at 95. The sidebar lists six presets, and the inspector shows a temperature for each part of the Mac and a chart of the last 15 minutes."
-      width="800"
-    />
-  </picture>
+  <img
+    src="docs/images/adaptive.png"
+    alt="The AirFlow window on the Adaptive preset. Adaptive holds the left fan at 4,550 RPM and the right fan at 4,910 RPM for sustained work at 35 watts. The CPU is at 70 degrees, and AirFlow expects 69 degrees in 15 seconds. The sidebar lists six presets, and the readings panel shows a temperature for each part of the Mac and charts of the last 15 minutes."
+    width="800"
+  />
 </p>
 
 <table>
   <tr>
     <td width="33%">
-      <a href="docs/images/adaptive.png">
-        <img src="docs/images/adaptive.png" alt="The Adaptive page, showing the kind of work the Mac is doing, the power it draws, its temperature now and in 15 seconds, and the speed Adaptive would ask each fan for" />
+      <a href="docs/images/preset-curve.png">
+        <img src="docs/images/preset-curve.png" alt="The Quiet preset. The left fan follows the CPU's average temperature on a curve from 70 degrees to full speed at 95. The CPU is at 79 degrees, and the fan is set to 2,760 RPM" />
       </a>
     </td>
     <td width="33%">
       <a href="docs/images/rules.png">
-        <img src="docs/images/rules.png" alt="The Rules page with four rules: one for when Xcode is active, one for battery power, one for a CPU above 85 degrees, and one for the hours between 22:00 and 07:00" />
+        <img src="docs/images/rules.png" alt="The Rules page with four rules. One is for when Xcode is active, one for battery power, one for a CPU above 85 degrees, and one for the hours between 22:00 and 07:00" />
       </a>
     </td>
     <td width="33%">
@@ -51,13 +45,40 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
     </td>
   </tr>
   <tr>
-    <td><strong>Adaptive</strong><br />The fans follow what your Mac is doing and the temperature it expects in 15 seconds.</td>
+    <td><strong>Fan curves</strong><br />A fan follows a sensor between two temperatures that you drag into place.</td>
     <td><strong>Rules</strong><br />A preset changes when an app is active, on battery, when a part gets hot, or at a time of day.</td>
     <td><strong>Sensors</strong><br />Every temperature sensor your Mac reports shows its lowest and highest reading.</td>
   </tr>
 </table>
 
-The pictures show a copy of AirFlow that no developer signed. That copy monitors the fans and can't change their speed, so each page says Monitoring Only.
+<table>
+  <tr>
+    <td width="50%">
+      <a href="docs/images/setup.png">
+        <img src="docs/images/setup.png" alt="The Set Up AirFlow sheet, with fan control on, a choice of the Adaptive, Quiet, and Automatic presets, and switches for Open at Login and Automatic Updates" />
+      </a>
+    </td>
+    <td width="50%">
+      <a href="docs/images/apps.png">
+        <img src="docs/images/apps.png" alt="The Add Apps sheet, a grid of the apps on the Mac with a search field. Photos and Xcode are selected" />
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td><strong>Setup</strong><br />The first time AirFlow opens, it asks for everything it needs in one place.</td>
+    <td><strong>Apps</strong><br />Tell Adaptive which apps make your Mac work hard, or let Apple Intelligence select them.</td>
+  </tr>
+</table>
+
+<p align="center">
+  <img
+    src="docs/images/palettes.png"
+    alt="The readings panel in five color palettes: Aqua, Cyberpunk, Matrix, Girlypop, and Darcula. Each palette has its own colors for the status dots, the CPU and GPU lines, and the fan lines."
+    width="800"
+  />
+</p>
+
+<p align="center"><em>Aqua, Cyberpunk, Matrix, Girlypop, and Darcula are five of the 12 color palettes.</em></p>
 
 ## Features
 
@@ -65,7 +86,8 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 
 - AirFlow reads each fan's speed, its minimum, and its maximum, and the temperature of every sensor your Mac reports.
 - The Sensors page lists each sensor with its part, its SMC key, and its current, lowest, and highest temperature since AirFlow opened. You can search the list and sort it by any column.
-- AirFlow groups sensors by part: CPU, GPU, Memory, Storage, Battery, Enclosure, Power, and Wireless. The inspector shows one temperature for each part and a chart of the last 15 minutes. The readings update every second while you look at them.
+- AirFlow groups sensors by part: CPU, GPU, Memory, Storage, Battery, Enclosure, Power, and Wireless. The readings panel beside the page shows one temperature for each part and charts of the last 15 minutes. The readings update every second while you look at them.
+- A dot beside each part shows how hot it is relative to its own limits. You can make the dots identify each part instead.
 - The menu bar item shows the fastest fan, the CPU temperature, the GPU temperature, the fastest fan with the CPU temperature, or the icon alone. Click it to see every fan and to change presets.
 - Temperatures use Celsius or Fahrenheit, and you can show tenths of a degree.
 
@@ -82,13 +104,14 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 - A preset has a name, an icon, and a one-line summary. A new preset starts as a copy of the one you selected, and changing a preset never changes another one.
 - AirFlow stores presets as a YAML file that you can read and edit. See [The presets file](#the-presets-file).
 - You can export presets to a `.yaml` file and import them on another Mac. An import never replaces a preset you have.
+- AirFlow asks before it deletes a preset.
 
 ### Adaptive
 
 - Adaptive runs the fans by what your Mac is doing and by the temperature it expects in 15 seconds.
 - For light work it keeps the fans at their minimum while the forecast is under 80 °C. It lets a short burst pass, and it raises the fans early for a long load.
 - It learns how your Mac warms and cools while it runs, and it keeps no history of readings.
-- You can tell it which apps work your Mac hard, and Apple Intelligence can suggest what an app is known for. See [How Adaptive decides](#how-adaptive-decides).
+- You can tell AirFlow which apps make your Mac work hard. Select them from a grid of the apps on your Mac, or let Apple Intelligence select the apps it knows are used for heavy work. See [How Adaptive decides](#how-adaptive-decides).
 
 ### Rules and Autopilot
 
@@ -100,6 +123,7 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 
 - Describe a preset or a rule, such as "Stay quiet until the CPU reaches 80°", and the model on your Mac drafts it. You decide whether to keep it.
 - Click Explain These Readings, and the model says in plain words what the recent temperatures and fan speeds show.
+- Click Suggest Apps on the Adaptive page to have the model select the apps on your Mac that it knows are used for heavy work. You can change the selection before you add the apps.
 - The model never changes a fan. Nothing you type and no reading leaves your Mac.
 
 ### Siri and Shortcuts
@@ -119,7 +143,9 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 
 ### Design
 
-- AirFlow uses Liquid Glass throughout, follows Light Mode and Dark Mode, and uses your accent color.
+- AirFlow uses Liquid Glass throughout and follows Light Mode and Dark Mode.
+- You can choose from 12 color palettes: Aqua, Cyberpunk, Aurora, Matrix, Girlypop, Synthwave, Nord, Catppuccin, VS Code, Monokai, Solarized, or Darcula. The palette sets the colors for selected items, temperatures, charts, and the fan in AirFlow's Dock icon.
+- While Adaptive is the current preset, the window has a slow swirl of color and each fan appears as a rainbow pinwheel.
 - It shows fan speeds and temperatures in a monospaced font, so a number that changes doesn't move the text beside it.
 - The drawn animations hold still when Reduce Motion is on.
 
@@ -136,9 +162,13 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 | Make a preset | Click the Add button at the bottom of the sidebar. The new preset starts as a copy of the selected one. |
 | Describe a preset | Click the sparkles at the bottom of the sidebar. |
 | Rename a preset | Click the pencil beside its name. |
+| Delete a preset | Control-click it in the sidebar, then choose Delete. AirFlow asks before it deletes the preset. |
 | Export or import presets | Click the More button at the bottom of the sidebar, or choose File > Export Presets or File > Import Presets. |
 | Add a rule | Click Rules in the sidebar, then click Add Rule. Drag a rule to change its place. The first rule that matches wins. |
 | Let rules run | Turn on Autopilot on the Rules page. |
+| Tell Adaptive about an app | On the Adaptive page, click Add Apps, select the apps, then click Add. To let Apple Intelligence select the apps, click Suggest Apps. |
+| Show or hide the readings | Click the Readings button at the top right of the window. |
+| Choose a color palette | Choose AirFlow > Preferences > General, then choose a palette under Colors. |
 | Turn on fan control | Click Turn On Fan Control. System Settings opens with a small AirFlow panel beside it that says what to do: turn on the switch next to AirFlow under Allow in the Background. AirFlow notices when you do. |
 | Open AirFlow at login | Choose AirFlow > Preferences > General, then turn on Open at Login. |
 | Check for an update | Choose AirFlow > Check for Updates, or click Check for Updates in Preferences > About. |
@@ -147,7 +177,7 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 
 One curve is either too loud for light work or too late for a long load.
 
-First, Adaptive works out what kind of work your Mac is doing. It reads the power your Mac draws, as a share of what your Mac draws between rest and full load, over 5 and 30 seconds. It also knows which open apps work a Mac hard, such as Final Cut Pro, Lightroom, or Ollama. You can add your own on the Adaptive page, and Apple Intelligence can suggest what an app is known for. A suggestion counts only after you accept it.
+First, Adaptive works out what kind of work your Mac is doing. It reads the power your Mac draws, as a share of what your Mac draws between rest and full load, over 5 and 30 seconds. It also knows which open apps work a Mac hard, such as Final Cut Pro, Lightroom, or Ollama. You can add your own on the Adaptive page, and Apple Intelligence can select the apps it knows for heavy work and suggest what an app is known for. A suggestion counts only after you accept it.
 
 | Work | What it means | What the fans do |
 | --- | --- | --- |
@@ -175,7 +205,7 @@ Reading fans and sensors needs no permission. Changing a fan's speed does, so Ai
 - The helper returns the fans to macOS when AirFlow quits, when AirFlow stops responding for 30 seconds, and when your Mac shuts the helper down.
 - The safeguard returns the fans to macOS when the average CPU or GPU temperature reaches a limit you choose (95 °C at first), until the temperature falls 8 degrees below it.
 
-Changing fan speeds changes how your Mac cools itself. You are responsible for the settings you choose. Quit other fan control software before you use AirFlow, because two apps that set the same fan work against each other.
+Changing fan speeds changes how your Mac cools itself. You are responsible for the settings you choose.
 
 ## Privacy
 
@@ -248,6 +278,6 @@ AirFlow uses Swift Package Manager and Cargo for its dependencies. [Lottie](http
 
 AirFlow is free software under the GNU Affero General Public License, version 3. See [LICENSE](LICENSE). You can use, change, and share AirFlow. If you give anyone a copy, changed or not, you must also give them its source under the same license. AirFlow comes with no warranty.
 
-Text is set in [Hedvig Letters Sans](https://github.com/KanonFoundry/HedvigLetters) and readings in [IBM Plex Mono](https://github.com/IBM/plex), both under the SIL Open Font License 1.1. The app icon, the menu bar icon, and the turning fan use the fan from [Bootstrap Icons](https://github.com/twbs/icons), under the MIT License. Every other icon is from [Ant Design Icons](https://github.com/ant-design/ant-design-icons), under the MIT License. [Lottie](https://github.com/airbnb/lottie-ios) is licensed under Apache 2.0. [Sparkle](https://github.com/sparkle-project/Sparkle), [Yams](https://github.com/jpsim/Yams), [objc2](https://github.com/madsmtm/objc2), and [libc](https://github.com/rust-lang/libc) are licensed under the MIT License. Three color palettes use the colors of [Nord](https://github.com/nordtheme/nord), [Catppuccin](https://github.com/catppuccin/palette), and [SynthWave '84](https://github.com/robb0wen/synthwave-vscode), and two use colors from [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss). Aqua uses colors from two rebuilds of the Mac OS X interface of 2001, [Aqua](https://github.com/igorfelipeduca/aqua) and [macOS-X-clone](https://github.com/Binxy111/macOS-X-clone). Cyberpunk uses the colors of a [Cyberpunk 2077 theme](https://github.com/hongyangchun/omarchy-cyberpunk-2077-theme). VS Code and Monokai use the colors of the themes in [Visual Studio Code](https://github.com/microsoft/vscode), and Solarized uses the colors of [Solarized](https://github.com/altercation/solarized). All nine are licensed under the MIT License. Darcula uses the colors of the color schemes in [IntelliJ IDEA Community Edition](https://github.com/JetBrains/intellij-community), which is licensed under Apache 2.0. The [licenses/](licenses) folder contains each license, and the app carries a copy of that folder.
+Text is set in [Hedvig Letters Sans](https://github.com/KanonFoundry/HedvigLetters) and readings in [IBM Plex Mono](https://github.com/IBM/plex), both under the SIL Open Font License 1.1. The app icon, the menu bar icon, and the turning fan use the fan from [Bootstrap Icons](https://github.com/twbs/icons), under the MIT License. Every other icon is from [Ant Design Icons](https://github.com/ant-design/ant-design-icons), under the MIT License. [Lottie](https://github.com/airbnb/lottie-ios) is licensed under Apache 2.0. [Sparkle](https://github.com/sparkle-project/Sparkle), [Yams](https://github.com/jpsim/Yams), [objc2](https://github.com/madsmtm/objc2), and [libc](https://github.com/rust-lang/libc) are licensed under the MIT License. Three color palettes use the colors of [Nord](https://github.com/nordtheme/nord), [Catppuccin](https://github.com/catppuccin/palette), and [SynthWave '84](https://github.com/robb0wen/synthwave-vscode). Two use colors from [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss). Aqua uses colors from two rebuilds of the Mac OS X interface from 2001, [Aqua](https://github.com/igorfelipeduca/aqua) and [macOS-X-clone](https://github.com/Binxy111/macOS-X-clone). Cyberpunk uses colors from a [Cyberpunk 2077 theme](https://github.com/hongyangchun/omarchy-cyberpunk-2077-theme). VS Code and Monokai use colors from themes in [Visual Studio Code](https://github.com/microsoft/vscode), and Solarized uses colors from [Solarized](https://github.com/altercation/solarized). All nine are licensed under the MIT License. Darcula uses colors from the color schemes in [IntelliJ IDEA Community Edition](https://github.com/JetBrains/intellij-community), which is licensed under Apache 2.0. The [licenses/](licenses) folder contains each license, and the app carries a copy of that folder.
 
 © 2026 Kevin Chen.

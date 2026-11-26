@@ -136,8 +136,9 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
     var accent: Shade {
         switch self {
         case .aqua: return Shade(0x2F7DE0, 0x4A90EC)
-        // The game's yellow is too light for white text, so the accent is its red.
-        case .cyberpunk: return Shade(0xD1002F, 0xFF003C)
+        // The game's yellow is too light for white text, and its red would make a note read as an
+        // error, so the accent is its magenta.
+        case .cyberpunk: return Shade(0xA800C7, 0xD800FF)
         case .aurora: return Shade(0x0D9488, 0x0FA394)
         case .matrix: return Shade(0x008F11, 0x00A828)
         case .girlypop: return Shade(0xDB2777, 0xEC4899)

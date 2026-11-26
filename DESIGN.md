@@ -91,7 +91,7 @@ A palette (`ColorPalette`) holds every color AirFlow has: the accent, the temper
 | Palette | Accent (Light, Dark) | The scale from cool to very hot (Dark) | From |
 |---|---|---|---|
 | Aqua | `#2F7DE0`, `#4A90EC` | gel blue `#6AABF3`, green `#58B52F`, yellow `#FFAE00`, orange `#E0742F`, red `#FF3B30` | Two rebuilds of the Mac OS X interface of 2001: Aqua (igorfelipeduca) and macOS-X-clone (Binxy111) |
-| Cyberpunk | `#D1002F`, `#FF003C` | cyan `#00F0FF`, green `#05FFA1`, yellow `#FCEE0A`, orange `#FF7700`, red `#FF003C` | The Cyberpunk 2077 theme for Omarchy (hongyangchun). The yellow is too light for white text, so the accent is the red |
+| Cyberpunk | `#A800C7`, `#D800FF` | cyan `#00F0FF`, green `#05FFA1`, yellow `#FCEE0A`, orange `#FF7700`, red `#FF003C` | The Cyberpunk 2077 theme for Omarchy (hongyangchun). The yellow is too light for white text, and the red would make a note read as an error, so the accent is the magenta |
 | Aurora | `#0D9488`, `#0FA394` | `#38BDF8`, `#34D399`, `#FBBF24`, `#FB923C`, `#FB7185` | Tailwind's colors |
 | Matrix | `#008F11`, `#00A828` | `#008F11`, `#00C030`, `#00FF41`, `#A4F644`, `#E8FFE0` | The film's greens |
 | Girlypop | `#DB2777`, `#EC4899` | `#7DD3FC`, `#C4B5FD`, `#F9A8D4`, `#E879F9`, `#FB7185` | Tailwind's colors |

@@ -10,6 +10,7 @@ enum SidebarItem: Hashable {
 /// has the Mac's live readings whichever one is showing.
 struct MainWindow: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: SidebarItem?
     @State private var isDescribing = false
     @State private var isSettingUp = false
@@ -79,6 +80,16 @@ struct MainWindow: View {
             isSettingUp = Self.showsSetup(model)
         }
         .onDisappear { model.monitor.visibleSurfaces -= 1 }
+        #if DEBUG
+        // A script that records the readings column asks for it to close and open by itself.
+        .task {
+            guard ProcessInfo.processInfo.environment["AIRFLOW_TOGGLE_READINGS"] != nil else { return }
+            for _ in 0..<2 {
+                try? await Task.sleep(for: .seconds(5))
+                withAnimation(Anim.standard) { model.settings.showsInspector.toggle() }
+            }
+        }
+        #endif
         .onChange(of: model.presets.custom.map(\.id)) { _, ids in
             // The selected preset was deleted.
             if case .preset(let id) = selection, model.presets.preset(id: id) == nil, !ids.contains(id) {
@@ -171,9 +182,19 @@ struct MainWindow: View {
         ToolbarSpacer(.flexible)
         ToolbarItem(placement: .primaryAction) {
             Button {
-                model.settings.showsInspector.toggle()
+                // The column slides in and out at one pace. With no animation it waits and then
+                // jumps.
+                withAnimation(Anim.allowed(Anim.standard, reduceMotion: reduceMotion)) {
+                    model.settings.showsInspector.toggle()
+                }
             } label: {
-                Label("Readings", image: "ant-line-chart")
+                Label {
+                    Text("Readings")
+                } icon: {
+                    // The chart's line draws on as the readings arrive and leaves as they go.
+                    AirAnimation(name: Animations.readings, isReversed: !model.settings.showsInspector, tint: .primary)
+                        .frame(width: IconSize.title, height: IconSize.title)
+                }
             }
             .help(model.settings.showsInspector ? "Hide the readings" : "Show the readings")
         }

@@ -198,7 +198,8 @@ enum Animations {
     static let breeze = "breeze"
     static let done = "done"
     static let spark = "spark"
-    static let all = [rotor, breeze, done, spark]
+    static let readings = "readings"
+    static let all = [rotor, breeze, done, spark, readings]
     static let stillMarker = "reduced motion"
 }
 

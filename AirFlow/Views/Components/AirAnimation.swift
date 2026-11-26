@@ -24,6 +24,9 @@ struct AirAnimation: View {
     var isActive = true
     /// How fast a loop's time runs. 1 plays the file as drawn, and 0 holds it still.
     var speed: Double = 1
+    /// True for a one-shot that goes back from its still frame to its first frame. A one-shot
+    /// that shows a state runs forward when the state comes on and back when it goes off.
+    var isReversed = false
     var tint: Color = Palette.accent
     /// The VoiceOver label. Without one the animation is decorative and hidden.
     var label: String?
@@ -35,7 +38,8 @@ struct AirAnimation: View {
         let player = AnimationPlayer(
             name: name,
             playback: Self.playback(
-                loops: loops, isActive: isActive, speed: speed, reduceMotion: reduceMotionOverride ?? systemReduceMotion
+                loops: loops, isActive: isActive, speed: speed, reduceMotion: reduceMotionOverride ?? systemReduceMotion,
+                isReversed: isReversed
             ),
             tint: tint
         )
@@ -50,10 +54,11 @@ struct AirAnimation: View {
         }
     }
 
-    static func playback(loops: Bool, isActive: Bool, speed: Double, reduceMotion: Bool) -> AnimationSurface.Playback {
-        if reduceMotion { return .still }
+    static func playback(loops: Bool, isActive: Bool, speed: Double, reduceMotion: Bool, isReversed: Bool = false) -> AnimationSurface.Playback {
+        let goesBack = isReversed && !loops
+        if reduceMotion { return goesBack ? .start : .still }
         guard isActive else { return .idle }
-        guard loops else { return .once }
+        guard loops else { return goesBack ? .rewind : .once }
         // Small changes in speed are not worth a change to the layer's clock.
         return .loop(speed: (max(speed, 0) * 20).rounded() / 20)
     }
@@ -91,8 +96,12 @@ final class AnimationSurface: NSView {
         case idle
         /// Only the still frame for Reduce Motion.
         case still
+        /// Only the first frame: a reversed one-shot with Reduce Motion on.
+        case start
         /// From the first frame to the still frame once.
         case once
+        /// From the still frame back to the first frame once.
+        case rewind
         case loop(speed: Double)
     }
 
@@ -101,6 +110,8 @@ final class AnimationSurface: NSView {
     private(set) var playback: Playback = .idle
     private var tint: NSColor?
     private var isLooping = false
+    /// True once the drawing has reached its still frame, so there is something to take back.
+    private var hasDrawn = false
 
     init(name: String) {
         let animation = AnimationLibrary.animation(named: name)
@@ -137,10 +148,29 @@ final class AnimationSurface: NSView {
             player.stop()
             setClock(1)
             player.currentFrame = stillFrame
+            hasDrawn = true
+        case .start:
+            isLooping = false
+            player.stop()
+            setClock(1)
+            player.currentFrame = 0
+            hasDrawn = false
         case .once:
             isLooping = false
             setClock(1)
             player.play(fromFrame: 0, toFrame: stillFrame, loopMode: .playOnce)
+            hasDrawn = true
+        case .rewind:
+            isLooping = false
+            setClock(1)
+            // A surface that starts in the off state shows its first frame and does not move.
+            if hasDrawn {
+                player.play(fromFrame: stillFrame, toFrame: 0, loopMode: .playOnce)
+            } else {
+                player.stop()
+                player.currentFrame = 0
+            }
+            hasDrawn = false
         case .loop(let speed):
             if !isLooping {
                 isLooping = true

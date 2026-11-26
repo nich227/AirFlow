@@ -208,6 +208,9 @@ final class AnimationTests: XCTestCase {
         XCTAssertEqual(AirAnimation.playback(loops: false, isActive: true, speed: 1, reduceMotion: true), .still)
         XCTAssertEqual(AirAnimation.playback(loops: true, isActive: false, speed: 1, reduceMotion: false), .idle)
         XCTAssertEqual(AirAnimation.playback(loops: false, isActive: true, speed: 1, reduceMotion: false), .once)
+        XCTAssertEqual(AirAnimation.playback(loops: false, isActive: true, speed: 1, reduceMotion: false, isReversed: true), .rewind)
+        XCTAssertEqual(AirAnimation.playback(loops: false, isActive: true, speed: 1, reduceMotion: true, isReversed: true), .start)
+        XCTAssertEqual(AirAnimation.playback(loops: true, isActive: true, speed: 1, reduceMotion: false, isReversed: true), .loop(speed: 1), "A loop has no way back")
         XCTAssertEqual(AirAnimation.playback(loops: true, isActive: true, speed: 1.234, reduceMotion: false), .loop(speed: 1.25))
         XCTAssertEqual(AirAnimation.playback(loops: true, isActive: true, speed: -3, reduceMotion: false), .loop(speed: 0))
     }

@@ -193,9 +193,19 @@ def spark():
     return document("AirFlow spark", canvas, canvas, loop_end, 24, layers)
 
 
+def readings():
+    """A chart's two axes stay, and its line draws on from the left. The app runs it forward when
+    the readings column opens and back when the column closes."""
+    canvas, drawn = 120, 30
+    axes = layer("Axes", 1, [group("Axes", [polyline([(20, 20), (20, 100), (100, 100)]), stroke(9)])], drawn + 6, (0, 0))
+    end = keyframes([(0, 0), (drawn, 100)], ease_out=(0.3, 0), ease_in=(0.15, 1))
+    line = polyline([(38, 80), (56, 54), (72, 68), (96, 34)])
+    return document("AirFlow readings", canvas, canvas, drawn + 6, drawn, [layer("Line", 2, [group("Line", [line, trim(end), stroke(9)])], drawn + 6, (0, 0)), axes])
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, build in (("rotor", rotor), ("breeze", breeze), ("done", done), ("spark", spark)):
+    for name, build in (("rotor", rotor), ("breeze", breeze), ("done", done), ("spark", spark), ("readings", readings)):
         path = OUT / f"{name}.json"
         path.write_text(json.dumps(build(), separators=(",", ":")) + "\n")
         print(f"wrote {path.relative_to(OUT.parent.parent.parent)} ({path.stat().st_size} bytes)")

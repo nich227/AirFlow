@@ -30,7 +30,7 @@ struct SettingsView: View {
         .frame(width: Layout.settingsWidth)
         // Settings shows the palette's main color at once, and the Dock icon changes with it.
         .tint(Palette.accent)
-        .id(model.settings.colorPalette)
+        .id(model.settings.lookID)
         .onChange(of: model.settings.colorPalette) {
             DockIcon.update()
         }
@@ -111,10 +111,15 @@ struct GeneralSettingsPane: View {
                 LabeledContent("Preview") {
                     PaletteSwatch(palette: settings.colorPalette)
                 }
+                Picker("Status Dots", selection: $settings.dotColoring) {
+                    ForEach(DotColoring.allCases) { coloring in
+                        Text(coloring.title).tag(coloring)
+                    }
+                }
             } header: {
                 Text("Colors")
             } footer: {
-                Text("The palette colors what is selected, the temperatures, the charts, and the fan in AirFlow's icon.")
+                Text("The palette colors what is selected, the temperatures, the charts, and the fan in AirFlow's icon. By Temperature, a dot shows how hot a part is for its own limits. By Part, each part keeps one color.")
             }
         }
         .formStyle(.grouped)

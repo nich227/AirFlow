@@ -1,12 +1,15 @@
 import SwiftUI
 
-/// Ant Design's status dot: a temperature band as a color, always beside the number it describes.
+/// Ant Design's status dot, always beside the number it describes. It shows a temperature band as
+/// a color. In a list of parts it takes the part too, and shows the part's own color if the
+/// person chose that in Settings.
 struct StatusDot: View {
     let band: TemperatureBand
+    var group: SensorGroup?
 
     var body: some View {
         // A bead lit from above, with a little of its own light around it.
-        let color = Palette.temperature(band)
+        let color = Palette.dot(band, of: group)
         Circle()
             .fill(color.gradient)
             .overlay(alignment: .top) {

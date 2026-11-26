@@ -74,6 +74,13 @@ enum Palette {
         Color(palette.temperatures[band.rawValue])
     }
 
+    /// The color of a status dot beside a part's reading: the part's band on the temperature
+    /// scale, or the part's own color if the person colors the dots by part.
+    static func dot(_ band: TemperatureBand, of group: SensorGroup?) -> Color {
+        guard let group, DotColoring.current == .part else { return temperature(band) }
+        return Color(ColorPalette.current.part(group))
+    }
+
     /// The temperature scale as a gradient across a range of temperatures, for a part's bands.
     static func temperatureStops(for group: SensorGroup, in range: ClosedRange<Double>, opacity: Double = 1) -> [Gradient.Stop] {
         let thresholds = TemperatureBand.thresholds(for: group)

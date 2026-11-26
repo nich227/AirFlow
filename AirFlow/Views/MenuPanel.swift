@@ -124,7 +124,7 @@ struct MenuPanel: View {
         }
         .frame(width: Layout.panelWidth)
         // The panel reads its colors as it is built, so a new palette builds it again.
-        .id(model.settings.colorPalette)
+        .id(model.settings.lookID)
         .tint(Palette.accent)
         .background {
             if model.settings.activePresetID == Preset.adaptiveID {
@@ -197,7 +197,7 @@ struct MenuPanel: View {
         return HStack(spacing: Space.xs) {
             ForEach(groups.compactMap(snapshot.summary(of:)), id: \.group) { summary in
                 HStack(spacing: Space.xxs) {
-                    StatusDot(band: TemperatureBand.band(for: summary.average, in: summary.group))
+                    StatusDot(band: TemperatureBand.band(for: summary.average, in: summary.group), group: summary.group)
                     Text(summary.group.title)
                         .foregroundStyle(.secondary)
                     Text(format.temperature(summary.average))

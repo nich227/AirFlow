@@ -20,17 +20,17 @@ struct MainWindow: View {
         @Bindable var model = model
         NavigationSplitView {
             Sidebar(selection: $selection, isDescribing: $isDescribing)
-                .id(model.settings.colorPalette)
+                .id(model.settings.lookID)
                 .navigationSplitViewColumnWidth(min: 200, ideal: Layout.sidebarWidth, max: 240)
         } detail: {
             detail
                 // A page reads its colors as it is built, so a new palette builds it again.
-                .id(model.settings.colorPalette)
+                .id(model.settings.lookID)
                 .toolbar { applyItem }
         }
         .inspector(isPresented: $settings.showsInspector) {
             LiveInspector()
-                .id(model.settings.colorPalette)
+                .id(model.settings.lookID)
                 .inspectorColumnWidth(min: 240, ideal: Layout.inspectorWidth, max: 300)
                 // In the inspector's own part of the toolbar, the button sits at the window's
                 // trailing edge, above the column it shows and hides.

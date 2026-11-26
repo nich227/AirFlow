@@ -140,6 +140,8 @@ Text is `.primary` or `.secondary`. Never set text to white or black.
 
 ### Named Rules
 
+**Dots by part.** In Settings a person can set Status Dots to By Part. A dot in a list of parts then has the part's own color, which says nothing about its temperature: the CPU and the GPU have the colors of their lines in the chart, and each other part has a color of its own (`ColorPalette.part`). The dot beside a curve keeps the temperature scale.
+
 **The Number Rule.** A temperature color never appears alone. A dot sits beside a temperature, and the curve's ground sits under a labeled axis. VoiceOver reads the band's word.
 
 **The One Accent Rule.** The accent means "this is selected" or "this acts". It never decorates. It is the palette's, and text on it is white.

@@ -213,6 +213,9 @@ final class FormatTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(Self.contrastWithWhite(hex), 3, "\(palette.title) \(String(hex, radix: 16))")
             }
             XCTAssertFalse(palette.title.isEmpty)
+            XCTAssertEqual(Set(SensorGroup.allCases.map { palette.part($0).dark }).count, SensorGroup.allCases.count, "\(palette.title) gives each part a color of its own")
+            XCTAssertEqual(palette.part(.cpu), palette.cpu[0], "The CPU's dot has the color of its line")
+            XCTAssertEqual(palette.part(.gpu), palette.gpu[0])
             XCTAssertEqual(ColorPalette(rawValue: palette.id), palette)
         }
     }
@@ -259,6 +262,14 @@ final class FormatTests: XCTestCase {
         defaults.set("no such palette", forKey: AppSettings.Key.colorPalette)
         XCTAssertEqual(AppSettings(defaults: defaults).colorPalette, .bliss)
         XCTAssertEqual(ColorPalette.current, .bliss)
+        XCTAssertEqual(second.dotColoring, .temperature, "A dot shows a temperature until the person chooses otherwise")
+        let before = second.lookID
+        second.dotColoring = .part
+        XCTAssertEqual(DotColoring.current, .part)
+        XCTAssertNotEqual(second.lookID, before, "The views are built again")
+        XCTAssertEqual(AppSettings(defaults: defaults).dotColoring, .part)
+        second.dotColoring = .temperature
+        XCTAssertEqual(DotColoring.current, .temperature)
         XCTAssertEqual(second.temperatureUnit, .fahrenheit)
         XCTAssertTrue(second.setupShown)
         XCTAssertEqual(second.menuBarReadout, .cpu)

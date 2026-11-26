@@ -111,6 +111,36 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
         }
     }
 
+    /// The color of a part, for a person who colors the status dots by part. The CPU and the GPU
+    /// have the colors of their lines in the chart.
+    func part(_ group: SensorGroup) -> Shade {
+        switch group {
+        case .cpu: return cpu[0]
+        case .gpu: return gpu[0]
+        case .memory: return fans[0]
+        case .storage: return fans[1]
+        case .battery: return fans[2]
+        case .enclosure: return moreParts[0]
+        case .power: return moreParts[1]
+        case .wireless: return moreParts[2]
+        case .other: return Shade(0x6B7280, 0x9CA3AF)
+        }
+    }
+
+    /// Three more colors, for the parts that have no line in a chart: the enclosure, the power
+    /// supply, and the wireless card. Each is a hue the palette's lines do not use.
+    private var moreParts: [Shade] {
+        switch self {
+        case .bliss: return [Shade(0x7C3AED, 0xA78BFA), Shade(0xC8321A, 0xF0563B), Shade(0x0F766E, 0x2DD4BF)]
+        case .aurora: return [Shade(0x7C3AED, 0xA78BFA), Shade(0xBE123C, 0xFB7185), Shade(0x0369A1, 0x38BDF8)]
+        case .matrix: return [Shade(0x003B00, 0x008F11), Shade(0x00A814, 0xE8FFE0), Shade(0x15803D, 0x4ADE80)]
+        case .girlypop: return [Shade(0x7C3AED, 0xC4B5FD), Shade(0xC026D3, 0xE879F9), Shade(0xE11D48, 0xFB7185)]
+        case .synthwave: return [Shade(0x0B8F8C, 0x36F9F6), Shade(0x148F5B, 0x72F1B8), Shade(0x495495, 0x8F9BE8)]
+        case .nord: return [Shade(0x4C6E96, 0x81A1C1), Shade(0x5B7A3F, 0xA3BE8C), Shade(0x3F7F9A, 0x88C0D0)]
+        case .catppuccin: return [Shade(0x8839EF, 0xCBA6F7), Shade(0xD20F39, 0xF38BA8), Shade(0x179299, 0x94E2D5)]
+        }
+    }
+
     /// The name of the palette's app icon among the bundled ones. The first palette's is the
     /// app's own icon.
     var iconName: String {
@@ -120,4 +150,24 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
     /// The palette in use. `AppSettings` sets it when it loads and when the person chooses another.
     /// Views read it only on the main thread, where it is also written.
     nonisolated(unsafe) static var current: ColorPalette = .standard
+}
+
+/// What the color of a status dot says.
+enum DotColoring: String, CaseIterable, Identifiable, Codable, Sendable {
+    /// How hot the part is for its own limits, on the temperature scale.
+    case temperature
+    /// Which part it is. Each part keeps one color, whatever its temperature.
+    case part
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .temperature: return "By Temperature"
+        case .part: return "By Part"
+        }
+    }
+
+    /// The coloring in use. `AppSettings` sets it, as it sets `ColorPalette.current`.
+    nonisolated(unsafe) static var current: DotColoring = .temperature
 }

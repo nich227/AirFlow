@@ -34,6 +34,7 @@ final class AppSettings {
         static let welcomeShown = "welcomeShown"
         static let setupShown = "setupShown"
         static let colorPalette = "colorPalette"
+        static let dotColoring = "dotColoring"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -57,6 +58,18 @@ final class AppSettings {
         }
     }
 
+    /// What the color of a status dot says: how hot the part is, or which part it is.
+    var dotColoring: DotColoring {
+        didSet {
+            defaults.set(dotColoring.rawValue, forKey: Key.dotColoring)
+            DotColoring.current = dotColoring
+        }
+    }
+
+    /// Changes when a setting changes how views are colored. A view reads its colors as it is
+    /// built, so each scene gives its content this identity and builds it again.
+    var lookID: String { colorPalette.rawValue + "." + dotColoring.rawValue }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         temperatureUnit = defaults.string(forKey: Key.temperatureUnit).flatMap(TemperatureUnit.init) ?? .celsius
@@ -70,8 +83,12 @@ final class AppSettings {
         showsInspector = defaults.object(forKey: Key.showsInspector) as? Bool ?? true
         welcomeShown = defaults.bool(forKey: Key.welcomeShown)
         setupShown = defaults.bool(forKey: Key.setupShown)
-        colorPalette = defaults.string(forKey: Key.colorPalette).flatMap(ColorPalette.init) ?? .standard
-        ColorPalette.current = colorPalette
+        let palette = defaults.string(forKey: Key.colorPalette).flatMap(ColorPalette.init) ?? .standard
+        let coloring = defaults.string(forKey: Key.dotColoring).flatMap(DotColoring.init) ?? .temperature
+        colorPalette = palette
+        dotColoring = coloring
+        ColorPalette.current = palette
+        DotColoring.current = coloring
     }
 
     var format: ReadingFormat {

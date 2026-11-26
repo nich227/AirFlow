@@ -75,7 +75,7 @@ struct LiveInspector: View {
             .padding(.bottom, Space.xs)
         } label: {
             HStack(spacing: Space.xs) {
-                StatusDot(band: band)
+                StatusDot(band: band, group: summary.group)
                 Text(summary.group.title)
                     .airFont(.body)
                 Spacer()
@@ -369,7 +369,7 @@ struct SensorsView: View {
                 Table(rows, sortOrder: $sortOrder) {
                     TableColumn("Sensor", value: \.name) { row in
                         HStack(spacing: Space.xs) {
-                            StatusDot(band: TemperatureBand.band(for: row.celsius, in: row.group))
+                            StatusDot(band: TemperatureBand.band(for: row.celsius, in: row.group), group: row.group)
                             Text(row.name)
                         }
                     }

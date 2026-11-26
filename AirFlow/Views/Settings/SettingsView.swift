@@ -76,6 +76,15 @@ struct SettingsView: View {
     }
 }
 
+extension View {
+    /// Makes a pane of Preferences as tall as what it holds, so the window shows the whole pane.
+    /// A grouped form scrolls, and a window that is given no height for it cuts the pane off
+    /// below its third section.
+    func settingsPaneHeight() -> some View {
+        fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 /// A palette's colors side by side: the five steps of the temperature scale as beads, its main
 /// color, then the CPU's and the GPU's lines.
 struct PaletteSwatch: View {
@@ -162,6 +171,7 @@ struct GeneralSettingsPane: View {
             }
         }
         .formStyle(.grouped)
+        .settingsPaneHeight()
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
@@ -218,6 +228,7 @@ struct FanControlSettingsPane: View {
             }
         }
         .formStyle(.grouped)
+        .settingsPaneHeight()
         .onAppear { model.helper.refresh() }
     }
 
@@ -258,6 +269,7 @@ struct IntelligenceSettingsPane: View {
             }
         }
         .formStyle(.grouped)
+        .settingsPaneHeight()
         .onAppear { model.intelligence.refreshAvailability() }
     }
 }

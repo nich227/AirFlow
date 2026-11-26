@@ -102,6 +102,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             appearance = NSApp.observe(\.effectiveAppearance) { _, _ in
                 Task { @MainActor in DockIcon.update() }
             }
+            // The icon style (Default, Dark, Clear, Tinted) is a default of the whole system.
+            UserDefaults.standard.addObserver(self, forKeyPath: DockIcon.styleKey, options: [], context: nil)
         }
         for name in [NSWindow.didBecomeKeyNotification, NSWindow.willCloseNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
@@ -118,6 +120,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Coming back from System Settings is when the helper's approval changes.
             MainActor.assumeIsolated { AppModel.shared.helper.refresh() }
         })
+    }
+
+    nonisolated override func observeValue(
+        forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?
+    ) {
+        guard keyPath == DockIcon.styleKey else { return }
+        Task { @MainActor in DockIcon.update() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

@@ -103,9 +103,31 @@ enum DockIcon {
         // if a bundled icon is missing.
         let name = bundledName(isRainbow: isRainbow)
         // With the first icon, macOS draws the app's own icon, which also follows the icon style
-        // the person chose (Dark, Clear, or Tinted). The other icons are set as pictures.
-        NSApp.applicationIconImage = name == "AppIcon" ? nil
-            : Bundle.main.image(forResource: name) ?? image(accent: accent, isDark: isDark, isRainbow: isRainbow)
+        // the person chose (Dark, Clear, or Tinted). The other icons are set as pictures, so a
+        // dark icon style gets the picture of the icon's Dark rendition.
+        guard name != "AppIcon" else {
+            NSApp.applicationIconImage = nil
+            return
+        }
+        let dark = showsDarkIcons(isDarkMode: isDark) ? NSImage(named: darkName(for: name)) : nil
+        NSApp.applicationIconImage = dark ?? Bundle.main.image(forResource: name)
+            ?? image(accent: accent, isDark: isDark, isRainbow: isRainbow)
+    }
+
+    /// The default of the whole system that holds the icon style from System Settings.
+    static let styleKey = "AppleIconAppearanceTheme"
+
+    /// Whether the Dock's icons are dark. The style is a kind (Regular, Clear, Tinted) followed by
+    /// Light, Dark, or Automatic, which follows Dark Mode. With no style stored, icons are light.
+    static func showsDarkIcons(style: String? = UserDefaults.standard.string(forKey: styleKey), isDarkMode: Bool) -> Bool {
+        guard let style else { return false }
+        if style.hasSuffix("Dark") { return true }
+        return style.hasSuffix("Automatic") && isDarkMode
+    }
+
+    /// The picture of a bundled icon's Dark rendition: DockRainbowDark for AppIconRainbow.
+    static func darkName(for bundled: String) -> String {
+        "Dock" + bundled.dropFirst("AppIcon".count) + "Dark"
     }
 
     /// The bundled icon for the accent in System Settings. macOS stores the accent as a number,

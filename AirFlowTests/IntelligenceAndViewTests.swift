@@ -149,7 +149,19 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(DockIcon.bundledName(isRainbow: true, accent: 6), "AppIconRainbow")
         for name in ["AppIconRainbow", "AppIconPurple", "AppIconPink", "AppIconRed", "AppIconOrange", "AppIconYellow", "AppIconGreen", "AppIconGraphite"] {
             XCTAssertNotNil(Bundle.main.image(forResource: name), "\(name) is inside the app")
+            XCTAssertNotNil(NSImage(named: DockIcon.darkName(for: name)), "\(name) has a picture of its Dark rendition")
         }
+        XCTAssertEqual(DockIcon.darkName(for: "AppIconRainbow"), "DockRainbowDark")
+    }
+
+    func testTheDockIconFollowsTheIconStyle() {
+        XCTAssertFalse(DockIcon.showsDarkIcons(style: nil, isDarkMode: true), "The default style is light in Dark Mode too")
+        XCTAssertTrue(DockIcon.showsDarkIcons(style: "RegularDark", isDarkMode: false))
+        XCTAssertFalse(DockIcon.showsDarkIcons(style: "RegularLight", isDarkMode: true))
+        XCTAssertTrue(DockIcon.showsDarkIcons(style: "RegularAutomatic", isDarkMode: true))
+        XCTAssertFalse(DockIcon.showsDarkIcons(style: "RegularAutomatic", isDarkMode: false))
+        XCTAssertTrue(DockIcon.showsDarkIcons(style: "TintedDark", isDarkMode: false))
+        XCTAssertFalse(DockIcon.showsDarkIcons(style: "ClearLight", isDarkMode: true))
     }
 
     @MainActor

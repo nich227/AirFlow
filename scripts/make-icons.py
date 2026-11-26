@@ -24,6 +24,7 @@ each is its own piece of Liquid Glass.
 import json
 import pathlib
 import re
+import subprocess
 import sys
 
 import fan_geometry
@@ -147,6 +148,39 @@ def write_accent_icons():
             (folder / "Assets" / part).write_text((APP_ICON / part).read_text())
 
 
+def icon_tool():
+    """Icon Composer's command-line tool, which draws a document as macOS would."""
+    developer = subprocess.run(["xcode-select", "-p"], capture_output=True, text=True, check=True).stdout.strip()
+    tool = pathlib.Path(developer).parent / "Applications" / "Icon Composer.app" / "Contents" / "Executables" / "ictool"
+    return tool if tool.exists() else None
+
+
+def write_dark_dock_icons():
+    """Draws the Dark rendition of each icon that AirFlow sets in the Dock itself, as a picture.
+
+    macOS draws only an app's first icon in the person's icon style. An icon that the app sets while
+    it runs is a picture, so the Dark one is a picture of its own (DockRainbowDark and so on).
+    """
+    tool = icon_tool()
+    if tool is None:
+        print("Icon Composer's ictool was not found, so the dark Dock icons were left as they are")
+        return
+    resources = APP_ICON.parent.parent
+    for name in ["Rainbow", *ACCENTS]:
+        folder = CATALOG / f"Dock{name}Dark.imageset"
+        folder.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            [str(tool), str(resources / f"AppIcon{name}.icon"), "--export-image", "--output-file", str(folder / "icon.png"),
+             "--platform", "macOS", "--rendition", "Dark", "--width", "256", "--height", "256", "--scale", "2"],
+            check=True, capture_output=True,
+        )
+        contents = {
+            "images": [{"idiom": "mac", "filename": "icon.png", "scale": "2x"}],
+            "info": {"author": "xcode", "version": 1},
+        }
+        (folder / "Contents.json").write_text(json.dumps(contents, indent=2) + "\n")
+
+
 def main():
     write_imageset("MenuBarIcon", "fan.svg", fan_geometry.svg(18))
     # The Dock icon paints the blades in the person's accent, so each part is also an image.
@@ -160,6 +194,7 @@ def main():
     (APP_ICON / "blades.svg").write_text(fan_geometry.svg(1024, parts=(fan_geometry.BLADES,)))
     (APP_ICON / "housing.svg").write_text(fan_geometry.svg(1024, parts=(fan_geometry.HOUSING,)))
     write_accent_icons()
+    write_dark_dock_icons()
     print("wrote the mark, the sparkles, the airplane, and an app icon for each accent")
 
     if len(sys.argv) < 2:

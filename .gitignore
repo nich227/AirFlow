@@ -71,3 +71,6 @@ __pycache__/
 
 # Captures for a design review. They are made again for each review.
 /.impeccable/review/
+
+# The design skill writes this file about the Mac it runs on.
+.impeccable/staleness-check.json

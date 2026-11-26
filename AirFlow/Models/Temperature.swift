@@ -101,6 +101,6 @@ enum TemperatureBand: Int, CaseIterable, Comparable, Sendable {
 
     static func band(for celsius: Double, in group: SensorGroup) -> TemperatureBand {
         let passed = thresholds(for: group).filter { celsius >= $0 }.count
-        return TemperatureBand(rawValue: passed) ?? .critical
+        return allCases[min(passed, allCases.count - 1)]
     }
 }

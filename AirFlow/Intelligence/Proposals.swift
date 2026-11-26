@@ -225,13 +225,14 @@ struct ThermalDigest: Equatable, Sendable {
         guard cpu.count >= 5, let first = history.first, let last = history.last,
               let low = cpu.min(), let high = cpu.max()
         else { return nil }
-        let fans = history.map { $0.fanFractions.max() ?? 0 }
+        // The fastest fan at each reading. A reading with no fan counts as a fan at rest.
+        let fans = history.map { $0.fanFractions.reduce(0, max) }
         minutes = max(1, Int((last.date.timeIntervalSince(first.date) / 60).rounded()))
         cpuLow = low
         cpuAverage = cpu.reduce(0, +) / Double(cpu.count)
         cpuHigh = high
         fanAverage = fans.reduce(0, +) / Double(max(fans.count, 1))
-        fanHigh = fans.max() ?? 0
+        fanHigh = fans.reduce(0, max)
         self.presetName = presetName
     }
 

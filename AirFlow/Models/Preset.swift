@@ -69,8 +69,14 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
         controls[fan.index] = control
     }
 
-    static let automaticID = UUID(uuidString: "A1F10000-0000-4000-8000-000000000001") ?? UUID()
-    static let fullBlastID = UUID(uuidString: "A1F10000-0000-4000-8000-000000000002") ?? UUID()
+    /// A built-in preset's identifier, `A1F10000-0000-4000-8000-00000000000N`. Stored settings
+    /// and rules name a built-in preset by it, so it never changes.
+    private static func builtInID(_ number: UInt8) -> UUID {
+        UUID(uuid: (0xA1, 0xF1, 0, 0, 0, 0, 0x40, 0, 0x80, 0, 0, 0, 0, 0, 0, number))
+    }
+
+    static let automaticID = builtInID(1)
+    static let fullBlastID = builtInID(2)
 
     static let automatic = Preset(
         id: automaticID, name: "Automatic", icon: .sync, kind: .automatic,
@@ -82,7 +88,7 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
         summary: "Every fan runs at full speed."
     )
 
-    static let adaptiveID = UUID(uuidString: "A1F10000-0000-4000-8000-000000000003") ?? UUID()
+    static let adaptiveID = builtInID(3)
 
     static let adaptive = Preset(
         id: adaptiveID, name: "Adaptive", icon: .sparkles, kind: .adaptive,

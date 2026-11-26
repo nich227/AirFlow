@@ -48,6 +48,8 @@ struct RollingWindow {
 
     var count: Int { samples.count - first }
     var mean: Double? { count > 0 ? sum / Double(count) : nil }
+    /// The mean, or the given value while the window is empty.
+    func mean(or empty: Double) -> Double { count > 0 ? sum / Double(count) : empty }
     /// The oldest value the window still holds, with its time.
     var oldest: (time: TimeInterval, value: Double)? { count > 0 ? samples[first] : nil }
     /// The time between the oldest value and the newest.
@@ -451,18 +453,18 @@ struct AdaptiveController {
 
         // Power, as a share of what this Mac draws between rest and full load.
         var load5 = 0.0, load15 = 0.0, load30 = 0.0
-        if let watts = snapshot.systemWatts {
+        if let watts = snapshot.systemWatts, watts.isFinite {
             power5.add(watts, at: time)
             power15.add(watts, at: time)
             power30.add(watts, at: time)
             var known = scale ?? PowerScale(first: watts)
-            known.observe(restingWatts: power30.mean ?? watts, burstWatts: power5.mean ?? watts)
+            known.observe(restingWatts: power30.mean(or: watts), burstWatts: power5.mean(or: watts))
             scale = known
-            load5 = known.load(power5.mean ?? watts)
-            load15 = known.load(power15.mean ?? watts)
+            load5 = known.load(power5.mean(or: watts))
+            load15 = known.load(power15.mean(or: watts))
             // A window that only just started cannot show that a load has lasted.
             if power30.covered >= power30.span / 2 {
-                load30 = known.load(power30.mean ?? watts)
+                load30 = known.load(power30.mean(or: watts))
             }
         }
         let regime = detector.update(load5: load5, load30: load30, hint: hint, at: time)

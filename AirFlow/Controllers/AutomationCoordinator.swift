@@ -35,25 +35,29 @@ final class AutomationCoordinator {
 
     /// Starts following the frontmost app. AirFlow coming forward is not a change of context,
     /// because opening AirFlow to look at a rule must not end the rule.
-    func startWatching() {
+    /// - Parameters:
+    ///   - center: where the workspace says that an app came forward.
+    ///   - frontmost: the app in front now.
+    ///   - own: AirFlow's own identifier.
+    func startWatching(
+        center: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        frontmost: String? = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+        own: String? = Bundle.main.bundleIdentifier
+    ) {
         guard activationObserver == nil else { return }
-        let own = Bundle.main.bundleIdentifier
-        frontmostBundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
-        ) { [weak self] note in
-            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            guard let bundleID = app?.bundleIdentifier, bundleID != own else { return }
+        frontmostBundleID = frontmost
+        activationObserver = center.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] note in
+            guard let bundleID = OpenApp(note).bundleID, bundleID != own else { return }
             MainActor.assumeIsolated { self?.frontmostBundleID = bundleID }
         }
     }
 
     func context(snapshot: ThermalSnapshot, now: Date = Date()) -> AutomationContext {
-        let parts = Calendar.current.dateComponents([.hour, .minute], from: now)
+        let calendar = Calendar.current
         return AutomationContext(
             frontmostBundleID: frontmostBundleID,
             powerSource: Self.currentPowerSource(),
-            minuteOfDay: (parts.hour ?? 0) * 60 + (parts.minute ?? 0),
+            minuteOfDay: calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now),
             snapshot: snapshot
         )
     }
@@ -122,6 +126,34 @@ final class AutomationCoordinator {
 
     static func currentPowerSource() -> PowerSource {
         Backend.isOnBattery ? .battery : .adapter
+    }
+}
+
+/// An app as the workspace reports it. Either part can be missing.
+struct OpenApp: Equatable {
+    var bundleID: String?
+    var name: String?
+
+    init(bundleID: String?, name: String?) {
+        self.bundleID = bundleID
+        self.name = name
+    }
+
+    init(_ app: NSRunningApplication?) {
+        self.init(bundleID: app?.bundleIdentifier, name: app?.localizedName)
+    }
+
+    /// The app that a workspace notification is about.
+    init(_ note: Notification) {
+        self.init(note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)
+    }
+
+    /// The identifier with the name to show: the app's own, or its identifier when it has none.
+    /// Nil for an app with no identifier, which nothing can refer to.
+    var named: (bundleID: String, name: String)? {
+        guard let bundleID else { return nil }
+        guard let name else { return (bundleID, bundleID) }
+        return (bundleID, name)
     }
 }
 

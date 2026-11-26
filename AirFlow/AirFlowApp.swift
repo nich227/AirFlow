@@ -84,7 +84,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         default: break
         }
         #endif
-        AppModel.shared.start()
+        // The tests load into the app, and the app's own model must not watch or read anything then.
+        if !AppModel.isRunningTests { AppModel.shared.start() }
         Updates.shared.start()
         #if DEBUG
         // A script that captures the panel beside System Settings asks for it by name.

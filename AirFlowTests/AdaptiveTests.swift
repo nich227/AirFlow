@@ -462,7 +462,7 @@ final class AdaptivePlanTests: XCTestCase {
         XCTAssertEqual(copy.kind, .custom)
         XCTAssertEqual(copy.name, "Adaptive Copy")
         guard case .sensorBased = copy.fallback else { return XCTFail("The copy starts as a curve") }
-        XCTAssertNoThrow(try PresetCodec.encode([copy]))
+        XCTAssertTrue(PresetCodec.encode([copy]).contains("name: Adaptive Copy"), "The copy is written as a preset of its own")
     }
 
     func testTheSentenceSaysWhoHasTheFan() {

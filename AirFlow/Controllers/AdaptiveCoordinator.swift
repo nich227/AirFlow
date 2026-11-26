@@ -40,21 +40,24 @@ final class AdaptiveCoordinator {
 
     /// Starts following which apps are open. Launching and quitting an app each change one
     /// entry, so no reading has to list the open apps.
-    func startWatching() {
+    /// - Parameters:
+    ///   - center: where the workspace says that an app opened or quit.
+    ///   - open: the apps that are open now.
+    func startWatching(
+        center: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        open: [OpenApp] = NSWorkspace.shared.runningApplications.map { OpenApp($0) }
+    ) {
         guard observers.isEmpty else { return }
-        for app in NSWorkspace.shared.runningApplications {
-            if let bundleID = app.bundleIdentifier { running[bundleID] = app.localizedName ?? bundleID }
+        for app in open.compactMap(\.named) {
+            running[app.bundleID] = app.name
         }
-        let center = NSWorkspace.shared.notificationCenter
         let changes: [(Notification.Name, Bool)] = [
             (NSWorkspace.didLaunchApplicationNotification, true), (NSWorkspace.didTerminateApplicationNotification, false),
         ]
         for (name, isOpen) in changes {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
-                let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-                guard let bundleID = app?.bundleIdentifier else { return }
-                let appName = app?.localizedName ?? bundleID
-                MainActor.assumeIsolated { self?.setRunning(bundleID, name: isOpen ? appName : nil) }
+                guard let app = OpenApp(note).named else { return }
+                MainActor.assumeIsolated { self?.setRunning(app.bundleID, name: isOpen ? app.name : nil) }
             })
         }
         refreshHint()

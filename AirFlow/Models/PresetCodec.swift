@@ -109,7 +109,7 @@ enum PresetCodec {
     /// The presets as YAML. The text is written line by line, so a file always has the same
     /// plain shape: one key per line, whole numbers as whole numbers, and quotes only where
     /// YAML needs them.
-    static func encode(_ presets: [Preset]) throws -> String {
+    static func encode(_ presets: [Preset]) -> String {
         let custom = presets.filter { $0.kind == .custom }
         var lines = ["airflow: \(version)"]
         guard !custom.isEmpty else { return header + lines.joined(separator: "\n") + "\npresets: []\n" }
@@ -251,15 +251,17 @@ enum PresetCodec {
             guard let start = control.start?.value, let full = control.full?.value, start.isFinite, full.isFinite else {
                 throw Failure.invalid(preset: preset, reason: "a sensor mode needs start and full temperatures.")
             }
-            guard let source = source(named: control.sensor ?? "cpu average") else {
-                throw Failure.invalid(preset: preset, reason: "“\(control.sensor ?? "")” isn't a sensor AirFlow knows.")
+            let sensor = control.sensor ?? "cpu average"
+            guard let source = source(named: sensor) else {
+                throw Failure.invalid(preset: preset, reason: "“\(sensor)” isn't a sensor AirFlow knows.")
             }
             let below: SensorRule.BelowStart
-            switch control.below?.lowercased() {
-            case nil, "minimum", "min": below = .minimum
+            let choice = control.below ?? "minimum"
+            switch choice.lowercased() {
+            case "minimum", "min": below = .minimum
             case "automatic", "auto": below = .automatic
             default:
-                throw Failure.invalid(preset: preset, reason: "“\(control.below ?? "")” isn't a choice for below. Use minimum or automatic.")
+                throw Failure.invalid(preset: preset, reason: "“\(choice)” isn't a choice for below. Use minimum or automatic.")
             }
             return .sensorBased(SensorRule(source: source, startCelsius: start, maxCelsius: full, belowStart: below))
         default:

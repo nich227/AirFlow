@@ -11,16 +11,27 @@ struct PresetsDocument: FileDocument {
         self.text = text
     }
 
-    init(configuration: ReadConfiguration) throws {
-        guard let data = configuration.file.regularFileContents, data.count <= PresetCodec.maximumBytes else {
+    /// The text of a file's contents. A file that is not a regular file, or is larger than a
+    /// presets file can be, is refused.
+    init(contents: Data?) throws {
+        guard let contents, contents.count <= PresetCodec.maximumBytes else {
             throw PresetCodec.Failure.tooLarge
         }
-        text = String(decoding: data, as: UTF8.self)
+        text = String(decoding: contents, as: UTF8.self)
+    }
+
+    /// What is written to a file.
+    var contents: Data { Data(text.utf8) }
+
+    // coverage:off Only SwiftUI can make a ReadConfiguration or a WriteConfiguration.
+    init(configuration: ReadConfiguration) throws {
+        try self.init(contents: configuration.file.regularFileContents)
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: Data(text.utf8))
+        FileWrapper(regularFileWithContents: contents)
     }
+    // coverage:on
 }
 
 /// The state of importing and exporting, which the window turns into panels and an alert.

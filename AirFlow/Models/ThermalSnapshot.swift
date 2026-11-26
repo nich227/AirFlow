@@ -127,37 +127,39 @@ struct HistoryPoint: Identifiable, Equatable, Sendable {
     /// The history as a chart draws it: the readings of each span of time as one point with
     /// their averages. A point has the time of its last reading, so a span that is over keeps
     /// its point, and the newest point is at the newest reading.
-    static func thinned(_ history: some Collection<HistoryPoint>) -> [HistoryPoint] {
-        guard let first = history.first, let last = history.reversed().first else { return [] }
+    static func thinned(_ history: some BidirectionalCollection<HistoryPoint>) -> [HistoryPoint] {
+        guard let first = history.first, let last = history.last else { return [] }
         let interval = chartInterval(forSpan: last.date.timeIntervalSince(first.date))
         var result: [HistoryPoint] = []
         var bucket: [HistoryPoint] = []
         var number = 0.0
         for point in history {
             let own = (point.date.timeIntervalSinceReferenceDate / interval).rounded(.down)
-            if own != number, !bucket.isEmpty {
-                result.append(average(bucket))
+            if own != number, let newest = bucket.last {
+                result.append(average(bucket, endingAt: newest))
                 bucket.removeAll(keepingCapacity: true)
             }
             number = own
             bucket.append(point)
         }
-        if !bucket.isEmpty { result.append(average(bucket)) }
+        result.append(average(bucket, endingAt: last))
         return result
     }
 
-    /// One point for several: the average of each reading, at the time of the last point.
-    private static func average(_ points: [HistoryPoint]) -> HistoryPoint {
+    /// One point for several: the average of each reading, at the time of the newest point,
+    /// which is one of them. It has a fan for each fan of the newest point.
+    private static func average(_ points: [HistoryPoint], endingAt newest: HistoryPoint) -> HistoryPoint {
         func mean(_ values: [Double]) -> Double? {
             values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
         }
-        let fans = points.last?.fanFractions.count ?? 0
         return HistoryPoint(
-            date: points.last?.date ?? .distantPast,
+            date: newest.date,
             cpu: mean(points.compactMap(\.cpu)),
             gpu: mean(points.compactMap(\.gpu)),
-            fanFractions: (0..<fans).map { index in
-                mean(points.compactMap { $0.fanFractions.indices.contains(index) ? $0.fanFractions[index] : nil }) ?? 0
+            fanFractions: newest.fanFractions.indices.map { index in
+                // The newest point has this fan, so there is always a speed to average.
+                let speeds = points.compactMap { $0.fanFractions.indices.contains(index) ? $0.fanFractions[index] : nil }
+                return speeds.reduce(0, +) / Double(max(speeds.count, 1))
             }
         )
     }

@@ -22,20 +22,32 @@ struct PresetEntity: AppEntity {
 struct PresetQuery: EntityStringQuery {
     @MainActor
     func entities(for identifiers: [UUID]) async throws -> [PresetEntity] {
-        identifiers.compactMap { AppModel.shared.presets.preset(id: $0) }.map(PresetEntity.init)
+        Self.entities(for: identifiers, in: AppModel.shared.presets)
     }
 
     @MainActor
     func entities(matching string: String) async throws -> [PresetEntity] {
-        let wanted = string.lowercased()
-        return AppModel.shared.presets.presets
-            .filter { $0.name.lowercased().contains(wanted) }
-            .map(PresetEntity.init)
+        Self.entities(matching: string, in: AppModel.shared.presets)
     }
 
     @MainActor
     func suggestedEntities() async throws -> [PresetEntity] {
-        AppModel.shared.presets.presets.map(PresetEntity.init)
+        Self.entities(matching: "", in: AppModel.shared.presets)
+    }
+
+    /// The presets with these identifiers that still exist, in the order asked for.
+    @MainActor
+    static func entities(for identifiers: [UUID], in store: PresetStore) -> [PresetEntity] {
+        identifiers.compactMap { store.preset(id: $0) }.map(PresetEntity.init)
+    }
+
+    /// The presets whose name holds the text, whatever its case. No text matches every preset.
+    @MainActor
+    static func entities(matching string: String, in store: PresetStore) -> [PresetEntity] {
+        let wanted = string.lowercased()
+        return store.presets
+            .filter { wanted.isEmpty || $0.name.lowercased().contains(wanted) }
+            .map(PresetEntity.init)
     }
 }
 
@@ -52,15 +64,20 @@ struct ApplyPresetIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let model = AppModel.shared
+        .result(dialog: "\(Self.apply(preset, to: AppModel.shared))")
+    }
+
+    /// Makes the preset the current one, and says what happened.
+    @MainActor
+    static func apply(_ preset: PresetEntity, to model: AppModel) -> String {
         guard model.presets.preset(id: preset.id) != nil else {
-            return .result(dialog: "AirFlow no longer has a preset named \(preset.name).")
+            return "AirFlow no longer has a preset named \(preset.name)."
         }
         model.apply(preset.id, by: .siri)
         if model.helper.status.allowsControl {
-            return .result(dialog: "AirFlow is using \(preset.name).")
+            return "AirFlow is using \(preset.name)."
         }
-        return .result(dialog: "AirFlow is set to \(preset.name), but fan control isn't turned on.")
+        return "AirFlow is set to \(preset.name), but fan control isn't turned on."
     }
 }
 
@@ -70,12 +87,17 @@ struct FanStatusIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
-        let model = AppModel.shared
+        let status = await Self.status(of: AppModel.shared)
+        return .result(value: status, dialog: "\(status)")
+    }
+
+    /// One sentence about the fans now. A model that has not read the Mac yet reads it first.
+    @MainActor
+    static func status(of model: AppModel) async -> String {
         if !model.monitor.hasLoaded { await model.monitor.refresh() }
-        let status = FanStatus.sentence(
+        return FanStatus.sentence(
             snapshot: model.monitor.snapshot, presetName: model.activePreset.name, format: model.settings.format
         )
-        return .result(value: status, dialog: "\(status)")
     }
 }
 

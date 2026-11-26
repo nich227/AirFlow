@@ -90,7 +90,7 @@ extension SensorGroup {
     }
 
     var backendCode: UInt8 {
-        UInt8(SensorGroup.allCases.firstIndex(of: self) ?? 0)
+        UInt8(SensorGroup.allCases.prefix { $0 != self }.count)
     }
 
     var sortIndex: Int { Int(backendCode) }
@@ -142,19 +142,32 @@ actor HardwareSampler {
     private var source: SnapshotSource?
     private let makeSource: () throws -> SnapshotSource
 
-    init(makeSource: @escaping () throws -> SnapshotSource = HardwareSampler.openBackend) {
+    init(makeSource: @escaping () throws -> SnapshotSource) {
         self.makeSource = makeSource
     }
 
     func sample(groups: Set<SensorGroup> = Set(SensorGroup.allCases)) throws -> ThermalSnapshot {
-        if source == nil { source = try makeSource() }
-        return source?.snapshot(at: Date(), groups: groups) ?? .empty
+        let open: SnapshotSource
+        if let source {
+            open = source
+        } else {
+            open = try makeSource()
+            source = open
+        }
+        return open.snapshot(at: Date(), groups: groups)
+    }
+
+    // coverage:off It opens the Mac's own SMC, which a test must not depend on.
+    /// A sampler that reads this Mac.
+    init() {
+        makeSource = HardwareSampler.openBackend
     }
 
     static func openBackend() throws -> SnapshotSource {
         guard let reader = BackendReader() else { throw HardwareError.cannotOpenSMC }
         return reader
     }
+    // coverage:on
 }
 
 enum HardwareError: Error {

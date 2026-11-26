@@ -59,6 +59,7 @@ final class AppModel {
         monitor.onSnapshot = { [weak self] snapshot in self?.handle(snapshot) }
     }
 
+    // coverage:off The app's one model reads the Mac's own SMC, files, and helper. Under test it is a stand-in.
     private static func makeShared() -> AppModel {
         let client = HelperClient()
         if isRunningTests {
@@ -81,6 +82,7 @@ final class AppModel {
             sampler: HardwareSampler(), commander: client, helper: HelperManager(), client: client
         )
     }
+    // coverage:on
 
     var activePreset: Preset {
         presets.preset(id: settings.activePresetID) ?? .automatic
@@ -93,7 +95,6 @@ final class AppModel {
     }
 
     func start() {
-        guard !Self.isRunningTests else { return }
         automation.startWatching()
         adaptive.startWatching()
         monitor.start()
@@ -116,14 +117,10 @@ final class AppModel {
 
     /// Asks the window to save presets to a YAML file: the ones named, or all of them.
     func beginExport(ids: [UUID]? = nil) {
-        do {
-            let names = ids?.compactMap { presets.preset(id: $0)?.name } ?? []
-            transfer.export = PresetsDocument(text: try presets.exportText(ids: ids))
-            transfer.exportName = names.count == 1 ? names[0] : "AirFlow Presets"
-            transfer.isExporting = true
-        } catch {
-            transfer.message = "AirFlow couldn't write the presets. \(error.localizedDescription)"
-        }
+        let names = ids?.compactMap { presets.preset(id: $0)?.name } ?? []
+        transfer.export = PresetsDocument(text: presets.exportText(ids: ids))
+        transfer.exportName = names.count == 1 ? names[0] : "AirFlow Presets"
+        transfer.isExporting = true
     }
 
     /// Reads presets from a YAML file a person chose and returns the ones added.
@@ -132,15 +129,26 @@ final class AppModel {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         do {
-            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            guard size <= PresetCodec.maximumBytes else { throw PresetCodec.Failure.tooLarge }
-            let added = try presets.importText(String(decoding: try Data(contentsOf: url), as: UTF8.self))
+            let added = try presets.importText(try Self.text(of: url))
             Task { AirFlowShortcuts.updateAppShortcutParameters() }
             return added
         } catch {
             transfer.message = error.localizedDescription
             return []
         }
+    }
+
+    /// The text of a file, read no further than a presets file can be long.
+    static func text(of url: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var data = Data()
+        // A read gives nothing at the end of the file.
+        while data.count <= PresetCodec.maximumBytes, let more = try handle.read(upToCount: PresetCodec.maximumBytes + 1 - data.count), !more.isEmpty {
+            data.append(more)
+        }
+        guard data.count <= PresetCodec.maximumBytes else { throw PresetCodec.Failure.tooLarge }
+        return String(decoding: data, as: UTF8.self)
     }
 
     func deletePreset(id: UUID) {
@@ -169,7 +177,6 @@ final class AppModel {
     /// Opens the page of System Settings where AirFlow is allowed, with a panel beside it that
     /// says what to do there.
     func openFanControlSettings() {
-        guard !Self.isRunningTests else { return }
         helper.openLoginItems()
         SettingsGuide.shared.show(model: self)
     }
@@ -198,15 +205,15 @@ final class AppModel {
     }
 
     /// How long the two readings of the running apps are apart.
-    static let appLoadInterval: Duration = .milliseconds(1500)
+    @ObservationIgnored var appLoadInterval: Duration = .milliseconds(1500)
 
     /// What each installed app that is running uses: two readings of the running apps, a
     /// moment apart, off the main thread. AirFlow itself is left out.
     func measureAppLoads(installed: [AppDirectory.App]) async -> [AppLoad] {
         let before = await Task.detached { Backend.appUsage() }.value
-        try? await Task.sleep(for: Self.appLoadInterval)
+        try? await Task.sleep(for: appLoadInterval)
         let after = await Task.detached { Backend.appUsage() }.value
-        let seconds = Double(Self.appLoadInterval.components.seconds) + Double(Self.appLoadInterval.components.attoseconds) / 1e18
+        let seconds = Double(appLoadInterval.components.seconds) + Double(appLoadInterval.components.attoseconds) / 1e18
         return AppLoad.loads(
             before: before, after: after, seconds: seconds, installed: installed, own: Log.subsystem,
             bundleID: { Bundle(path: $0)?.bundleIdentifier }

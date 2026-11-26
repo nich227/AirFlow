@@ -32,9 +32,7 @@ struct JSONFile<Value: Codable> {
     }
 
     static func inApplicationSupport(_ name: String) -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        return base.appendingPathComponent("AirFlow", isDirectory: true).appendingPathComponent(name)
+        URL.applicationSupportDirectory.appendingPathComponent("AirFlow", isDirectory: true).appendingPathComponent(name)
     }
 }
 
@@ -64,7 +62,7 @@ struct PresetFile {
     func save(_ presets: [Preset]) {
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try Data(try PresetCodec.encode(presets).utf8).write(to: url, options: .atomic)
+            try Data(PresetCodec.encode(presets).utf8).write(to: url, options: .atomic)
         } catch {
             Log.store.error("Could not write \(url.lastPathComponent, privacy: .public): \(String(describing: error), privacy: .public)")
         }
@@ -110,9 +108,9 @@ final class PresetStore {
     }
 
     /// The presets as a YAML document: the ones named, or every preset the person made.
-    func exportText(ids: [UUID]? = nil) throws -> String {
+    func exportText(ids: [UUID]? = nil) -> String {
         let chosen = ids.map(Set.init).map { ids in custom.filter { ids.contains($0.id) } } ?? custom
-        return try PresetCodec.encode(chosen)
+        return PresetCodec.encode(chosen)
     }
 
     /// Adds every preset in a YAML document. Each one gets a new identifier and a name of its

@@ -229,7 +229,7 @@ final class PresetStoreTests: XCTestCase {
 
     func testImportingAddsPresetsAndNeverReplacesOne() throws {
         let source = PresetStore(url: nil)
-        let exported = try source.exportText()
+        let exported = source.exportText()
         let store = PresetStore(url: nil)
         let before = store.custom
         let added = try store.importText(exported)
@@ -242,9 +242,9 @@ final class PresetStoreTests: XCTestCase {
     func testExportingOnePresetWritesOnlyThatPreset() throws {
         let store = PresetStore(url: nil)
         let travel = try XCTUnwrap(store.preset(named: "Travel"))
-        let text = try store.exportText(ids: [travel.id])
+        let text = store.exportText(ids: [travel.id])
         XCTAssertEqual(try PresetCodec.decode(text).map(\.name), ["Travel"])
-        XCTAssertThrowsError(try PresetCodec.decode(try store.exportText(ids: [Preset.fullBlastID]))) {
+        XCTAssertThrowsError(try PresetCodec.decode(store.exportText(ids: [Preset.fullBlastID]))) {
             XCTAssertEqual($0 as? PresetCodec.Failure, .noPresets, "A built-in preset is not exported")
         }
     }

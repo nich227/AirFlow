@@ -15,12 +15,12 @@ final class PresetCodecTests: XCTestCase {
     )
 
     func testEveryKindOfControlSurvivesARoundTrip() throws {
-        let text = try PresetCodec.encode([everyKind])
+        let text = PresetCodec.encode([everyKind])
         XCTAssertEqual(try PresetCodec.decode(text), [everyKind])
     }
 
     func testTheFileReadsLikeAPersonWroteIt() throws {
-        let text = try PresetCodec.encode([everyKind])
+        let text = PresetCodec.encode([everyKind])
         for line in [
             "airflow: 2", "name: Render", "icon: video-camera", "summary: Keeps the GPU cool while a render runs.",
             "mode: sensor", "sensor: gpu hottest", "start: 60", "full: 90",
@@ -37,7 +37,7 @@ final class PresetCodecTests: XCTestCase {
             "Café 80°", "- Dash", "[Bracket]", "{Brace}", "42", "Trailing dot.", "A, B (50%)", "日本語", "@home", "a\u{2028}b",
         ]
         let presets = names.map { Preset(name: $0, icon: .moon, fallback: .automatic, summary: $0) }
-        let decoded = try PresetCodec.decode(try PresetCodec.encode(presets))
+        let decoded = try PresetCodec.decode(PresetCodec.encode(presets))
         XCTAssertEqual(decoded.map(\.name), names)
         XCTAssertEqual(decoded.map(\.summary), names)
         XCTAssertEqual(PresetCodec.scalar("Heavy Workload"), "Heavy Workload", "An ordinary name needs no quotes")
@@ -81,10 +81,10 @@ final class PresetCodecTests: XCTestCase {
     func testARuleThatLeavesTheFanToTheSystemBelowItsStartSurvivesARoundTrip() throws {
         let rule = SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43, belowStart: .automatic)
         let travel = Preset(name: "Lap", icon: .airplane, fallback: .sensorBased(rule))
-        let text = try PresetCodec.encode([travel])
+        let text = PresetCodec.encode([travel])
         XCTAssertTrue(text.contains("        below: automatic\n") || text.contains("      below: automatic\n"), text)
         XCTAssertEqual(try PresetCodec.decode(text), [travel])
-        let plain = try PresetCodec.encode([Preset(name: "Plain", icon: .moon, fallback: .sensorBased(SensorRule(source: .cpuAverage, startCelsius: 70, maxCelsius: 95)))])
+        let plain = PresetCodec.encode([Preset(name: "Plain", icon: .moon, fallback: .sensorBased(SensorRule(source: .cpuAverage, startCelsius: 70, maxCelsius: 95)))])
         XCTAssertTrue(plain.hasPrefix(PresetCodec.header))
         XCTAssertFalse(plain.dropFirst(PresetCodec.header.count).contains("below"), "A rule that holds the minimum is written as before")
     }
@@ -198,7 +198,7 @@ final class PresetCodecTests: XCTestCase {
             try? FileManager.default.removeItem(at: good)
             try? FileManager.default.removeItem(at: bad)
         }
-        try Data(try PresetCodec.encode([everyKind]).utf8).write(to: good)
+        try Data(PresetCodec.encode([everyKind]).utf8).write(to: good)
         try Data("airflow: 1\npresets:\n  - name: Odd\n    fans: {mode: turbo}\n".utf8).write(to: bad)
 
         XCTAssertEqual(model.importPresets(from: good).map(\.name), ["Render"])

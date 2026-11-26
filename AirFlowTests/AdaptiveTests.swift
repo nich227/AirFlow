@@ -1,3 +1,5 @@
+import CoreML
+import CreateMLComponents
 import XCTest
 @testable import AirFlow
 
@@ -549,5 +551,109 @@ final class AdaptiveCoordinatorTests: XCTestCase {
         let memory = try JSONDecoder().decode(AdaptiveMemory.self, from: Data(stored.utf8))
         XCTAssertGreaterThan(memory.forecaster.updates, 100)
         XCTAssertEqual(memory.scale?.peak ?? 0, 60, accuracy: 1)
+    }
+}
+
+/// Compares the forecaster with Apple's linear regressor on the same made-up Mac. It prints the
+/// numbers and asserts nothing. Skipped unless AIRFLOW_COMPARE is set:
+///
+///     TEST_RUNNER_AIRFLOW_COMPARE=1 scripts/test.sh
+final class ForecasterComparisonTests: XCTestCase {
+    /// Apple's regressor, fitted again on the pairs of the last few minutes. Its `update` does not
+    /// move a model after the first fit, so a window that is fitted again is how it follows a Mac.
+    private struct AppleForecaster {
+        var window: Int
+        var refitEvery: Int
+        var configuration = LinearRegressor<Double>.Configuration()
+        var pairs: [AnnotatedFeature<MLShapedArray<Double>, Double>] = []
+        var coefficients: [Double] = []
+        var sinceFit = 0
+        var fits = 0
+        var fitSeconds = 0.0
+
+        mutating func learn(features: [Double], target: Double) async {
+            // The regressor adds its own constant, so the forecaster's leading 1 is left out.
+            pairs.append(AnnotatedFeature(feature: MLShapedArray(scalars: Array(features.dropFirst()), shape: [features.count - 1]), annotation: target))
+            if pairs.count > window { pairs.removeFirst(pairs.count - window) }
+            sinceFit += 1
+            guard pairs.count >= ThermalForecaster.warmUp, sinceFit >= refitEvery else { return }
+            sinceFit = 0
+            let start = Date()
+            if let model = try? await LinearRegressor<Double>(configuration: configuration).fitted(to: pairs) {
+                coefficients = model.coefficients
+            }
+            fits += 1
+            fitSeconds += Date().timeIntervalSince(start)
+        }
+
+        func rise(features: [Double]) -> Double? {
+            guard coefficients.count == features.count else { return nil }
+            let inputs = features.dropFirst()
+            return zip(coefficients, inputs).reduce(coefficients[coefficients.count - 1]) { $0 + $1.0 * $1.1 }
+        }
+    }
+
+    func testAppleRegressorAgainstTheForecaster() async throws {
+        try XCTSkipIf(ProcessInfo.processInfo.environment["AIRFLOW_COMPARE"] == nil)
+        struct Asked { let time: TimeInterval, celsius: Double, features: [Double], ours: Double, apple: [Double?], carried: Double }
+        let variants: [(String, AppleForecaster)] = [
+            ("Apple, 10 min window, fit every 30 s", AppleForecaster(window: 600, refitEvery: 30)),
+            ("Apple, 3 min window, fit every 10 s", AppleForecaster(window: 180, refitEvery: 10)),
+            ("Apple, 30 min window, fit every 30 s", AppleForecaster(window: 1800, refitEvery: 30)),
+        ]
+        // The second Mac's fans start to move three times the air halfway through, as after a
+        // vent is cleared, so each learner has to follow a change.
+        for scenario in ["steady Mac", "Mac that changes at 3000 s"] {
+            var ours = ThermalForecaster()
+            var apples = variants.map(\.1)
+            var plant = Plant()
+            var recent = RollingWindow(span: 6)
+            var asked: [Asked] = []
+            // Errors by span of the run: early (100 to 600 s), settled (2000 to 3000 s), after the change (3000 to 3300 s), late (5000 to 6000 s).
+            let spans: [(String, Range<Int>)] = [("early 100-600", 100..<600), ("settled 2000-3000", 2000..<3000), ("after change 3000-3300", 3000..<3300), ("late 5000-6000", 5000..<6000)]
+            var oursError = Array(repeating: 0.0, count: spans.count), carriedError = oursError, counts = Array(repeating: 0, count: spans.count)
+            var appleError = Array(repeating: oursError, count: variants.count)
+            for second in 0..<6000 {
+                let watts: Double = (second / 300) % 2 == 0 ? 12 : 60
+                plant.fraction = (second / 170) % 3 == 0 ? 0 : ((second / 170) % 3 == 1 ? 0.5 : 1)
+                let boost = scenario != "steady Mac" && second >= 3000 ? 3.0 : 1.0
+                // The plant's own step, with the fans' share of the cooling scaled.
+                let rate = 1.0 / 60
+                plant.celsius += 1.4 * rate * watts - (plant.celsius - 25) * rate * (1 + 1.2 * boost * plant.fraction)
+                plant.time += 1
+                recent.add(plant.celsius, at: plant.time)
+                let slope = recent.oldest.map { plant.time - $0.time >= 1 ? (plant.celsius - $0.value) / (plant.time - $0.time) : 0 } ?? 0
+                let features = ThermalForecaster.features(celsius: plant.celsius, slope: slope, load: watts > 30 ? 1 : 0, fanFraction: plant.fraction)
+                ours.observe(features: features, celsius: plant.celsius, at: plant.time)
+                asked.append(Asked(
+                    time: plant.time, celsius: plant.celsius, features: features, ours: ours.rise(features: features),
+                    apple: apples.map { $0.rise(features: features) }, carried: min(max(slope * ThermalForecaster.horizon, -15), 25)
+                ))
+                while let first = asked.first, plant.time - first.time >= ThermalForecaster.horizon {
+                    asked.removeFirst()
+                    let actual = plant.celsius - first.celsius
+                    for index in apples.indices { await apples[index].learn(features: first.features, target: actual) }
+                    let at = Int(first.time)
+                    for (index, span) in spans.enumerated() where span.1.contains(at) {
+                        counts[index] += 1
+                        oursError[index] += abs(actual - first.ours)
+                        carriedError[index] += abs(actual - first.carried)
+                        for (variant, forecast) in first.apple.enumerated() {
+                            // Before its first fit, Apple's forecaster carries the slope on, as ours does.
+                            appleError[variant][index] += abs(actual - (forecast.map { min(max($0, -15), 25) } ?? first.carried))
+                        }
+                    }
+                }
+            }
+            func row(_ name: String, _ errors: [Double]) -> String {
+                name.padding(toLength: 40, withPad: " ", startingAt: 0) + zip(errors, counts).map { String(format: "%6.2f", $0 / Double(max($1, 1))) }.joined(separator: "  ")
+            }
+            print("COMPARE == \(scenario): mean error in degrees for \(spans.map(\.0).joined(separator: " | "))")
+            print("COMPARE " + row("slope carried on", carriedError))
+            print("COMPARE " + row("AirFlow's forecaster (RLS)", oursError))
+            for (index, variant) in variants.enumerated() {
+                print("COMPARE " + row(variant.0, appleError[index]) + String(format: "   %d fits, %.2f ms each", apples[index].fits, apples[index].fitSeconds / Double(max(apples[index].fits, 1)) * 1000))
+            }
+        }
     }
 }

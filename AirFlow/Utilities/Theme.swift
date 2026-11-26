@@ -21,6 +21,8 @@ enum Radius {
     static let sm: CGFloat = 6
     static let md: CGFloat = 8
     static let card: CGFloat = 16
+    /// The readings panel, whose corners follow the window's at 8 points in from its edge.
+    static let panel: CGFloat = 18
     /// The corners of a sheet as macOS draws it, for the shadow under one.
     static let sheet: CGFloat = 26
 }

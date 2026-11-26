@@ -181,7 +181,7 @@ AirFlow draws each Ant Design component in glass through `antGlass` (`Theme.swif
 
 | Component | Ant Design | Glass | Use |
 |---|---|---|---|
-| `GlassCard` | Card | Clear, radius 16, padding 16 | One for each fan. One for the temperatures and one for the history in the inspector. |
+| `GlassCard` | Card | Clear, radius 16, padding 16 | One for each fan. One for the temperatures and one for the history in the readings panel. |
 | `StateTag` | Tag | Capsule, tinted | Active, Matches Now, and the kind of work on the Adaptive page |
 | `StatusBanner` | Alert | Radius 16, tinted by kind | Monitoring Only, Allow the Helper, Safeguard Is On, a failure, Fan Control Is On |
 | `Statistic` | Statistic | None | A fan's speed with its unit, in IBM Plex Mono |
@@ -200,14 +200,15 @@ Rules:
 - A page's root scrolls (`ScrollView` or `Table`).
 - A rule is one sentence that a person edits in place: When [this] use [preset].
 - An empty state has a drawing, a title, and what to do next.
-- The sidebar, the toolbar, the inspector, the menu bar panel, and Settings are the system's own glass.
+- The sidebar, the toolbar, the menu bar panel, and Settings are the system's own glass.
+- The readings are a panel of AirFlow's own beside the page (`MainWindow.readingsPanel`): a material in a shape with 18 point corners, 8 points in from the window's edges and up behind the toolbar, as the sidebar is. The system's inspector is square and fills its edge. The Readings button lies inside the panel's top corner, and Apply is level with it.
 
 ## Layout and spacing
 
 - Space: `4 8 12 16 24 32 48` (`Space.xxs` through `Space.xxl`), Ant Design's steps on a 4 point grid.
-- Radius: `4 6 8` (`Radius.xs`, `sm`, `md`), 16 for a glass card (`Radius.card`), and 26 for the shadow under a sheet (`Radius.sheet`). A tag is a capsule.
+- Radius: `4 6 8` (`Radius.xs`, `sm`, `md`), 16 for a glass card (`Radius.card`), 18 for the readings panel (`Radius.panel`), and 26 for the shadow under a sheet (`Radius.sheet`). A tag is a capsule.
 - Icons: `14 16 20 28 44 72` (`IconSize.inline`, `row`, `title`, `state`, `rotor`, `illustration`).
-- The window opens at 1200 by 760 and is at least 1120 wide: sidebar 220, inspector 280. A page's content is at most 720 wide and is centered.
+- The window opens at 1200 by 760 and is at least 1120 wide: sidebar 220, readings panel 280. A page's content is at most 720 wide and is centered.
 - The menu bar panel is 340 wide. Settings is 520 wide.
 
 ## Icons
@@ -240,7 +241,7 @@ All use white strokes or fills, tinted at run time through `AirAnimation`. Every
 ### Rules
 
 - Motion shows a state. A rotor's speed is its fan's speed, and a stopped fan does not turn.
-- The readings column slides in and out with `Anim.standard`, and its button's line draws on and off with it.
+- The readings panel slides in from the trailing edge and out again with `Anim.standard`, and its button's line draws on and off with it.
 - Nothing animates while it is off screen. Every `AirAnimation` takes `isActive`.
 - Reduce Motion turns every animation off. Each Lottie file shows its still frame.
 - Lottie uses only its Core Animation engine, so the app does no work for each frame.

@@ -11,6 +11,7 @@ enum SidebarItem: Hashable {
 struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
     @State private var selection: SidebarItem?
     @State private var isDescribing = false
     @State private var isSettingUp = false
@@ -26,15 +27,20 @@ struct MainWindow: View {
             detail
                 // A page reads its colors as it is built, so a new palette builds it again.
                 .id(model.settings.lookID)
-                .toolbar { applyItem }
-        }
-        .inspector(isPresented: $settings.showsInspector) {
-            LiveInspector()
-                .id(model.settings.lookID)
-                .inspectorColumnWidth(min: 240, ideal: Layout.inspectorWidth, max: 300)
-                // In the inspector's own part of the toolbar, the button sits at the window's
-                // trailing edge, above the column it shows and hides.
-                .toolbar { readingsItem }
+                // The readings are a panel of AirFlow's own beside the page, rounded on every
+                // side as the sidebar is. The system's inspector is square and fills its edge.
+                .safeAreaInset(edge: .trailing, spacing: 0) {
+                    if settings.showsInspector {
+                        readingsPanel
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                }
+                .toolbar {
+                    // Both buttons sit together at the window's trailing edge.
+                    ToolbarSpacer(.flexible)
+                    applyItem
+                    readingsItem
+                }
         }
         .overlay {
             SheetShadow(size: model.openSheetSize)
@@ -171,7 +177,6 @@ struct MainWindow: View {
     private var applyItem: some ToolbarContent {
         // The active preset says so in its header, so it needs no button.
         if case .preset(let id) = selection, let preset = model.presets.preset(id: id), model.settings.activePresetID != id {
-            ToolbarSpacer(.flexible)
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     model.apply(id)
@@ -183,13 +188,36 @@ struct MainWindow: View {
                 .buttonStyle(.glassProminent)
                 .help("Run the fans with \(preset.name)")
                 .keyboardShortcut(.return, modifiers: .command)
+                .padding(.top, Self.toolbarDrop)
             }
+            .sharedBackgroundVisibility(.hidden)
         }
+    }
+
+    /// How far the toolbar's buttons sit below the middle of the bar and in from the window's
+    /// edge, so the readings button lies inside the corner of the readings panel and not on it.
+    private static let toolbarDrop: CGFloat = 10
+    private static let toolbarInset: CGFloat = 10
+
+    /// The readings beside the page: a rounded panel a little in from the window's edges, which
+    /// reaches up behind the toolbar as the sidebar does.
+    private var readingsPanel: some View {
+        let shape = RoundedRectangle(cornerRadius: Radius.panel)
+        return LiveInspector()
+            .id(model.settings.lookID)
+            .frame(width: Layout.inspectorWidth)
+            .background {
+                shape
+                    .fill(.regularMaterial)
+                    .overlay(shape.strokeBorder(Palette.hairline(contrast)))
+                    .padding(.top, Space.xs)
+                    .ignoresSafeArea(.container, edges: .top)
+            }
+            .padding([.bottom, .trailing], Space.xs)
     }
 
     @ToolbarContentBuilder
     private var readingsItem: some ToolbarContent {
-        ToolbarSpacer(.flexible)
         ToolbarItem(placement: .primaryAction) {
             Button {
                 // The column slides in and out at one pace. With no animation it waits and then
@@ -198,16 +226,21 @@ struct MainWindow: View {
                     model.settings.showsInspector.toggle()
                 }
             } label: {
-                Label {
-                    Text("Readings")
-                } icon: {
-                    // The chart's line draws on as the readings arrive and leaves as they go.
-                    AirAnimation(name: Animations.readings, isReversed: !model.settings.showsInspector, tint: .primary)
-                        .frame(width: IconSize.title, height: IconSize.title)
-                }
+                // The chart's line draws on as the readings arrive and leaves as they go.
+                AirAnimation(name: Animations.readings, isReversed: !model.settings.showsInspector, tint: .primary)
+                    .frame(width: IconSize.title, height: IconSize.title)
+                    .padding(Space.xs)
+                    .contentShape(Circle())
             }
+            .buttonStyle(.plain)
+            .antGlass(radius: nil, isInteractive: true)
+            .accessibilityLabel("Readings")
             .help(model.settings.showsInspector ? "Hide the readings" : "Show the readings")
+            .padding(.top, Self.toolbarDrop)
+            .padding(.trailing, Self.toolbarInset)
         }
+        // The button draws its own glass, so it can sit where the panel's corner leaves room.
+        .sharedBackgroundVisibility(.hidden)
     }
 }
 

@@ -8,9 +8,10 @@ repository:
     git clone --depth 1 https://github.com/ant-design/ant-design-icons /tmp/ant-design-icons
     python3 scripts/make-icons.py /tmp/ant-design-icons
 
-Without the path, the script writes only the mark, the sparkles, and the airplane. Add a name to ANT_ICONS to
-bring in another icon. Each one becomes a template image named ant-<name>, which takes the color
-of its context.
+Without the path, the script writes only the mark, the sparkles, and the airplane. With it, the
+script copies every outlined icon. Each one becomes a template image named ant-<name>, which
+takes the color of its context. The script also writes the list of their names
+(AirFlow/Models/AntIconCatalog.swift), which is what a person chooses a preset's icon from.
 
 The sparkles and the airplane are AirFlow's own drawings, in the weight of Ant Design's outlined
 icons, because that set has neither. The sparkles mark Adaptive and everything Apple Intelligence
@@ -23,9 +24,9 @@ each is its own piece of Liquid Glass.
 
 import json
 import pathlib
-import re
 import subprocess
 import sys
+from xml.etree import ElementTree
 
 import fan_geometry
 
@@ -33,18 +34,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "AirFlow" / "Resources" / "Assets.xcassets"
 APP_ICON = ROOT / "AirFlow" / "Resources" / "AppIcon.icon" / "Assets"
 
-ANT_ICONS = [
-    # Presets
-    "sync", "thunderbolt", "coffee", "rocket", "compass", "moon", "sun", "fire", "code",
-    "video-camera", "experiment", "laptop", "desktop", "home", "sound", "car", "cloud",
-    "dashboard", "sliders", "heart", "star",
-    # Navigation and triggers
-    "branches", "line-chart", "appstore", "clock-circle", "robot",
-    # Actions and states
-    "plus", "delete", "copy", "edit", "check", "check-circle", "close-circle", "exclamation-circle",
-    "info-circle", "warning", "safety-certificate", "setting", "poweroff", "ellipsis", "holder",
-    "pause-circle", "undo", "send", "export", "lock", "down", "search",
-]
+CATALOG_SOURCE = ROOT / "AirFlow" / "Models" / "AntIconCatalog.swift"
+# The icons that are AirFlow's own drawings. A preset can carry them like any other icon.
+OWN_ICONS = ["airplane", "sparkles"]
 
 TEMPLATE_CONTENTS = {
     "images": [{"filename": None, "idiom": "universal"}],
@@ -65,17 +57,51 @@ def write_imageset(name, filename, svg):
 
 
 def ant_svg(source):
-    """An Ant Design icon reduced to its view box and paths, filled black."""
-    view_box = re.search(r'viewBox="([^"]+)"', source)
-    paths = re.findall(r'<path[^>]*\sd="([^"]+)"', source)
-    if not view_box or not paths:
+    """An Ant Design icon reduced to what draws it: its view box, and its paths filled black.
+
+    A path keeps its transform and its fill rule, and a group keeps its transform. Some icons
+    are drawn turned over or with holes, and without these they come out wrong.
+    """
+    root = ElementTree.fromstring(source)
+    view_box = root.get("viewBox")
+
+    def draw(element, rule):
+        tag = element.tag.rsplit("}", 1)[-1]
+        rule = element.get("fill-rule", rule)
+        transform = element.get("transform")
+        if tag == "path" and element.get("d"):
+            fill_rule = f' fill-rule="{rule}"' if rule else ""
+            placed = f' transform="{transform}"' if transform else ""
+            return f'<path fill="#000000"{fill_rule}{placed} d="{element.get("d")}"/>'
+        if tag in ("svg", "g"):
+            inside = "".join(draw(child, rule) for child in element)
+            return f'<g transform="{transform}">{inside}</g>' if tag == "g" and transform and inside else inside
+        return ""
+
+    body = draw(root, None)
+    if not view_box or not body:
         raise ValueError("no view box or path")
-    body = "".join(f'<path fill="#000000" d="{data}"/>' for data in paths)
     return (
         '<?xml version="1.0" standalone="no"?>\n'
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="{view_box.group(1)}">\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="{view_box}">\n'
         f"  {body}\n</svg>\n"
     )
+
+
+def write_catalog(names):
+    """The Swift list of every icon a preset can carry."""
+    lines = [
+        "// scripts/make-icons.py writes this file. Change the script, not the file.",
+        "",
+        "/// The name of every icon a preset can carry: each outlined icon of Ant Design, and AirFlow's",
+        "/// own sparkles and airplane, which that set does not have. Each is an image named",
+        "/// `ant-<name>` in the asset catalog.",
+        "enum AntIconCatalog {",
+        "    static let names: [String] = [",
+    ]
+    lines += [f'        "{name}",' for name in names]
+    lines += ["    ]", "}", ""]
+    CATALOG_SOURCE.write_text("\n".join(lines))
 
 
 def star(cx, cy, radius, pinch=0.18):
@@ -203,9 +229,11 @@ def main():
     if len(sys.argv) < 2:
         return
     outlined = pathlib.Path(sys.argv[1]) / "packages" / "icons-svg" / "svg" / "outlined"
-    for name in ANT_ICONS:
+    names = sorted(source.stem for source in outlined.glob("*.svg"))
+    for name in names:
         write_imageset(f"ant-{name}", f"{name}.svg", ant_svg((outlined / f"{name}.svg").read_text()))
-    print(f"wrote {len(ANT_ICONS)} Ant Design icons")
+    write_catalog(sorted(names + OWN_ICONS))
+    print(f"wrote {len(names)} Ant Design icons and the list of their names")
 
 
 if __name__ == "__main__":

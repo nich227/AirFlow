@@ -238,6 +238,31 @@ final class AdaptiveControllerTests: XCTestCase {
         }
     }
 
+    func testAMacThatRestsWarmKeepsItsFansAtTheirMinimumInLightWork() {
+        // This Mac draws 38 watts in light work and settles near 78 degrees with its fans at rest.
+        var controller = AdaptiveController(scale: PowerScale(idle: 36, peak: 120))
+        var plant = Plant()
+        plant.celsius = 78
+        run(seconds: 300, controller: &controller, plant: &plant, watts: { 37 + Double($0 % 3) }) { _, state, plant in
+            XCTAssertEqual(state.regime, .light)
+            XCTAssertEqual(state.fraction, 0)
+            XCTAssertLessThan(plant.celsius, AdaptiveController.safetyFloor.lowerBound)
+        }
+    }
+
+    func testTheFansComeAllTheWayBackToTheirMinimum() {
+        var controller = AdaptiveController()
+        var plant = Plant()
+        plant.celsius = 88
+        var highest = 0.0, last = 1.0
+        run(seconds: 600, controller: &controller, plant: &plant, watts: { 11 + Double($0 % 3) }) { _, state, _ in
+            highest = max(highest, state.fraction)
+            last = state.fraction
+        }
+        XCTAssertGreaterThan(highest, 0.5, "The safety line raised the fans while the Mac was hot")
+        XCTAssertEqual(last, 0, "Not a few RPM above the minimum")
+    }
+
     func testALongLoadIsMetBeforeTheHeatAndHeldUnderTheCeiling() {
         var controller = AdaptiveController(scale: PowerScale(idle: 10, peak: 60))
         var plant = Plant()

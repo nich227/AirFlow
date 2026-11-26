@@ -309,7 +309,11 @@ struct AdaptivePolicy: Equatable, Sendable {
     var riseRPM: Double
     var fallRPM: Double
 
-    static let light = AdaptivePolicy(engageCelsius: 68, floor: 0, quiet: 0.6, riseRPM: 150, fallRPM: 100)
+    /// Light work counts heat only from where the safety line starts. A Mac can rest warmer than any
+    /// lower number, and its fans would then run for work that needs none.
+    static let light = AdaptivePolicy(
+        engageCelsius: AdaptiveController.safetyFloor.lowerBound, floor: 0, quiet: 0.6, riseRPM: 150, fallRPM: 100
+    )
     /// While a burst is short, only the ceiling counts, so the Mac's mass absorbs the burst.
     static let soak = AdaptivePolicy(engageCelsius: AdaptiveController.ceilingCelsius, floor: 0, quiet: 0.6, riseRPM: 150, fallRPM: 100)
     static let bursty = AdaptivePolicy(engageCelsius: 75, floor: 0, quiet: 0.4, riseRPM: 150, fallRPM: 100)
@@ -451,9 +455,11 @@ struct AdaptiveController {
         }
 
         let safety = Self.safetyFraction(celsius: celsius)
-        var wanted = max(best, policy.floor, safety)
-        if abs(wanted - fraction) < Self.deadband, wanted >= safety {
-            wanted = fraction
+        let lowest = max(policy.floor, safety)
+        var wanted = max(best, lowest)
+        // A small change is not worth a change in pitch. The lowest speed is still reached exactly.
+        if wanted > lowest, abs(wanted - fraction) < Self.deadband {
+            wanted = max(fraction, lowest)
         }
 
         // A fall waits until a lower speed has been wanted for a while.

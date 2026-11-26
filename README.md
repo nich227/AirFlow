@@ -47,7 +47,7 @@ First, it works out what kind of work your Mac is doing. It reads the power your
 
 | Work | What it means | What the fans do |
 | --- | --- | --- |
-| Light | Browsing, writing, coding | They stay at their minimum until the forecast passes 68 °C. |
+| Light | Browsing, writing, coding | They stay at their minimum until the forecast passes 80 °C. |
 | Bursty | A photo filter or a build: seconds of load | Your Mac's own mass takes up the burst. The fans rise only if the average load over 15 seconds stays high. |
 | Sustained | A video export or a local language model: a high average load over 30 seconds, or a few seconds of load while a known app is open | The fans rise to at least 30% of their range before the heat arrives, and then hold steady. |
 

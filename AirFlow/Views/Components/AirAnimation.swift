@@ -227,14 +227,15 @@ struct Rotor: View {
     var body: some View {
         if isRainbow {
             // The rotor is the stencil, and the rainbow shows through it.
-            // The rainbow runs outward in rings: the hub is one color, the blades step through the
-            // others, and the housing comes back to the hub's color.
-            RadialGradient(stops: Palette.rainbowRings, center: .center, startRadius: 0, endRadius: size / 2)
+            // The rainbow runs around the hub like a pinwheel. A soft light in the middle hides the
+            // point where every color meets.
+            AngularGradient(colors: Palette.rainbow + Palette.rainbow.prefix(1), center: .center)
+                .overlay(RadialGradient(colors: [.white.opacity(0.6), .white.opacity(0)], center: .center, startRadius: 0, endRadius: size * 0.076))
                 .mask {
                     ZStack {
                         AirAnimation(name: Animations.rotor, loops: true, isActive: isActive, speed: Self.turnsPerSecond(for: fan), tint: .white)
                         // The hub is one solid disc, with a gap left before the blades.
-                        Circle().frame(width: size * 0.1875, height: size * 0.1875)
+                        Circle().frame(width: size * 0.195, height: size * 0.195)
                     }
                 }
                 .frame(width: size, height: size)

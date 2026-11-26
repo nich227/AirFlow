@@ -1,9 +1,15 @@
 //! AirFlow's helper. It runs as root because only root may write to the SMC, and launchd
 //! starts it when the app connects. It does one job: it holds fans at the speeds the signed
 //! app asks for, and gives them back to the system when the app goes away or goes quiet.
+//!
+//! This file is the part that needs launchd, XPC, and root: the listener, the timers, and
+//! SIGTERM. What the helper decides is `airflow_backend::service`, which has the tests.
+
+// coverage:off It runs only as the launchd daemon: an XPC listener, timers, and a signal.
 
 use airflow_backend::fans::FanWriter;
-use airflow_backend::smc::SmcConnection;
+use airflow_backend::service::{Request, Service};
+use airflow_backend::smc::{SmcConnection, SmcError};
 use airflow_backend::{protocol, signing};
 use block2::{Block, RcBlock};
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
@@ -44,40 +50,21 @@ extern "C" {
 
 const LISTENER: u64 = 1 << 0;
 
-/// Everything the helper knows. One lock guards it, so one SMC write runs at a time.
-struct State {
-    writer: Option<FanWriter<SmcConnection>>,
-    clients: usize,
-    last_contact: Instant,
+type Opened = Result<FanWriter<SmcConnection>, SmcError>;
+type HelperService = Service<SmcConnection, fn() -> Opened>;
+
+fn open() -> Opened {
+    SmcConnection::open().map(FanWriter::new)
 }
 
-static STATE: OnceLock<Mutex<State>> = OnceLock::new();
+/// Everything the helper knows. One lock guards it, so one SMC write runs at a time.
+static STATE: OnceLock<Mutex<HelperService>> = OnceLock::new();
 
-fn state() -> MutexGuard<'static, State> {
+fn state() -> MutexGuard<'static, HelperService> {
     STATE
-        .get_or_init(|| Mutex::new(State { writer: None, clients: 0, last_contact: Instant::now() }))
+        .get_or_init(|| Mutex::new(Service::new(open as fn() -> Opened, Instant::now())))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-}
-
-impl State {
-    fn writer(&mut self) -> Result<&mut FanWriter<SmcConnection>, String> {
-        if self.writer.is_none() {
-            let connection = SmcConnection::open().map_err(|_| "The helper can't open the SMC.".to_owned())?;
-            self.writer = Some(FanWriter::new(connection));
-        }
-        self.writer.as_mut().ok_or_else(|| "The helper can't open the SMC.".to_owned())
-    }
-
-    fn reset_all(&mut self) {
-        if let Some(writer) = self.writer.as_mut() {
-            writer.reset_all();
-        }
-    }
-
-    fn holds_a_fan(&self) -> bool {
-        self.writer.as_ref().is_some_and(|writer| !writer.manual_fans().is_empty())
-    }
 }
 
 fn key(name: &str) -> CString {
@@ -85,49 +72,20 @@ fn key(name: &str) -> CString {
 }
 
 /// What one request asks for, read out of its dictionary before any lock is taken.
-struct Request {
-    operation: String,
-    fan: i64,
-    rpm: f64,
-}
-
 unsafe fn request(message: XpcObject) -> Option<Request> {
     let operation = xpc_dictionary_get_string(message, key(protocol::KEY_OPERATION).as_ptr());
     if operation.is_null() {
         return None;
     }
-    // A request with no fan must not read as fan 0, so a missing number is out of range.
     let fan_key = key(protocol::KEY_FAN);
-    let fan = if xpc_dictionary_get_value(message, fan_key.as_ptr()).is_null() {
-        -1
-    } else {
-        xpc_dictionary_get_int64(message, fan_key.as_ptr())
-    };
+    let fan = (!xpc_dictionary_get_value(message, fan_key.as_ptr()).is_null()).then(|| xpc_dictionary_get_int64(message, fan_key.as_ptr()));
     let rpm_key = key(protocol::KEY_RPM);
-    let rpm = if xpc_dictionary_get_value(message, rpm_key.as_ptr()).is_null() {
-        f64::NAN
-    } else {
-        xpc_dictionary_get_double(message, rpm_key.as_ptr())
-    };
-    Some(Request { operation: CStr::from_ptr(operation).to_str().ok()?.to_owned(), fan, rpm })
+    let rpm = (!xpc_dictionary_get_value(message, rpm_key.as_ptr()).is_null()).then(|| xpc_dictionary_get_double(message, rpm_key.as_ptr()));
+    Some(Request::new(CStr::from_ptr(operation).to_str().ok()?, fan, rpm))
 }
 
-/// Does what the request asks. The answer is the speed written, when there is one.
 fn perform(request: &Request) -> Result<Option<f64>, String> {
-    let mut state = state();
-    state.last_contact = Instant::now();
-    match request.operation.as_str() {
-        protocol::OP_VERSION | protocol::OP_KEEP_ALIVE => Ok(None),
-        protocol::OP_SET_FAN => {
-            state.writer()?.set_target(request.fan, request.rpm).map(Some).map_err(|error| error.to_string())
-        }
-        protocol::OP_SET_AUTOMATIC => state.writer()?.set_automatic(request.fan).map(|()| None).map_err(|error| error.to_string()),
-        protocol::OP_RESET_ALL => {
-            state.reset_all();
-            Ok(None)
-        }
-        other => Err(format!("The helper doesn't know the request “{other}”.")),
-    }
+    state().perform(request, Instant::now())
 }
 
 unsafe fn answer(message: XpcObject) {
@@ -157,40 +115,26 @@ unsafe fn answer(message: XpcObject) {
     xpc_release(reply);
 }
 
-fn client_arrived() {
-    let mut state = state();
-    state.clients += 1;
-    state.last_contact = Instant::now();
-}
-
-/// The app quit, crashed, or closed its connection. Its fans go back to the system, and the
-/// helper exits a little later if nobody else has connected.
+/// The app quit, crashed, or closed its connection. When it was the last one, its fans are back
+/// with the system, and the helper exits a little later if nobody else has connected.
 fn client_left() {
-    {
-        let mut state = state();
-        state.clients = state.clients.saturating_sub(1);
-        if state.clients > 0 {
-            return;
-        }
-        state.reset_all();
+    if !state().client_left() {
+        return;
     }
     std::thread::spawn(|| {
         std::thread::sleep(protocol::IDLE_EXIT);
-        if state().clients == 0 {
+        if !state().has_clients() {
             std::process::exit(0);
         }
     });
 }
 
-/// An app that hangs keeps its connection open but stops talking. Fans it pinned must not
-/// stay pinned, so silence past the limit returns them to the system.
+/// An app that hangs keeps its connection open but stops talking. Fans it holds must not stay
+/// held, so the helper looks for silence every few seconds.
 fn watch_for_silence() {
     std::thread::spawn(|| loop {
         std::thread::sleep(Duration::from_secs(5));
-        let mut state = state();
-        if state.holds_a_fan() && state.last_contact.elapsed() > protocol::WATCHDOG {
-            state.reset_all();
-        }
+        state().give_fans_back_if_silent(Instant::now());
     });
 }
 
@@ -207,7 +151,7 @@ fn give_fans_back_on_termination() {
         std::thread::spawn(move || {
             let mut received: c_int = 0;
             libc::sigwait(&signals, &mut received);
-            state().reset_all();
+            state().give_every_fan_back();
             std::process::exit(0);
         });
     }
@@ -219,9 +163,7 @@ fn main() {
 
     // The helper accepts only the app that the helper's own team signed. A helper with no
     // team, such as an ad hoc build, accepts no one.
-    let requirement = signing::own_team_identifier()
-        .and_then(|team| signing::requirement(&protocol::CLIENT_IDENTIFIERS, &team))
-        .and_then(|requirement| CString::new(requirement).ok());
+    let requirement = signing::own_requirement(&protocol::CLIENT_IDENTIFIERS).and_then(|requirement| CString::new(requirement).ok());
 
     let on_client = RcBlock::new(move |peer: XpcObject| {
         // SAFETY: XPC hands the listener live objects, and each peer is configured before it
@@ -237,7 +179,7 @@ fn main() {
                 xpc_connection_cancel(peer);
                 return;
             }
-            client_arrived();
+            state().client_arrived(Instant::now());
             let gone = AtomicBool::new(false);
             let on_message = RcBlock::new(move |event: XpcObject| {
                 if xpc_get_type(event) == std::ptr::addr_of!(_xpc_type_dictionary) {
@@ -263,3 +205,4 @@ fn main() {
         dispatch_main();
     }
 }
+// coverage:on

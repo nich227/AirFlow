@@ -7,9 +7,10 @@
 //! - `usage` adds up the processor time and memory of each running app.
 //! - `signing` decides which code the app and the helper trust.
 //! - `protocol` names the messages the app sends the helper.
+//! - `service` decides what the helper does with each request, client, and silence.
 //! - `ffi` is the C interface the Swift app links.
 //!
-//! The helper itself is `src/bin/helper.rs`.
+//! The helper program is `src/bin/helper.rs`: the XPC listener, the timers, and SIGTERM.
 
 // Outside tests, nothing may stop the program on a value that is missing.
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
@@ -19,6 +20,7 @@ pub mod ffi;
 pub mod power;
 pub mod protocol;
 pub mod sensors;
+pub mod service;
 pub mod signing;
 pub mod smc;
 pub mod testing;

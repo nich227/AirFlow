@@ -98,7 +98,7 @@ A palette (`ColorPalette`) holds every color AirFlow has: the accent, the temper
 | Synthwave | `#C2259B`, `#E23FB8` | `#36F9F6`, `#72F1B8`, `#FEDE5D`, `#F97E72`, `#FE4450` | SynthWave '84 |
 | Nord | `#4C6E96`, `#5E81AC` | `#88C0D0`, `#A3BE8C`, `#EBCB8B`, `#D08770`, `#BF616A` | Nord |
 | Catppuccin | `#8839EF`, `#9D6BF0` | `#89DCEB`, `#A6E3A1`, `#F9E2AF`, `#FAB387`, `#F38BA8` | Catppuccin: Latte in Light Mode, Mocha in Dark Mode |
-| VS Code | `#005FB8`, `#0078D4` | `#4FC1FF`, `#6A9955`, `#DCDCAA`, `#CE9178`, `#F44747` | Visual Studio Code: Light+ and Light Modern in Light Mode, Dark+ and Dark Modern in Dark Mode |
+| Dark Modern | `#005FB8`, `#0078D4` | `#4FC1FF`, `#6A9955`, `#DCDCAA`, `#CE9178`, `#F44747` | Visual Studio Code: Light+ and Light Modern in Light Mode, Dark+ and Dark Modern in Dark Mode |
 | Monokai | `#7B52C8`, `#8C6BC8` | `#66D9EF`, `#A6E22E`, `#E6DB74`, `#FD971F`, `#F92672` | The Monokai theme that Visual Studio Code carries |
 | Solarized | `#268BD2`, `#268BD2` | `#2AA198`, `#859900`, `#B58900`, `#CB4B16`, `#DC322F` | Solarized, which has the same colors on its light and its dark ground |
 | Darcula | `#2675BF`, `#287BDE` | `#6897BB`, `#6A8759`, `#FFC66D`, `#CC7832`, `#FF6464` | IntelliJ IDEA: IntelliJ Light in Light Mode, Darcula in Dark Mode |

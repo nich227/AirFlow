@@ -145,8 +145,8 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .aqua), "AppIcon", "The first palette has the app's own icon")
         XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .matrix), "AppIconMatrix")
         XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .cyberpunk), "AppIconCyberpunk")
-        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .vscode), "AppIconVSCode", "An icon's name has no space")
-        XCTAssertEqual(DockIcon.darkName(for: ColorPalette.vscode.iconName), "DockVSCodeDark")
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .darkModern), "AppIconDarkModern", "An icon's name has no space")
+        XCTAssertEqual(DockIcon.darkName(for: ColorPalette.darkModern.iconName), "DockDarkModernDark")
         for palette in ColorPalette.allCases where palette != .standard {
             XCTAssertNotNil(NSImage(named: DockIcon.darkName(for: palette.iconName)), "\(palette.title) has a dark Dock icon")
         }

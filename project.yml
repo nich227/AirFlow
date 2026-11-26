@@ -62,7 +62,7 @@ targets:
           - Resources/AppIconSynthwave.icon
           - Resources/AppIconNord.icon
           - Resources/AppIconCatppuccin.icon
-          - Resources/AppIconVSCode.icon
+          - Resources/AppIconDarkModern.icon
           - Resources/AppIconMonokai.icon
           - Resources/AppIconSolarized.icon
           - Resources/AppIconDarcula.icon
@@ -98,7 +98,7 @@ targets:
       - path: AirFlow/Resources/AppIconCatppuccin.icon
         type: file
         buildPhase: resources
-      - path: AirFlow/Resources/AppIconVSCode.icon
+      - path: AirFlow/Resources/AppIconDarkModern.icon
         type: file
         buildPhase: resources
       - path: AirFlow/Resources/AppIconMonokai.icon
@@ -132,7 +132,7 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
         COMBINE_HIDPI_IMAGES: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIconRainbow AppIconCyberpunk AppIconAurora AppIconMatrix AppIconGirlypop AppIconSynthwave AppIconNord AppIconCatppuccin AppIconVSCode AppIconMonokai AppIconSolarized AppIconDarcula
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIconRainbow AppIconCyberpunk AppIconAurora AppIconMatrix AppIconGirlypop AppIconSynthwave AppIconNord AppIconCatppuccin AppIconDarkModern AppIconMonokai AppIconSolarized AppIconDarcula
         # The Rust backend: its module map for Swift, and its static library for the linker.
         SWIFT_INCLUDE_PATHS: "$(PROJECT_DIR)/backend/include"
         LIBRARY_SEARCH_PATHS: "$(PROJECT_DIR)/backend/target/$(AIRFLOW_BACKEND_PROFILE)"

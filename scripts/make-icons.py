@@ -121,7 +121,7 @@ PALETTES = {
     "Cyberpunk": ("#D800FF", "#E45CFF"),
     "Aurora": ("#0D9488", "#2DD4BF"), "Matrix": ("#008F11", "#00FF41"), "Girlypop": ("#DB2777", "#F472B6"),
     "Synthwave": ("#C2259B", "#FF7EDB"), "Nord": ("#4C6E96", "#88C0D0"), "Catppuccin": ("#8839EF", "#CBA6F7"),
-    "VSCode": ("#005FB8", "#4DAAFC"), "Monokai": ("#7B52C8", "#AE81FF"), "Solarized": ("#268BD2", "#268BD2"),
+    "DarkModern": ("#005FB8", "#4DAAFC"), "Monokai": ("#7B52C8", "#AE81FF"), "Solarized": ("#268BD2", "#268BD2"),
     "Darcula": ("#2675BF", "#589DF6"),
 }
 

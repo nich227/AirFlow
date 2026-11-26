@@ -44,7 +44,7 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 | Storage | `~/Library/Application Support/AirFlow/presets.yaml`, `rules.json`, `adaptive.json` (what the forecaster learned), and `workloads.json` (what the person says an app is known for). A Debug build uses the `Debug/` folder inside it |
 | UserDefaults keys | `temperatureUnit`, `preciseTemperatures`, `menuBarReadout`, `safeguardEnabled`, `safeguardLimit`, `autopilotEnabled`, `activePresetID`, `userPresetID`, `showsInspector`, `welcomeShown`, `setupShown` |
 | Signing | Ad hoc by default, which can only monitor. `scripts/build.sh --sign` takes the Developer ID Application identity from the keychain (team `8ZUR795GTN`), the one a release is signed with, and passes `AIRFLOW_SIGN_IDENTITY` and `AIRFLOW_TEAM`. `CODE_SIGN_IDENTITY` on the command line needs `CODE_SIGN_STYLE=Manual` beside it, as the release workflow passes them, or the Swift packages refuse it |
-| Lifecycle | SwiftUI `App`: a `Window` that does not open at launch, a `MenuBarExtra` with the window style, and `Settings`. The app has no Dock icon until its window or Settings is open (`AppDelegate.updateDockPresence`). Opening the app again shows the window (`WindowOpener`). The first time the window opens, `SetupSheet` asks for fan control, opening at login, and automatic updates |
+| Lifecycle | SwiftUI `App`: a `Window` that does not open at launch, a `MenuBarExtra` with the window style, and `Settings`. The app has no Dock icon until its window or Settings is open (`AppDelegate.updateDockPresence`). Opening the app again shows the window (`WindowOpener`). The first time the window opens, `SetupSheet` asks for fan control, opening at login, and automatic updates, and once fan control is on it suggests Adaptive. Turning on fan control opens System Settings at Login Items with `SettingsGuide` beside it: a floating panel that says what to do there, follows that window, and closes when the switch is on (`AppModel.openFanControlSettings`). An app cannot draw inside System Settings, and pointing at the switch itself would need the Accessibility permission |
 | Sampling | `ThermalMonitor` reads every second while a window or the panel shows readings, and every four seconds otherwise. History holds 15 minutes |
 | SMC keys | Fans: `FNum`, `F<n>Ac`, `F<n>Mn`, `F<n>Mx`, `F<n>Tg`, `F<n>Md`, `Ftst`. Power: `PSTR`, the whole Mac's draw in watts. Temperatures: every `T???` key with a plausible value. Names and groups are in `backend/src/sensors.rs`. A key with no known meaning gets its group's name and a number in key order, and `is_known` is false |
 | Mark | The fan from Bootstrap Icons, in `scripts/fan_geometry.py`. The app icon is `AirFlow/Resources/AppIcon.icon`, an Icon Composer document with the blades and the housing as two glass layers. While AirFlow runs, `DockIcon` draws the Dock's icon itself, with the blades in the system accent, and draws it again when the accent or the appearance changes. The menu bar icon is a template image: white on a dark menu bar, dark on a light one, and never the accent |
@@ -63,7 +63,7 @@ swift scripts/make-brand.swift                          # docs/images/airflow-br
 scripts/make-screenshots.sh                             # the README's screenshots into docs/images, from the Debug build, without taking the keyboard
 TEST_RUNNER_AIRFLOW_SNAPSHOTS=/tmp/airflow-shots scripts/test.sh   # draws each surface with made-up readings
 TEST_RUNNER_AIRFLOW_COMPARE=1 scripts/test.sh 2>&1 | grep COMPARE   # the forecaster against Apple's LinearRegressor on the made-up Mac
-open -g --env AIRFLOW_SHOW=rules build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: opens the window on a page (rules, sensors, a preset's name, or setup for the setup sheet) without taking the keyboard
+open -g --env AIRFLOW_SHOW=rules build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: opens the window on a page (rules, sensors, a preset's name, setup for the setup sheet, or guide for the panel beside System Settings) without taking the keyboard
 open -g --env AIRFLOW_SHOW=Quiet --env AIRFLOW_APPEARANCE=light build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: the same, in Light Mode (or dark)
 ```
 
@@ -100,7 +100,7 @@ AirFlow/
 ├── Intelligence/                     IntelligenceService (FoundationModels), Proposals, FanIntents (App Intents)
 ├── Views/                            MainWindow (Sidebar), PresetDetail (FanSentence, FanSection, SensorRuleEditor), LiveInspector
 │   │                                 (HistoryChart, SensorsView), AutomationView (RuleRow), AdaptiveViews (AdaptiveSummary,
-│   │                                 AppWorkloadsEditor), DescribePresetSheet, SetupSheet (LoginItem), MenuPanel
+│   │                                 AppWorkloadsEditor), DescribePresetSheet, SetupSheet (LoginItem), SettingsGuide, MenuPanel
 │   ├── Components/                   AirAnimation (Rotor), Components (StateTag, Statistic, FanTrack, StatusBanner, EmptyState, AntSegmented, AntSelect, FlowLayout), CurveEditor
 │   └── Settings/SettingsView.swift   General, Fan Control, Intelligence, About
 ├── Utilities/                        Theme (tokens, AirType, ReadingText, antGlass, AirBackdrop, GlassCard, AntIcon), DockIcon, Log

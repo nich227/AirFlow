@@ -21,6 +21,7 @@ struct SetupSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var opensAtLogin = LoginItem.isEnabled
     @State private var loginError: String?
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         let updates = Updates.shared
@@ -28,7 +29,7 @@ struct SetupSheet: View {
             VStack(alignment: .leading, spacing: Space.xxs) {
                 Text("Set Up AirFlow")
                     .airFont(.display)
-                Text("AirFlow needs your permission for a few things. You can change any of them later in Settings.")
+                Text("A few quick choices and AirFlow is ready. You can change any of them later in Settings.")
                     .airFont(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -38,6 +39,13 @@ struct SetupSheet: View {
                 VStack(spacing: 0) {
                     row(icon: "MenuBarIcon", title: "Fan Control", detail: fanControlDetail) {
                         fanControl
+                    }
+                    if model.helper.status == .needsApproval {
+                        steps
+                    }
+                    if model.helper.status == .enabled {
+                        Divider()
+                        presetChoice
                     }
                     Divider()
                     row(icon: "ant-poweroff", title: "Open at Login", detail: loginError ?? "AirFlow opens in the menu bar when you log in.") {
@@ -95,16 +103,96 @@ struct SetupSheet: View {
     private var fanControlDetail: String {
         switch model.helper.status {
         case .enabled:
-            return "AirFlow can change fan speeds."
+            return "Fan control is on. You're all set."
         case .needsApproval:
-            return "Turn on AirFlow in System Settings > General > Login Items & Extensions."
+            return "Almost there. Your Mac needs your OK."
         case .notInstalled:
-            return "To change fan speeds, AirFlow installs a helper tool. macOS asks you to allow it in Login Items & Extensions. Without it, AirFlow only monitors."
+            return "Let AirFlow change your fan speeds. It takes two clicks, and you can turn it off at any time."
         case .unsignedBuild:
-            return "This copy of AirFlow isn't signed by a developer, so it can only monitor."
-        case .failed(let message):
-            return "The helper tool couldn't be installed. \(message)"
+            return "This copy of AirFlow can show your fans, but it can't change their speed."
+        case .failed:
+            return "That didn't work. Try again. If it still doesn't work, restart your Mac and try once more."
         }
+    }
+
+    /// What to do in System Settings, in the order a person does it. AirFlow watches for the
+    /// switch, so nothing has to be clicked here afterward.
+    private var steps: some View {
+        VStack(alignment: .leading, spacing: Space.xs) {
+            step(1, "System Settings is open. Look for AirFlow under Allow in the Background.")
+            step(2, "Turn on the switch next to AirFlow. Your Mac may ask for your password or Touch ID.")
+            step(3, "Come back to this window. AirFlow notices by itself.")
+            HStack(spacing: Space.xs) {
+                ProgressView().controlSize(.small)
+                Text("Waiting for you to turn on the switch…")
+                    .airFont(.label)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.top, Space.xxs)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Space.md)
+        .padding(.bottom, Space.md)
+        // The status is read again every second, so the sheet moves on as soon as the switch is on.
+        .task {
+            while !Task.isCancelled, model.helper.status == .needsApproval {
+                try? await Task.sleep(for: .seconds(1))
+                model.helper.refresh()
+            }
+        }
+    }
+
+    private func step(_ number: Int, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
+            Text("\(number)")
+                .readingFont(.label)
+                .frame(width: 20, height: 20)
+                .background(Palette.accent.opacity(0.2), in: Circle())
+            Text(text)
+                .airFont(.label)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// Once fan control is on, one click chooses how the fans run. Automatic leaves them to macOS.
+    private var presetChoice: some View {
+        VStack(alignment: .leading, spacing: Space.xs) {
+            Text("Try Adaptive")
+                .airFont(.title)
+            Text("Adaptive sets the fans for you. It stays quiet for light work and speeds up before a heavy task heats up your Mac. You can change presets at any time.")
+                .airFont(.label)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: Space.xs) {
+                ForEach(startingPresets) { preset in
+                    let isCurrent = model.settings.activePresetID == preset.id
+                    Button {
+                        model.apply(preset.id)
+                    } label: {
+                        VStack(spacing: Space.xxs) {
+                            AntIcon(preset.icon.assetName, size: IconSize.title)
+                            Text(preset.name).airFont(.body)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Space.xs)
+                        .foregroundStyle(isCurrent ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+                        .background(isCurrent ? AnyShapeStyle(Palette.accent.gradient) : AnyShapeStyle(Palette.fill(contrast)), in: RoundedRectangle(cornerRadius: Radius.md))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isCurrent ? "\(preset.name), current" : preset.name)
+                }
+            }
+            Text(model.activePreset.summary)
+                .airFont(.label)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(Space.md)
+    }
+
+    /// Three places to start. Adaptive comes first, because it is the one to try.
+    private var startingPresets: [Preset] {
+        [Preset.adaptive, model.presets.preset(named: "Quiet"), Preset.automatic].compactMap { $0 }
     }
 
     @ViewBuilder
@@ -114,9 +202,9 @@ struct SetupSheet: View {
             StateTag(text: "On", color: Palette.success, iconName: "ant-check")
         case .needsApproval:
             Button {
-                model.helper.openLoginItems()
+                model.openFanControlSettings()
             } label: {
-                Text("Open Login Items Settings").airFont(.body)
+                Text("Open System Settings").airFont(.body)
             }
         case .notInstalled:
             Button {

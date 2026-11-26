@@ -99,7 +99,7 @@ struct FanControlSettingsPane: View {
                         Task { await model.removeHelper() }
                     }
                 case .needsApproval:
-                    Button("Open Login Items Settings") { model.helper.openLoginItems() }
+                    Button("Open System Settings") { model.openFanControlSettings() }
                 case .notInstalled, .failed:
                     Button("Turn On Fan Control") { model.enableFanControl() }
                 case .unsignedBuild:

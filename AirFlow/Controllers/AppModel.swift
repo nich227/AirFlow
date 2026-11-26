@@ -154,8 +154,19 @@ final class AppModel {
 
     func enableFanControl() {
         helper.install()
+        // macOS wants the person to allow AirFlow in System Settings. Opening the page for them
+        // saves the search for it.
+        if helper.status == .needsApproval { openFanControlSettings() }
         controller.isControlAllowed = helper.status.allowsControl
         runControlLoop()
+    }
+
+    /// Opens the page of System Settings where AirFlow is allowed, with a panel beside it that
+    /// says what to do there.
+    func openFanControlSettings() {
+        guard !Self.isRunningTests else { return }
+        helper.openLoginItems()
+        SettingsGuide.shared.show(model: self)
     }
 
     func removeHelper() async {

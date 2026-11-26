@@ -86,6 +86,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         AppModel.shared.start()
         Updates.shared.start()
+        #if DEBUG
+        // A script that captures the panel beside System Settings asks for it by name.
+        if ProcessInfo.processInfo.environment["AIRFLOW_SHOW"]?.lowercased() == "guide" {
+            SettingsGuide.shared.show(model: AppModel.shared, watches: false)
+        }
+        #endif
         let center = NotificationCenter.default
         // The Dock icon's blades follow the accent, and its plate follows Light and Dark Mode.
         if !AppModel.isRunningTests {

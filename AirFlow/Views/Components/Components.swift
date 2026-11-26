@@ -423,20 +423,20 @@ struct ControlStatusBanner: View {
                 }
             case .notInstalled:
                 StatusBanner(
-                    kind: .info, title: "Monitoring Only",
-                    message: "To change fan speeds, AirFlow needs to install a helper tool. You can keep monitoring without it.",
+                    kind: .info, title: "Fan Control Is Off",
+                    message: "AirFlow is showing your fans, but it can't change their speed yet. Turning on fan control takes two clicks.",
                     actionTitle: "Turn On Fan Control", action: model.enableFanControl, isCompact: isCompact
                 )
             case .needsApproval:
                 StatusBanner(
-                    kind: .caution, title: "Allow the Helper Tool",
-                    message: "Turn on AirFlow in System Settings > General > Login Items & Extensions.",
-                    actionTitle: "Open Login Items Settings", action: model.helper.openLoginItems, isCompact: isCompact
+                    kind: .caution, title: "One More Step",
+                    message: "In System Settings, turn on the switch next to AirFlow under Allow in the Background. AirFlow notices when you do.",
+                    actionTitle: "Open System Settings", action: model.openFanControlSettings, isCompact: isCompact
                 )
             case .unsignedBuild:
                 StatusBanner(
                     kind: .info, title: "Monitoring Only",
-                    message: "This copy of AirFlow isn't signed by a developer, so it can't install the helper tool. Presets and rules still work, but they don't change fan speeds.",
+                    message: "This copy of AirFlow can show your fans, but it can't change their speed. To control your fans, install a released copy of AirFlow.",
                     isCompact: isCompact
                 )
             case .failed(let reason):

@@ -108,6 +108,13 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    func testSettingUp() throws {
+        try draw("setup-off", width: 520, model: try model(helper: .notInstalled, active: "Automatic")) { SetupSheet() }
+        try draw("setup-waiting", width: 520, model: try model(helper: .needsApproval, active: "Automatic")) { SetupSheet() }
+        try draw("setup-on", width: 520, model: try model(helper: .enabled, active: "Adaptive")) { SetupSheet() }
+        try draw("setup-on-light", width: 520, dark: false, model: try model(helper: .enabled, active: "Automatic")) { SetupSheet() }
+    }
+
     func testThePanel() throws {
         let controlling = try model(helper: .enabled, active: "Quiet", cpu: 78)
         try draw("panel-controlling", width: Layout.panelWidth, model: controlling) { MenuPanel() }

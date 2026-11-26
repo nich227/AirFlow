@@ -127,7 +127,7 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 
 | To do this | Do this |
 | --- | --- |
-| Set up AirFlow | The first time AirFlow opens, it asks for fan control, opening at login, and automatic updates in one place. Turn on what you want, then click Continue. |
+| Set up AirFlow | The first time AirFlow opens, it asks for fan control, opening at login, and automatic updates in one place. Turn on what you want, then click Continue. Once fan control is on, it suggests the Adaptive preset. |
 | Change presets | Click the fan in the menu bar, then click a preset. |
 | Open the window | Click the fan in the menu bar, then click Open AirFlow. |
 | Change how a fan runs | Select a preset you made in the sidebar. Click Automatic, Constant, or Sensor-Based under the fan. |
@@ -139,7 +139,7 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 | Export or import presets | Click the More button at the bottom of the sidebar, or choose File > Export Presets or File > Import Presets. |
 | Add a rule | Click Rules in the sidebar, then click Add Rule. Drag a rule to change its place. The first rule that matches wins. |
 | Let rules run | Turn on Autopilot on the Rules page. |
-| Turn on fan control | Click Turn On Fan Control, then turn on AirFlow in System Settings > General > Login Items & Extensions. |
+| Turn on fan control | Click Turn On Fan Control. System Settings opens with a small AirFlow panel beside it that says what to do: turn on the switch next to AirFlow under Allow in the Background. AirFlow notices when you do. |
 | Open AirFlow at login | Choose AirFlow > Settings > General, then turn on Open at Login. |
 | Check for an update | Choose AirFlow > Check for Updates, or click Check for Updates in Settings > About. |
 

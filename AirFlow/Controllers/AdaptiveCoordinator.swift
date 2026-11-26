@@ -1,10 +1,10 @@
 import AppKit
 import Observation
 
-/// Runs the adaptive controller on every reading, keeps what it has learned, and knows which
-/// open apps are known for heavy work. It decides a share of the fans' range and nothing more:
-/// the control loop turns that into speeds, within each fan's limits, and the safeguard still
-/// overrides it.
+/// Runs the adaptive controller on every reading, keeps what it has learned, and knows which open
+/// apps are known for heavy work. It decides a share of the fans' range and nothing more. The
+/// control loop turns that into speeds, within each fan's limits, and the safeguard still overrides
+/// it.
 @MainActor
 @Observable
 final class AdaptiveCoordinator {

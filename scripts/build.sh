@@ -5,8 +5,8 @@
 #
 # A plain build is signed ad hoc and can only monitor. With --sign, the build is signed with a
 # developer identity from the keychain, which the fan control helper needs. AIRFLOW_SIGN_IDENTITY
-# names the identity. Without it the script takes the first Developer ID Application identity,
-# which is the one a release is signed with, and then the first Apple Development identity.
+# names the identity. Without it, the script takes the first Developer ID Application identity (the
+# one a release is signed with) and then the first Apple Development identity.
 set -euo pipefail
 cd "${0:A:h}/.."
 export PATH="/opt/homebrew/bin:$PATH"

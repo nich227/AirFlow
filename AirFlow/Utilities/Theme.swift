@@ -78,9 +78,9 @@ enum Palette {
     static let danger = Color("TempCritical")
 }
 
-/// The type roles. Text is set in Hedvig Letters Sans and every reading (a fan's speed with its
-/// unit, a temperature, any other number that is read) in IBM Plex Mono, so a changing number
-/// never shifts its neighbors. The app carries both faces.
+/// The type roles. Text uses Hedvig Letters Sans. Every reading (a fan's speed with its unit, a
+/// temperature, any other number that is read) uses IBM Plex Mono. So a changing number never
+/// shifts its neighbors. The app carries both faces.
 enum AirType {
     case display, title, statistic, body, label, caption
 
@@ -181,8 +181,8 @@ extension Text {
     }
 }
 
-/// Ant Design's components are drawn in Liquid Glass: the surface under a tag, an alert, or a
-/// card is glass that shows what is behind the window, tinted where the component carries a state.
+/// Ant Design's components are drawn in Liquid Glass. The surface under a tag, an alert, or a card
+/// is glass that shows what is behind the window. It is tinted where the component carries a state.
 extension View {
     /// - Parameters:
     ///   - tint: the state's color, or nil for clear glass.

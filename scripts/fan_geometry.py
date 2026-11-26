@@ -186,7 +186,7 @@ def subpaths(data):
         elif kind == "Z":
             finish()
             current = start
-            # Path data may go on after a close with no new move, from the same start point.
+            # Path data may continue after a close with no new move, from the same start point.
             curves = []
         else:
             raise ValueError(f"unsupported path command {command}")

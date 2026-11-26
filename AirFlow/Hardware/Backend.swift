@@ -1,11 +1,11 @@
 import AirFlowBackend
 import Foundation
 
-// The Swift side of the Rust backend. Everything that touches the Mac itself, the SMC, the
-// fans, the sensors, the power source, and the helper, is Rust in backend/. These types turn
-// its C interface (backend/include/airflow.h) into the app's own models.
+// The Swift side of the Rust backend. Everything that touches the Mac itself (the SMC, the fans,
+// the sensors, the power source, and the helper) is Rust in backend/. These types turn its C
+// interface (backend/include/airflow.h) into the app's own models.
 
-/// Something that can be asked for the readings of this moment. Tests supply their own.
+/// Something that can be asked for the current readings. Tests supply their own.
 protocol SnapshotSource {
     func snapshot(at date: Date) -> ThermalSnapshot
 }
@@ -96,8 +96,8 @@ enum Backend {
         airflow_power_source_is_battery() == 1
     }
 
-    /// The code signing requirement the app sets on its connection to the helper, or nil when
-    /// this copy of the app has no team's signature and so can trust no helper.
+    /// The code signing requirement the app sets on its connection to the helper. Nil when this
+    /// copy of the app has no team's signature and so can trust no helper.
     static let helperRequirement: String? = {
         var buffer = [CChar](repeating: 0, count: 512)
         let length = airflow_helper_requirement(&buffer, Int32(buffer.count))

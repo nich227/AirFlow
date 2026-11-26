@@ -13,8 +13,8 @@ final class ThermalMonitor {
     private(set) var snapshot: ThermalSnapshot = .empty
     /// The points of the last 15 minutes, oldest first.
     var history: ArraySlice<HistoryPoint> { points[firstLive...] }
-    /// The history's storage. A point that is too old is stepped over, and the storage is cut
-    /// only when half of it is stale, so a reading costs the same however long the history is.
+    /// The history's storage. A point that is too old is skipped, and the storage is cut only when
+    /// half of it is too old. So a reading costs the same however long the history is.
     private var points: [HistoryPoint] = []
     private var firstLive = 0
     /// False until the first read works, and again if the SMC cannot be opened.
@@ -78,7 +78,7 @@ final class ThermalMonitor {
             fanFractions: new.fans.map(\.fraction)
         ))
         let cutoff = new.date.addingTimeInterval(-Self.historyDuration)
-        // The points are in time order, so the ones that are too old are at the front.
+        // The points are ordered by time, so the ones that are too old are at the front.
         while firstLive < points.count, points[firstLive].date < cutoff {
             firstLive += 1
         }

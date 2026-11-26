@@ -19,9 +19,9 @@ import Yams
 ///             mode: constant
 ///             rpm: 3200
 ///
-/// `fans` is the control for every fan, and `overrides` changes it for one fan, counted from 1.
-/// A file is only data. Every number in it goes through the same limits as a preset made in the
-/// app, and nothing in a file can name a command or a path.
+/// `fans` is the control for every fan, and `overrides` changes it for one fan, counted from 1. A
+/// file is only data. Every number in it goes through the same limits as a preset made in the app.
+/// Nothing in a file can name a command or a path.
 enum PresetCodec {
     static let version = 1
     static let fileExtension = "yaml"
@@ -50,7 +50,7 @@ enum PresetCodec {
             switch self {
             case .tooLarge: return "The file is too large to be a list of presets."
             case .notYAML(let detail): return "The file isn't a list of AirFlow presets. \(detail)"
-            case .newerVersion(let version): return "The file was written by a newer version of AirFlow (format \(version))."
+            case .newerVersion(let version): return "A newer version of AirFlow wrote the file (format \(version))."
             case .noPresets: return "The file has no presets."
             case .tooManyPresets: return "The file has more than \(PresetCodec.maximumPresets) presets."
             case .invalid(let preset, let reason): return "The preset “\(preset)” can't be read: \(reason)"

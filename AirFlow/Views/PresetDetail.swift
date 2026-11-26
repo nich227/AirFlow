@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// One preset: what it is, and what it does with each fan, beside what each fan is doing now.
+/// This shows what one preset is, and what it does with each fan, beside what each fan is doing
+/// now.
 struct PresetDetail: View {
     @Environment(AppModel.self) private var model
     let preset: Preset
@@ -163,9 +164,9 @@ struct PresetDetail: View {
     }
 }
 
-/// The sentence under a fan's name: what the preset does with the fan, and who controls the
-/// fan now. Only a preset that is active while AirFlow controls the fans says "is held" or
-/// "follows" as a fact. Any other says what the preset would do.
+/// The sentence under a fan's name: what the preset does with the fan, and who controls the fan
+/// now. Only a preset that is active while AirFlow controls the fans says "is held" or "follows" as
+/// a fact. Any other preset says what it would do.
 enum FanSentence {
     static func text(
         control: FanControl, command: FanCommand, sourceName: (SensorSource) -> String, format: ReadingFormat,

@@ -1,5 +1,5 @@
-//! The SMC: the Mac's system management controller, reached through the AppleSMC kernel
-//! service. Reading needs no privilege. Writing needs root.
+//! The SMC is the Mac's system management controller, reached through the AppleSMC kernel service.
+//! Reading needs no privilege. Writing needs root.
 
 use std::collections::HashMap;
 use std::ffi::{c_char, c_void};

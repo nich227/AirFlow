@@ -1,7 +1,7 @@
 import Foundation
 
-/// A preset as the model proposed it, before anything is trusted. Every number here is checked
-/// and clamped when the proposal becomes a preset, by the same code a hand-made preset goes through.
+/// A preset as the model proposed it, before anything is trusted. When the proposal becomes a
+/// preset, the same code that handles a hand-made preset checks and clamps every number here.
 struct PresetProposal: Equatable, Sendable {
     enum Mode: String, Equatable, Sendable {
         case automatic, constant, sensorBased

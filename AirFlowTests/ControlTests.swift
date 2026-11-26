@@ -83,7 +83,7 @@ final class FanPlannerTests: XCTestCase {
         let quiet = FanPlanner.plan(preset: starters[0], snapshot: Fixtures.snapshot(cpu: 60))
         let heavy = FanPlanner.plan(preset: starters[1], snapshot: Fixtures.snapshot(cpu: 60))
         XCTAssertEqual(quiet[0], .speed(1000), "Quiet stays at the minimum at 60 degrees")
-        XCTAssertEqual(heavy[0], .speed(3000), "Heavy Workload is half way up at 60 degrees")
+        XCTAssertEqual(heavy[0], .speed(3000), "Heavy Workload is halfway up at 60 degrees")
     }
 }
 

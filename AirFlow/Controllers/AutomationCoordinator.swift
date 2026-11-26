@@ -7,7 +7,7 @@ enum AutopilotDecision: Equatable {
     case keep
     /// A rule started to match: apply its preset.
     case apply(presetID: UUID, ruleID: UUID)
-    /// No rule matches any more: go back to the preset the person chose.
+    /// No rule matches anymore: go back to the preset the person chose.
     case revert
 }
 
@@ -33,8 +33,8 @@ final class AutomationCoordinator {
         rules = file?.load() ?? []
     }
 
-    /// Starts following the frontmost app. AirFlow coming forward is not a change of context:
-    /// a person who opens AirFlow to look at a rule must not end the rule by looking.
+    /// Starts following the frontmost app. AirFlow coming forward is not a change of context,
+    /// because opening AirFlow to look at a rule must not end the rule.
     func startWatching() {
         guard activationObserver == nil else { return }
         let own = Bundle.main.bundleIdentifier

@@ -6,8 +6,8 @@ enum SidebarItem: Hashable {
     case sensors
 }
 
-/// The window: presets and pages in the sidebar, the selected one in the middle, and the Mac's
-/// live readings in the inspector whichever one is showing.
+/// The window's sidebar has presets and pages, and the middle has the selected one. The inspector
+/// has the Mac's live readings whichever one is showing.
 struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @State private var selection: SidebarItem?
@@ -239,7 +239,7 @@ struct Sidebar: View {
                 Text(preset.name).airFont(.body)
                 Spacer()
                 if isActive {
-                    // The row's own text style, so the mark stays visible when the row is selected.
+                    // The row's own text style keeps the mark visible when the row is selected.
                     AntIcon("ant-check", size: IconSize.inline)
                         .foregroundStyle(.secondary)
                 }

@@ -2,9 +2,9 @@ import Combine
 import Observation
 import Sparkle
 
-/// Looks for a newer AirFlow and installs it, through Sparkle. Sparkle reads the appcast's
-/// address (SUFeedURL) and the key that every update must be signed with (SUPublicEDKey) from
-/// Info.plist, and it schedules its own checks.
+/// Looks for a newer AirFlow and installs it, through Sparkle. Sparkle reads the appcast's address
+/// (SUFeedURL) and the key that every update must be signed with (SUPublicEDKey) from Info.plist.
+/// It schedules its own checks.
 @MainActor
 @Observable
 final class Updates {
@@ -16,8 +16,8 @@ final class Updates {
     @ObservationIgnored private var controller: SPUStandardUpdaterController?
     @ObservationIgnored private var observation: AnyCancellable?
 
-    /// True in a copy that updates itself. A Debug build has its own bundle identifier and would
-    /// be offered the release in place of itself, and a test must not reach the network.
+    /// True in a copy that updates itself. A Debug build has its own bundle identifier and would be
+    /// offered the release in place of itself. A test must not reach the network.
     var isAvailable: Bool { controller != nil }
 
     var checksAutomatically: Bool {

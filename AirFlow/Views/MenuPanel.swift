@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// What the menu bar item shows: the mark, and the readings the person chose.
+/// The menu bar item shows the mark, and the readings the person chose.
 struct MenuBarLabel: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
@@ -47,7 +47,8 @@ struct MenuBarLabel: View {
     }
 }
 
-/// The panel under the menu bar item: what the fans are doing, and one click to change preset.
+/// The panel under the menu bar item shows what the fans are doing, and one click changes the
+/// preset.
 struct MenuPanel: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openSettings) private var openSettings

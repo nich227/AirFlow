@@ -15,9 +15,9 @@ extension EnvironmentValues {
     }
 }
 
-/// Drawn animations have one entry point: a bundled Lottie file in a single tint. A one-shot
-/// draws once and holds its still frame. A loop repeats, at a rate the caller can change while
-/// it runs. Nothing moves while `isActive` is false or Reduce Motion is on.
+/// Drawn animations have one entry point: a bundled Lottie file in a single tint. A one-shot draws
+/// once and holds its still frame. A loop repeats at a rate the caller can change while it runs.
+/// Nothing moves while `isActive` is false or Reduce Motion is on.
 struct AirAnimation: View {
     let name: String
     var loops = false
@@ -89,9 +89,9 @@ final class AnimationSurface: NSView {
     enum Playback: Equatable {
         /// The surface is off screen. Whatever frame is showing stays, and nothing runs.
         case idle
-        /// Only the still frame, for Reduce Motion.
+        /// Only the still frame for Reduce Motion.
         case still
-        /// From the first frame to the still frame, once.
+        /// From the first frame to the still frame once.
         case once
         case loop(speed: Double)
     }
@@ -209,7 +209,7 @@ enum AnimationLibrary {
     }
 }
 
-/// The mark, turning at a rate that follows the fan's speed.
+/// The mark turns at a rate that follows the fan's speed.
 struct Rotor: View {
     let fan: Fan?
     var size: CGFloat = IconSize.rotor

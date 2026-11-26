@@ -110,7 +110,7 @@ struct FanControlSettingsPane: View {
                     EmptyView()
                 }
             } footer: {
-                Text("Only an administrator's program can change fan speeds, so AirFlow uses a small helper for that one job. The helper accepts requests from AirFlow alone, keeps every speed within the fan's own limits, and returns the fans to macOS when AirFlow quits or stops responding. Without it, AirFlow monitors only.")
+                Text("Only an administrator's program can change fan speeds, so AirFlow uses a small helper for that one job. The helper accepts requests from AirFlow alone and keeps every speed within the fan's own limits. It returns the fans to macOS when AirFlow quits or stops responding. Without it, AirFlow monitors only.")
             }
             Section {
                 Toggle("Return Fans to macOS When the Mac Runs Hot", isOn: $settings.safeguardEnabled)

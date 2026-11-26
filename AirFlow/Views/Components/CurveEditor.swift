@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// A sensor rule drawn as what it is: speed against temperature. The two handles move the
-/// temperatures where the fan starts to rise and where it reaches full speed, and a dot shows
-/// where the sensor is on the line right now.
+/// A sensor rule drawn as speed against temperature. The two handles move the temperatures where
+/// the fan starts to rise and where it reaches full speed. A dot shows where the sensor is on the
+/// line right now.
 struct CurveEditor: View {
     @Binding var rule: SensorRule
     let fan: Fan
@@ -129,8 +129,8 @@ struct CurveEditor: View {
         area.addLine(to: CGPoint(x: plot.frame.maxX, y: plot.frame.maxY))
         area.closeSubpath()
 
-        // The ground under the line is the temperature scale for the part the rule follows,
-        // so the line reads against how hot each temperature is for that part.
+        // The background under the line is the temperature scale for the part the rule follows, so
+        // the line reads against how hot each temperature is for that part.
         let thresholds = TemperatureBand.thresholds(for: group)
         let span = Plot.range.upperBound - Plot.range.lowerBound
         var stops: [Gradient.Stop] = []

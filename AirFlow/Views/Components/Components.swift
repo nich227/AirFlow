@@ -112,7 +112,7 @@ struct FanTrack: View {
     }
 }
 
-/// A message about the app's state with one thing to do about it. Ant Design's alert, on glass
+/// A message about the app's state with one thing to do about it. Ant Design's alert on glass
 /// tinted with the state's color.
 struct StatusBanner: View {
     enum Kind {
@@ -191,7 +191,7 @@ struct StatusBanner: View {
     }
 }
 
-/// What a surface shows when it has nothing to list: a drawing, a title, and what to do next.
+/// A surface with nothing to list shows a drawing, a title, and what to do next.
 struct EmptyState: View {
     let title: String
     let message: String
@@ -226,8 +226,8 @@ struct AntOption<Value: Hashable>: Identifiable {
     var id: Value { value }
 }
 
-/// Ant Design's segmented control: a track, with a pane of glass under the selected segment.
-/// AirFlow draws it, because the system's control cannot be set in the app's typeface.
+/// Ant Design's segmented control is a track with a pane of glass under the selected segment.
+/// AirFlow draws it, because the system's control cannot use the app's typeface.
 struct AntSegmented<Value: Hashable>: View {
     let title: String
     @Binding var selection: Value
@@ -267,9 +267,9 @@ struct AntSegmented<Value: Hashable>: View {
     }
 }
 
-/// Ant Design's select: the chosen option on a quiet ground, as wide as its own text, with the
-/// choices in a menu. AirFlow draws the button, because a pop-up button is as wide as its
-/// longest choice and cannot be set in the app's typeface. The menu is the system's.
+/// Ant Design's select shows the chosen option on a quiet background, as wide as its own text, with
+/// the choices in a menu. AirFlow draws the button, because a pop-up button is as wide as its
+/// longest choice and cannot use the app's typeface. The menu is the system's.
 struct AntSelect<Value: Hashable>: View {
     let title: String
     @Binding var selection: Value
@@ -313,9 +313,9 @@ struct AntSelect<Value: Hashable>: View {
     }
 }
 
-/// Lays its pieces out like words: left to right, and onto another line when a line is full.
-/// With no width proposed it asks for no more than its widest piece, so it never makes the
-/// view that holds it wider.
+/// Lays its pieces out left to right, and onto another line when a line is full. With no width
+/// proposed it asks for no more than its widest piece, so it never makes the view that holds it
+/// wider.
 struct FlowLayout: SwiftUI.Layout {
     var spacing: CGFloat = Space.xs
     var lineSpacing: CGFloat = Space.xs
@@ -374,8 +374,8 @@ struct FlowLayout: SwiftUI.Layout {
     }
 }
 
-/// An empty state that fills a page of the window. A page's root must scroll: a page rooted in
-/// a plain stack makes the split view lay the whole window out taller than it is.
+/// An empty state that fills a page of the window. A page's root must scroll, because a page rooted
+/// in a plain stack makes the split view lay the whole window out taller than it is.
 struct PageEmptyState: View {
     let title: String
     let message: String

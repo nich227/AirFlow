@@ -145,8 +145,8 @@ enum IntelligenceError: Error, LocalizedError, Equatable {
     }
 }
 
-/// The on-device Apple Intelligence model. It drafts presets and rules and explains readings.
-/// It has no way to reach a fan: every draft comes back as a proposal for a person to approve.
+/// The on-device Apple Intelligence model. It drafts presets and rules and explains readings. It
+/// has no way to reach a fan. Every draft comes back as a proposal for a person to approve.
 @MainActor
 @Observable
 final class IntelligenceService {
@@ -233,7 +233,7 @@ final class IntelligenceService {
         }
     }
 
-    /// Proposes what an app is known for. Nothing is saved: the person sees the proposal and
+    /// Proposes what an app is known for. Nothing is saved. The person sees the proposal and
     /// decides.
     func suggestWorkload(appName: String) async throws -> WorkloadProposal {
         let text = try checked(appName)

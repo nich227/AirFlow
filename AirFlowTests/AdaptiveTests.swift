@@ -2,7 +2,7 @@ import XCTest
 @testable import AirFlow
 
 /// A made-up Mac for the adaptive controller: heat comes from power, and it leaves faster the
-/// faster the fans turn. With no fan, 60 watts would settle near 109°. With full fans, near 63°.
+/// faster the fans turn. 60 watts would settle near 109° with no fan and near 63° with full fans.
 private struct Plant {
     var celsius = 39.0
     var fraction = 0.0
@@ -178,7 +178,7 @@ final class ThermalForecasterTests: XCTestCase {
         XCTAssertTrue(forecaster.isWarm)
         XCTAssertGreaterThan(compared, 1500)
         XCTAssertLessThan(learnedError / Double(compared), 1.5, "Within a degree and a half on average")
-        XCTAssertLessThan(learnedError, carriedError * 0.9, "Better than carrying the slope on")
+        XCTAssertLessThan(learnedError, carriedError * 0.9, "Better than continuing the slope")
         XCTAssertTrue(ThermalForecaster.fanEffectRange.contains(forecaster.fanEffect(celsius: 60)))
         XCTAssertGreaterThanOrEqual(forecaster.fanEffect(celsius: 90), forecaster.fanEffect(celsius: 45), "Air takes more heat from a hot Mac")
     }

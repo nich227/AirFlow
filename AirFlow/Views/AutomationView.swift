@@ -74,7 +74,7 @@ struct AutomationView: View {
         }
     }
 
-    /// Puts a dragged rule where it was dropped: in the place of the rule it landed on.
+    /// Puts a dragged rule in the place of the rule it was dropped on.
     private func move(_ dropped: String?, before target: AutomationRule) -> Bool {
         let rules = model.automation.rules
         guard let dropped, let id = UUID(uuidString: dropped), id != target.id,

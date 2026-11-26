@@ -63,7 +63,7 @@ final class BackendBridgeTests: XCTestCase {
     }
 
     func testTheAppDemandsTheHelpersIdentifierOrTrustsNoHelper() {
-        // A copy signed by a team demands that team's helper. An ad hoc copy, which is what the
+        // A copy signed by a team requires that team's helper. An ad hoc copy, which is what the
         // tests usually run in, gets no requirement and so opens no connection.
         if let requirement = Backend.helperRequirement {
             XCTAssertTrue(requirement.contains("identifier \"com.kevster.airflow.helper\""))

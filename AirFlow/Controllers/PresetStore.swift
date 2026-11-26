@@ -198,7 +198,7 @@ final class PresetStore {
 /// number after it: Quiet, Quiet 2, Quiet 3.
 struct NameRegistry {
     private var taken: Set<String>
-    /// Where the count for a name stopped, so many presets with one name do not each count
+    /// Where the count for a name stopped, so that many presets with one name do not each count
     /// from 2 again.
     private var nextNumber: [String: Int] = [:]
 

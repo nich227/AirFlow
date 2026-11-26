@@ -4,9 +4,9 @@
 #
 #   CERTIFICATE_P12=<base64 of the .p12> CERTIFICATE_PASSWORD=<its password> scripts/import-certificate.sh
 #
-# This script appends identity=<name> and keychain=<path> to $GITHUB_OUTPUT. This script never
-# prints the new keychain's random password. The certificate never enters the login keychain. The
-# workflow deletes the keychain when the run ends.
+# This script appends identity=<name> and keychain=<path> to $GITHUB_OUTPUT. It never prints the new
+# keychain's random password. The certificate never enters the login keychain. The workflow deletes
+# the keychain when the run ends.
 #
 # Run this only on a workflow runner because it replaces the user's keychain search list.
 set -euo pipefail

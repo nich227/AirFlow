@@ -3,9 +3,9 @@ import SwiftUI
 import XCTest
 @testable import AirFlow
 
-/// Draws the app's surfaces with made-up readings into PNG files, so a person or an agent can
-/// look at states that are hard to reach by hand: fans under control, the safeguard, a Mac with
-/// no fans. Skipped unless AIRFLOW_SNAPSHOTS names a folder:
+/// Draws the app's surfaces with made-up readings into PNG files, so a person or an agent can look
+/// at them. The files show states that are hard to reach by hand: fans under control, the
+/// safeguard, a Mac with no fans. Skipped unless AIRFLOW_SNAPSHOTS names a folder:
 ///
 ///     TEST_RUNNER_AIRFLOW_SNAPSHOTS=/tmp/airflow-shots scripts/test.sh
 ///
@@ -76,7 +76,8 @@ final class SnapshotTests: XCTestCase {
         window.displayIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(1))
         CATransaction.flush()
-        // The layer tree, not the view's own drawing: SwiftUI draws most of a page into layers.
+        // Use the layer tree, not the view's own drawing, because SwiftUI draws most of a page into
+        // layers.
         let scale: CGFloat = 2
         let context = try XCTUnwrap(CGContext(
             data: nil, width: Int(size.width * scale), height: Int(size.height * scale), bitsPerComponent: 8,

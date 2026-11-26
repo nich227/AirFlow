@@ -26,8 +26,8 @@ pub fn is_team_identifier(value: &str) -> bool {
 
 /// The team that signed the running program, or None for an ad hoc or unsigned build.
 pub fn own_team_identifier() -> Option<String> {
-    // SAFETY: each object the Security framework returns is checked for null and released,
-    // and the team identifier is copied out of the dictionary before the dictionary goes.
+    // SAFETY: each object the Security framework returns is checked for null and released. The team
+    // identifier is copied out of the dictionary before the dictionary goes.
     unsafe {
         let mut code: *const c_void = std::ptr::null();
         if SecCodeCopySelf(0, &mut code) != 0 || code.is_null() {

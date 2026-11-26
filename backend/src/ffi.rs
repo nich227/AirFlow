@@ -1,7 +1,7 @@
 //! The C interface the Swift app links. backend/include/airflow.h declares it.
 //!
-//! Every function checks its pointers, and none of them unwinds into Swift: the library is
-//! built with `panic = "abort"`.
+//! Every function checks its pointers. None of them unwinds into Swift, as the library is built
+//! with `panic = "abort"`.
 
 use crate::sensors::{FanReading, Reader, SensorReading};
 use crate::smc::{SmcAccess, SmcConnection};

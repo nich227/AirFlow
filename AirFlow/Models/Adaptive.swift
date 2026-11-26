@@ -21,21 +21,21 @@ enum WorkloadRegime: Int, Codable, CaseIterable, Comparable, Sendable, Identifia
         }
     }
 
-    /// What the regime means for the fans, as one sentence.
+    /// What the regime means for the fans, in one sentence.
     var explanation: String {
         switch self {
         case .light:
             return "The fans stay at their minimum until the forecast passes \(Int(AdaptivePolicy.light.engageCelsius))°."
         case .bursty:
-            return "The Mac's own mass takes up a short burst. The fans rise only if the load lasts."
+            return "The Mac's own mass absorbs a short burst. The fans rise only if the load lasts."
         case .sustained:
             return "The fans rise before the heat arrives, and then hold steady."
         }
     }
 }
 
-/// The mean of the values of the last few seconds. Adding a value costs the same however many
-/// the window holds.
+/// The mean of the values from the last few seconds. Adding a value costs the same however many the
+/// window holds.
 struct RollingWindow {
     let span: TimeInterval
     private var samples: [(time: TimeInterval, value: Double)] = []
@@ -58,7 +58,7 @@ struct RollingWindow {
 
     mutating func add(_ value: Double, at time: TimeInterval) {
         guard value.isFinite else { return }
-        // A clock that went backward, after a change of the date, starts the window again.
+        // When the clock goes backward (after a date change), the window starts again.
         if let last = samples.last, time < last.time {
             self = RollingWindow(span: span)
         }
@@ -71,16 +71,17 @@ struct RollingWindow {
         if first > samples.count / 2 {
             samples.removeFirst(first)
             first = 0
-            // The running sum drifts after many additions and removals, so it is taken again.
+            // The running sum drifts after many additions and removals, so the window recomputes
+            // it.
             sum = samples.reduce(0) { $0 + $1.value }
         }
     }
 }
 
-/// What this Mac draws when it rests and when it works, learned as it runs. Power is judged
-/// against this range, because 30 watts is rest for one Mac and full load for another.
+/// What this Mac draws at rest and at work, learned as it runs. Power is judged against this range,
+/// because 30 watts is rest for one Mac and full load for another.
 struct PowerScale: Codable, Equatable, Sendable {
-    /// The range is never taken to be narrower than this, so noise at rest is not a load.
+    /// The range always counts as at least this wide, so noise at rest is not a load.
     static let minimumSpan: Double = 15
 
     var idle: Double
@@ -91,7 +92,7 @@ struct PowerScale: Codable, Equatable, Sendable {
         self.peak = peak
     }
 
-    /// A scale that knows one reading and nothing else.
+    /// A scale with only one reading.
     init(first watts: Double) {
         self.init(idle: watts, peak: watts)
     }
@@ -127,7 +128,7 @@ struct RegimeDetector: Equatable {
     static let hold: TimeInterval = 20
     /// The share of this Mac's range that counts as working hard.
     static let highLoad = 0.5
-    /// With an app open that is known for the regime, less load is enough.
+    /// When an app known for the regime is open, less load is enough.
     static let hintedLoad = 0.35
 
     private(set) var regime: WorkloadRegime = .light
@@ -164,12 +165,12 @@ struct RegimeDetector: Equatable {
 /// Mac runs (recursive least squares), so it keeps its coefficients and no history of readings.
 struct ThermalForecaster: Codable, Equatable, Sendable {
     static let horizon: TimeInterval = 15
-    /// Until this many readings have been learned from, the forecast is the slope carried on.
+    /// Until the forecaster has learned from this many readings, the forecast continues the slope.
     static let warmUp = 90
     /// A forecast outside this range of the present temperature is not believed.
     static let plausibleRise: ClosedRange<Double> = -15...25
-    /// How far full fans are taken to cool the Mac within the horizon, in degrees: the least
-    /// and the most the controller believes, whatever it has learned.
+    /// The least and the most (in degrees) that the controller believes full fans cool the Mac
+    /// within the horizon, whatever it has learned.
     static let fanEffectRange: ClosedRange<Double> = 2...10
     static let defaultFanEffect: Double = 4
     private static let size = 6
@@ -181,7 +182,7 @@ struct ThermalForecaster: Codable, Equatable, Sendable {
     private var covariance: [Double]
     private(set) var updates: Int
 
-    /// The readings that wait for their answer: what the temperature was 15 seconds later.
+    /// The readings that wait for their answer, which is the temperature 15 seconds later.
     private var pending: [Pending] = []
     private var firstPending = 0
 
@@ -203,14 +204,14 @@ struct ThermalForecaster: Codable, Equatable, Sendable {
 
     var isWarm: Bool { updates >= Self.warmUp }
 
-    /// False for stored numbers that cannot be a forecaster, which is then started again.
+    /// False for stored numbers that cannot be a forecaster, which then starts again.
     var isValid: Bool {
         weights.count == Self.size && covariance.count == Self.size * Self.size && updates >= 0
             && weights.allSatisfy(\.isFinite) && covariance.allSatisfy(\.isFinite)
     }
 
-    /// The last feature is the fans' speed times the temperature: air takes more heat from a
-    /// hot Mac than from a cool one.
+    /// The last feature is the fans' speed times the temperature, as air takes more heat from a hot
+    /// Mac than from a cool one.
     static func features(celsius: Double, slope: Double, load: Double, fanFraction: Double) -> [Double] {
         let heat = (celsius - 50) / 50
         let fans = min(max(fanFraction, 0), 1)
@@ -245,7 +246,7 @@ struct ThermalForecaster: Codable, Equatable, Sendable {
         while firstPending < pending.count, time - pending[firstPending].time >= Self.horizon {
             let old = pending[firstPending]
             firstPending += 1
-            // A reading whose answer came far too late, after sleep for example, teaches nothing.
+            // A reading whose answer came far too late (e.g. after sleep) teaches nothing.
             if time - old.time <= Self.horizon + 5 {
                 learn(features: old.features, target: celsius - old.celsius)
             }
@@ -309,7 +310,7 @@ struct AdaptivePolicy: Equatable, Sendable {
     var fallRPM: Double
 
     static let light = AdaptivePolicy(engageCelsius: 68, floor: 0, quiet: 0.6, riseRPM: 150, fallRPM: 100)
-    /// While a burst is short, only the ceiling counts, so the Mac's mass takes the burst up.
+    /// While a burst is short, only the ceiling counts, so the Mac's mass absorbs the burst.
     static let soak = AdaptivePolicy(engageCelsius: AdaptiveController.ceilingCelsius, floor: 0, quiet: 0.6, riseRPM: 150, fallRPM: 100)
     static let bursty = AdaptivePolicy(engageCelsius: 75, floor: 0, quiet: 0.4, riseRPM: 150, fallRPM: 100)
     static let sustained = AdaptivePolicy(engageCelsius: 70, floor: 0.3, quiet: 0.15, riseRPM: 300, fallRPM: 100)
@@ -351,8 +352,8 @@ struct AdaptiveController {
     static let safetyFloor: ClosedRange<Double> = 80...92
     /// A change smaller than this share of the range is not worth a change in pitch.
     static let deadband = 0.04
-    /// How long a lower speed must be wanted before the fans fall, so they do not breathe
-    /// between two prompts or two edits.
+    /// How long a lower speed must be wanted before the fans fall, so they do not cycle between two
+    /// prompts or two edits.
     static let fallHold: TimeInterval = 20
     private static let candidates = 21
     private static let heatWeight = 1.0
@@ -377,13 +378,13 @@ struct AdaptiveController {
         self.scale = scale.flatMap { $0.isValid ? $0 : nil }
     }
 
-    /// The least the fans are asked for at a temperature, whatever else is decided.
+    /// The lowest fan speed asked for at a temperature, whatever else is decided.
     static func safetyFraction(celsius: Double) -> Double {
         min(max((celsius - safetyFloor.lowerBound) / (safetyFloor.upperBound - safetyFloor.lowerBound), 0), 1)
     }
 
-    /// Takes one reading and decides. Returns nil, and forgets its speed, when the Mac reports
-    /// neither a CPU nor a GPU temperature: then there is nothing to steer by.
+    /// Takes one reading and decides. Returns nil and clears its speed when the Mac reports neither
+    /// a CPU nor a GPU temperature, as there is nothing to decide from.
     @discardableResult
     mutating func step(snapshot: ThermalSnapshot, hint: WorkloadRegime?) -> AdaptiveState? {
         let time = snapshot.date.timeIntervalSinceReferenceDate
@@ -406,7 +407,7 @@ struct AdaptiveController {
             scale = known
             load5 = known.load(power5.mean ?? watts)
             load15 = known.load(power15.mean ?? watts)
-            // A window that has only just started cannot say that a load has lasted.
+            // A window that only just started cannot show that a load has lasted.
             if power30.covered >= power30.span / 2 {
                 load30 = known.load(power30.mean ?? watts)
             }
@@ -424,8 +425,8 @@ struct AdaptiveController {
         let features = ThermalForecaster.features(celsius: celsius, slope: slope, load: load5, fanFraction: measured)
         forecaster.observe(features: features, celsius: celsius, at: time)
 
-        // The forecast for each speed: the forecast at the present speed, moved by what the
-        // fans are known to do.
+        // The forecast for each speed is the forecast at the current speed, moved by what the fans
+        // are known to do.
         let rise = forecaster.rise(features: features)
         let effect = forecaster.fanEffect(celsius: celsius)
         func forecast(_ candidate: Double) -> Double {
@@ -494,7 +495,7 @@ struct AdaptiveMemory: Codable, Equatable {
     var scale: PowerScale?
 }
 
-/// What an app is known for, kept by the person: its identifier, its name, and its regime.
+/// What an app is known for, kept by the user: its identifier, its name, and its regime.
 struct AppWorkload: Codable, Equatable, Identifiable, Sendable {
     var bundleID: String
     var name: String
@@ -503,10 +504,10 @@ struct AppWorkload: Codable, Equatable, Identifiable, Sendable {
     var id: String { bundleID }
 }
 
-/// The apps AirFlow knows without being told. A person's own entry for an app replaces these.
+/// The apps AirFlow knows by default. A user's own entry for an app replaces these.
 enum KnownWorkloads {
     static let regimes: [String: WorkloadRegime] = [
-        // Local language models and rendering: long, heavy loads.
+        // Local language models and rendering are long, heavy loads.
         "com.electron.ollama": .sustained,
         "ai.elementlabs.lmstudio": .sustained,
         "com.apple.FinalCut": .sustained,
@@ -521,7 +522,7 @@ enum KnownWorkloads {
         "fr.handbrake.HandBrake": .sustained,
         "org.blenderfoundation.blender": .sustained,
         "com.diffusionbee.diffusionbee": .sustained,
-        // Photo editing and building code: short spikes.
+        // Photo editing and building code are short spikes.
         "com.adobe.LightroomClassicCC7": .bursty,
         "com.adobe.mas.lightroomCC": .bursty,
         "com.adobe.Photoshop": .bursty,
@@ -533,8 +534,8 @@ enum KnownWorkloads {
     ]
 }
 
-/// Works out what the open apps are known for. The answer only makes the detector quicker to
-/// choose a regime that needs more cooling: an app that is open and idle changes nothing.
+/// Finds what the open apps are known for. The answer only makes the detector quicker to choose a
+/// regime that needs more cooling. An app that is open and idle changes nothing.
 enum WorkloadHint {
     static func hint(running: some Sequence<String>, workloads: [String: WorkloadRegime]) -> WorkloadRegime? {
         var hint: WorkloadRegime?

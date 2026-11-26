@@ -106,8 +106,8 @@ impl<S: SmcAccess> FanWriter<S> {
             self.manual.insert(index);
             return Ok(());
         }
-        // On Apple silicon the system's thermal manager owns the fans until this key asks it
-        // to yield, and it takes a few seconds to let go.
+        // On Apple silicon the system's thermal manager owns the fans until this key asks it to
+        // yield. It takes a few seconds to let go.
         if !self.smc.has("Ftst") {
             return Err(FanWriteError::ControlRefused(index));
         }

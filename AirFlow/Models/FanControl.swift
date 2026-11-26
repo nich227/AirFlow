@@ -1,14 +1,14 @@
 import Foundation
 
-/// A fan that follows a sensor: minimum speed up to `startCelsius`, then a straight rise to the
-/// maximum speed at `maxCelsius`.
+/// A fan that follows a sensor. The speed stays at the minimum up to `startCelsius`, then rises in
+/// a straight line to the maximum at `maxCelsius`.
 struct SensorRule: Equatable, Codable, Sendable {
     var source: SensorSource
     var startCelsius: Double
     var maxCelsius: Double
 
     static let temperatureRange: ClosedRange<Double> = 20...110
-    /// The least distance between the two temperatures, so the rise is never a cliff.
+    /// The least distance between the two temperatures, so the rise is never a jump.
     static let minimumSpan: Double = 5
 
     init(source: SensorSource, startCelsius: Double, maxCelsius: Double) {
@@ -118,8 +118,8 @@ enum FanPlanner {
     }
 }
 
-/// Returns the fans to the system when the CPU or the GPU runs past a limit, and holds them there
-/// until the temperature has fallen well below it.
+/// Returns the fans to the system when the CPU or the GPU runs past a limit. It holds them there
+/// until the temperature falls well below the limit.
 struct Safeguard: Equatable {
     static let limitRange: ClosedRange<Double> = 80...105
     static let defaultLimit: Double = 95

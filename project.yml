@@ -62,6 +62,10 @@ targets:
           - Resources/AppIconSynthwave.icon
           - Resources/AppIconNord.icon
           - Resources/AppIconCatppuccin.icon
+          - Resources/AppIconVSCode.icon
+          - Resources/AppIconMonokai.icon
+          - Resources/AppIconSolarized.icon
+          - Resources/AppIconDarcula.icon
           - Resources/LaunchDaemons
       # This references one file, so actool compiles the Icon Composer document instead of copying
       # its parts.
@@ -94,6 +98,18 @@ targets:
       - path: AirFlow/Resources/AppIconCatppuccin.icon
         type: file
         buildPhase: resources
+      - path: AirFlow/Resources/AppIconVSCode.icon
+        type: file
+        buildPhase: resources
+      - path: AirFlow/Resources/AppIconMonokai.icon
+        type: file
+        buildPhase: resources
+      - path: AirFlow/Resources/AppIconSolarized.icon
+        type: file
+        buildPhase: resources
+      - path: AirFlow/Resources/AppIconDarcula.icon
+        type: file
+        buildPhase: resources
       # AirFlow's own license travels inside the app, so every copy carries its terms.
       - path: LICENSE
         buildPhase: resources
@@ -116,7 +132,7 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
         COMBINE_HIDPI_IMAGES: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIconRainbow AppIconCyberpunk AppIconAurora AppIconMatrix AppIconGirlypop AppIconSynthwave AppIconNord AppIconCatppuccin
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIconRainbow AppIconCyberpunk AppIconAurora AppIconMatrix AppIconGirlypop AppIconSynthwave AppIconNord AppIconCatppuccin AppIconVSCode AppIconMonokai AppIconSolarized AppIconDarcula
         # The Rust backend: its module map for Swift, and its static library for the linker.
         SWIFT_INCLUDE_PATHS: "$(PROJECT_DIR)/backend/include"
         LIBRARY_SEARCH_PATHS: "$(PROJECT_DIR)/backend/target/$(AIRFLOW_BACKEND_PROFILE)"

@@ -145,6 +145,11 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .aqua), "AppIcon", "The first palette has the app's own icon")
         XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .matrix), "AppIconMatrix")
         XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .cyberpunk), "AppIconCyberpunk")
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .vscode), "AppIconVSCode", "An icon's name has no space")
+        XCTAssertEqual(DockIcon.darkName(for: ColorPalette.vscode.iconName), "DockVSCodeDark")
+        for palette in ColorPalette.allCases where palette != .standard {
+            XCTAssertNotNil(NSImage(named: DockIcon.darkName(for: palette.iconName)), "\(palette.title) has a dark Dock icon")
+        }
         XCTAssertEqual(DockIcon.bundledName(isRainbow: true, palette: .matrix), "AppIconRainbow")
         XCTAssertEqual(DockIcon.darkName(for: "AppIconRainbow"), "DockRainbowDark")
         for name in ["AppIconRainbow"] + ColorPalette.allCases.map(\.iconName) where name != "AppIcon" {
@@ -199,7 +204,7 @@ final class FormatTests: XCTestCase {
     func testEveryPaletteHasEveryColorAndTheFirstIsAqua() {
         XCTAssertEqual(ColorPalette.standard, .aqua)
         XCTAssertEqual(ColorPalette.allCases.first, .aqua)
-        XCTAssertEqual(ColorPalette.allCases.count, 8)
+        XCTAssertEqual(ColorPalette.allCases.count, 12)
         XCTAssertNil(ColorPalette(rawValue: "bliss"), "The palette that Cyberpunk replaced is gone")
         for palette in ColorPalette.allCases {
             XCTAssertEqual(palette.temperatures.count, TemperatureBand.allCases.count, palette.title)

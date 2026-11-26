@@ -3,7 +3,7 @@ import Foundation
 /// The colors of AirFlow: its accent, the temperature scale, and the lines of the charts. The
 /// person chooses one in Preferences.
 enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
-    case aqua, cyberpunk, aurora, matrix, girlypop, synthwave, nord, catppuccin
+    case aqua, cyberpunk, aurora, matrix, girlypop, synthwave, nord, catppuccin, vscode, monokai, solarized, darcula
 
     /// The palette of a copy of AirFlow in which the person has chosen none.
     static let standard = ColorPalette.aqua
@@ -31,6 +31,10 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
         case .synthwave: return "Synthwave"
         case .nord: return "Nord"
         case .catppuccin: return "Catppuccin"
+        case .vscode: return "VS Code"
+        case .monokai: return "Monokai"
+        case .solarized: return "Solarized"
+        case .darcula: return "Darcula"
         }
     }
 
@@ -57,6 +61,17 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
             return [Shade(0x4C6E96, 0x88C0D0), Shade(0x5B7A3F, 0xA3BE8C), Shade(0x9A7420, 0xEBCB8B), Shade(0xA85A3C, 0xD08770), Shade(0xA3414B, 0xBF616A)]
         case .catppuccin:
             return [Shade(0x04A5E5, 0x89DCEB), Shade(0x40A02B, 0xA6E3A1), Shade(0xDF8E1D, 0xF9E2AF), Shade(0xFE640B, 0xFAB387), Shade(0xD20F39, 0xF38BA8)]
+        case .vscode:
+            // The colors of code in Visual Studio Code: Light+ in Light Mode and Dark+ in Dark Mode.
+            return [Shade(0x0070C1, 0x4FC1FF), Shade(0x008000, 0x6A9955), Shade(0x795E26, 0xDCDCAA), Shade(0xA31515, 0xCE9178), Shade(0xE50000, 0xF44747)]
+        case .monokai:
+            return [Shade(0x2C8DA0, 0x66D9EF), Shade(0x5C8A0A, 0xA6E22E), Shade(0x8A8A00, 0xE6DB74), Shade(0xC46A00, 0xFD971F), Shade(0xC4265E, 0xF92672)]
+        case .solarized:
+            // Solarized has the same eight colors on its light and its dark ground.
+            return [Shade(0x2AA198, 0x2AA198), Shade(0x859900, 0x859900), Shade(0xB58900, 0xB58900), Shade(0xCB4B16, 0xCB4B16), Shade(0xDC322F, 0xDC322F)]
+        case .darcula:
+            // The colors of code in IntelliJ IDEA: IntelliJ Light in Light Mode and Darcula in Dark Mode.
+            return [Shade(0x1750EB, 0x6897BB), Shade(0x067D17, 0x6A8759), Shade(0xB07D00, 0xFFC66D), Shade(0xBA6F25, 0xCC7832), Shade(0xBC3F3C, 0xFF6464)]
         }
     }
 
@@ -71,6 +86,10 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
         case .synthwave: return [Shade(0xC2259B, 0xFF7EDB), Shade(0x0B8F8C, 0x36F9F6)]
         case .nord: return [Shade(0x8C5E84, 0xB48EAD), Shade(0x4C6E96, 0x81A1C1)]
         case .catppuccin: return [Shade(0xEA76CB, 0xF5C2E7), Shade(0x8839EF, 0xCBA6F7)]
+        case .vscode: return [Shade(0x0000FF, 0x569CD6), Shade(0x001080, 0x9CDCFE)]
+        case .monokai: return [Shade(0xC4265E, 0xF92672), Shade(0x7B52C8, 0xAE81FF)]
+        case .solarized: return [Shade(0x268BD2, 0x268BD2), Shade(0x6C71C4, 0x6C71C4)]
+        case .darcula: return [Shade(0xBA6F25, 0xCC7832), Shade(0xB07D00, 0xFFC66D)]
         }
     }
 
@@ -85,6 +104,10 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
         case .synthwave: return [Shade(0xA67C00, 0xFEDE5D), Shade(0x148F5B, 0x72F1B8)]
         case .nord: return [Shade(0x3F7F7D, 0x8FBCBB), Shade(0x5B7A3F, 0xA3BE8C)]
         case .catppuccin: return [Shade(0x209FB5, 0x74C7EC), Shade(0x179299, 0x94E2D5)]
+        case .vscode: return [Shade(0x267F99, 0x4EC9B0), Shade(0x098658, 0xB5CEA8)]
+        case .monokai: return [Shade(0x5C8A0A, 0xA6E22E), Shade(0x2C8DA0, 0x66D9EF)]
+        case .solarized: return [Shade(0x2AA198, 0x2AA198), Shade(0x859900, 0x859900)]
+        case .darcula: return [Shade(0x067D17, 0x6A8759), Shade(0x1750EB, 0x6897BB)]
         }
     }
 
@@ -103,6 +126,10 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
         case .synthwave: return [Shade(0xD9620A, 0xFF8B39), Shade(0x7B4FB3, 0xB893CE), Shade(0xC2182B, 0xFE4450)]
         case .nord: return [Shade(0xA85A3C, 0xD08770), Shade(0x9A7420, 0xEBCB8B), Shade(0xA3414B, 0xBF616A)]
         case .catppuccin: return [Shade(0xFE640B, 0xFAB387), Shade(0xDF8E1D, 0xF9E2AF), Shade(0x40A02B, 0xA6E3A1)]
+        case .vscode: return [Shade(0xAF00DB, 0xC586C0), Shade(0x795E26, 0xDCDCAA), Shade(0xA31515, 0xCE9178)]
+        case .monokai: return [Shade(0xC46A00, 0xFD971F), Shade(0x8A8A00, 0xE6DB74), Shade(0x4A5EA8, 0x6A7EC8)]
+        case .solarized: return [Shade(0xD33682, 0xD33682), Shade(0xB58900, 0xB58900), Shade(0xCB4B16, 0xCB4B16)]
+        case .darcula: return [Shade(0x871094, 0x9876AA), Shade(0x006DCC, 0x589DF6), Shade(0x9E880D, 0xBBB529)]
         }
     }
 
@@ -145,6 +172,11 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
         case .synthwave: return Shade(0xC2259B, 0xE23FB8)
         case .nord: return Shade(0x4C6E96, 0x5E81AC)
         case .catppuccin: return Shade(0x8839EF, 0x9D6BF0)
+        case .vscode: return Shade(0x005FB8, 0x0078D4)
+        // The pink would make a note read as an error, so the accent is Monokai's violet.
+        case .monokai: return Shade(0x7B52C8, 0x8C6BC8)
+        case .solarized: return Shade(0x268BD2, 0x268BD2)
+        case .darcula: return Shade(0x2675BF, 0x287BDE)
         }
     }
 
@@ -176,13 +208,17 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
         case .synthwave: return [Shade(0x0B8F8C, 0x36F9F6), Shade(0x148F5B, 0x72F1B8), Shade(0x495495, 0x8F9BE8)]
         case .nord: return [Shade(0x4C6E96, 0x81A1C1), Shade(0x5B7A3F, 0xA3BE8C), Shade(0x3F7F9A, 0x88C0D0)]
         case .catppuccin: return [Shade(0x8839EF, 0xCBA6F7), Shade(0xD20F39, 0xF38BA8), Shade(0x179299, 0x94E2D5)]
+        case .vscode: return [Shade(0x008000, 0x6A9955), Shade(0x811F3F, 0xD16969), Shade(0x0070C1, 0x4FC1FF)]
+        case .monokai: return [Shade(0x7B52C8, 0xAE81FF), Shade(0x2C8DA0, 0x66D9EF), Shade(0x6B6853, 0x88846F)]
+        case .solarized: return [Shade(0x6C71C4, 0x6C71C4), Shade(0xDC322F, 0xDC322F), Shade(0x859900, 0x859900)]
+        case .darcula: return [Shade(0xBC3F3C, 0xFF6464), Shade(0xB07D00, 0xFFC66D), Shade(0x8C8C8C, 0x808080)]
         }
     }
 
-    /// The name of the palette's app icon among the bundled ones. The first palette's is the
-    /// app's own icon.
+    /// The name of the palette's app icon among the bundled ones: the palette's name with no space.
+    /// The first palette's is the app's own icon.
     var iconName: String {
-        self == .standard ? "AppIcon" : "AppIcon" + title
+        self == .standard ? "AppIcon" : "AppIcon" + title.filter { $0 != " " }
     }
 
     /// The palette in use. `AppSettings` sets it when it loads and when the person chooses another.

@@ -125,7 +125,9 @@ struct MenuPanel: View {
         .frame(width: Layout.panelWidth)
         .background {
             if model.settings.activePresetID == Preset.adaptiveID {
-                AirBackdrop()
+                // The panel is not the key window of an app in front, so it asks the backdrop to
+                // turn anyway, and only while the panel is open.
+                AirBackdrop(movesWhenInactive: isShowing)
             }
         }
         .environment(\.airRainbow, model.settings.activePresetID == Preset.adaptiveID)

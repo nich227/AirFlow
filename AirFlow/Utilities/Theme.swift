@@ -286,6 +286,10 @@ extension EnvironmentValues {
 /// the blurred desktop. It holds still with Reduce Motion on and in a window that is not in front,
 /// so it costs nothing when nobody is looking.
 struct AirBackdrop: View {
+    /// True where the backdrop turns even though its window is not the key window. The menu bar
+    /// panel is such a window: it is on screen only while a person looks at it.
+    var movesWhenInactive = false
+
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -294,7 +298,7 @@ struct AirBackdrop: View {
     var body: some View {
         ZStack {
             Rectangle().fill(.ultraThinMaterial)
-            TimelineView(.animation(minimumInterval: 1.0 / 20, paused: reduceMotion || activity == .inactive)) { timeline in
+            TimelineView(.animation(minimumInterval: 1.0 / 20, paused: reduceMotion || (!movesWhenInactive && activity == .inactive))) { timeline in
                 mesh(at: reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate)
             }
             // More contrast asks for a calmer ground under the text.

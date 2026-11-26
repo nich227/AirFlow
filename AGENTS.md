@@ -69,6 +69,7 @@ scripts/make-screenshots.sh                             # the README's screensho
 TEST_RUNNER_AIRFLOW_SNAPSHOTS=/tmp/airflow-shots scripts/test.sh   # draws each surface with made-up readings
 TEST_RUNNER_AIRFLOW_COMPARE=1 scripts/test.sh 2>&1 | grep COMPARE   # the forecaster against Apple's LinearRegressor on the made-up Mac
 open -g --env AIRFLOW_SHOW=rules build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: opens the window on a page (rules, sensors, a preset's name, setup for the setup sheet, apps for the grid of apps, preferences for the Preferences window, or guide for the panel beside System Settings) without taking the keyboard
+AIRFLOW_HIDE_APPS="word,another" scripts/make-screenshots.sh   # the same, and the grid of apps leaves out each app whose name or identifier holds one of the words
 open -g --env AIRFLOW_SHOW=Adaptive --env AIRFLOW_TOGGLE_READINGS=1 build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: closes and opens the readings column by itself, for a recording
 open -g --env AIRFLOW_SHOW=Quiet --env AIRFLOW_APPEARANCE=light build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: the same, in Light Mode (or dark)
 ```
@@ -159,7 +160,7 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | A new palette | A case of `ColorPalette` with every color, an entry in `PALETTES`, then `python3 scripts/make-icons.py`, the new `AppIcon<Name>.icon` in `project.yml` (the resources, the excluded files, and `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`), `licenses/` if the colors come from a theme, `DESIGN.md`, the README |
 | The rainbow fan | `swift scripts/make-rainbow-icon.swift`, then `python3 scripts/make-icons.py` for its Dark picture, and `Rotor` in `AirAnimation.swift`, which draws the same pinwheel |
 | The mark | `scripts/fan_geometry.py`, then both scripts, `AppIcon.icon/icon.json`, and `swift scripts/make-brand.swift` |
-| A page, a banner, or a control that a README picture shows | `scripts/make-screenshots.sh` after `scripts/build.sh`, and the picture's `alt` text in `README.md` |
+| A page, a banner, or a control that a README picture shows | `scripts/make-screenshots.sh` after `scripts/build.sh` for the Rules page, the Sensors page, and the grid of apps, and the picture's `alt` text in `README.md`. The Adaptive page, the fan curve, and the setup sheet show fans under control, so they are taken by hand from the signed copy in `/Applications` with the helper approved: set `activePresetID` (or `setupShown` to false) in `com.kevster.airflow`, open the app twice with `open -g`, capture its window with `screencapture -l`, and put the defaults back |
 | A UserDefaults key | `AppSettings`, the pane that writes it, the Facts table |
 | A new sheet over the window | `castsSheetShadow()` on its root, so the window draws its shadow |
 | Something AirFlow needs permission for | A row in `SetupSheet`, which asks for all of them the first time the window opens (`setupShown`), and the Preferences pane that changes it later |

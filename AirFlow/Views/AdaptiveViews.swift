@@ -118,10 +118,21 @@ struct AppWorkloadsEditor: View {
                 }
             }
             .buttonStyle(.glass)
+            .tint(nil)
         }
         .task {
             if !hasLoadedApps {
-                apps = await Task.detached { AppDirectory.installed() }.value
+                var installed = await Task.detached { AppDirectory.installed() }.value
+                #if DEBUG
+                // A script that takes a picture of the grid can leave apps out of it: a list of
+                // words, with commas between, that an app's name or identifier may not hold.
+                let hidden = (ProcessInfo.processInfo.environment["AIRFLOW_HIDE_APPS"] ?? "")
+                    .lowercased().split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                installed.removeAll { app in
+                    hidden.contains { app.name.lowercased().contains($0) || app.bundleID.lowercased().contains($0) }
+                }
+                #endif
+                apps = installed
                 hasLoadedApps = true
             }
             #if DEBUG

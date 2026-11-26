@@ -5,8 +5,14 @@
 #   scripts/make-screenshots.sh
 #
 # The screenshots show this Mac's own readings and whatever presets and rules the Debug copy holds.
-# An ad hoc build shows the Monitoring Only banner, so take them again from a signed build once
-# the helper is approved. The terminal needs Screen Recording permission for screencapture.
+# An ad hoc build shows the Monitoring Only banner, so the pictures of fans under control (the
+# Adaptive page, the fan curve, and the setup sheet) are taken by hand from a signed copy with the
+# helper approved. The terminal needs Screen Recording permission for screencapture.
+#
+# The grid of apps shows the apps on this Mac. To leave some out of the picture, list words that
+# their names or identifiers hold, with commas between:
+#
+#   AIRFLOW_HIDE_APPS="word,another" scripts/make-screenshots.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -49,7 +55,7 @@ shot() {
     quit_app
     defaults write "$DOMAIN" "NSWindow Frame main" "264 194 1240 800 0 0 1728 1084 "
     defaults delete "$DOMAIN" "NSSplitView Subview Frames main, SidebarNavigationSplitView" 2>/dev/null || true
-    open -g --env "AIRFLOW_SHOW=$1" --env "AIRFLOW_APPEARANCE=$2" "$APP"
+    open -g --env "AIRFLOW_SHOW=$1" --env "AIRFLOW_APPEARANCE=$2" --env "AIRFLOW_HIDE_APPS=${AIRFLOW_HIDE_APPS:-}" "$APP"
     sleep "$4"
     local id
     id="$(swift "$FINDER" 2>/dev/null)"
@@ -73,10 +79,9 @@ trap finish EXIT
 quit_app
 defaults write "$DOMAIN" activePresetID "$ADAPTIVE_ID"
 defaults write "$DOMAIN" userPresetID "$ADAPTIVE_ID"
+# The readings panel shows in every picture.
+defaults write "$DOMAIN" showsInspector -bool true
 
-# The Adaptive page waits longer, so the forecast has readings to show.
-shot Adaptive dark adaptive.png 16
-shot Quiet light preset-curve.png 10
-shot Quiet dark preset-curve-dark.png 10
 shot rules dark rules.png 8
 shot sensors dark sensors.png 8
+shot apps dark apps.png 9

@@ -108,7 +108,7 @@ struct MenuPanel: View {
                     NSApp.activate()
                     openSettings()
                 } label: {
-                    Text("Settings…")
+                    Text("Preferences…")
                 }
                 Spacer()
                 Button {

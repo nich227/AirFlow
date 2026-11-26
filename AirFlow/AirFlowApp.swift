@@ -93,6 +93,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
         let center = NotificationCenter.default
+        // AirFlow calls its own settings Preferences. The item is named again each time the menus
+        // are about to show, because SwiftUI builds the menus again as the app runs.
+        namePreferencesItem()
+        for name in [NSMenu.didBeginTrackingNotification, NSApplication.didBecomeActiveNotification] {
+            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.namePreferencesItem() }
+            })
+        }
         // The Dock icon follows the palette, the icon style, and Light and Dark Mode.
         if !AppModel.isRunningTests {
             DockIcon.update()
@@ -126,6 +134,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in DockIcon.update() }
     }
 
+    /// The name of the app menu's item that opens Preferences. macOS shows an item called
+    /// "Preferences…" as "Settings…", so the name holds a space of no width, which is not seen.
+    static let preferencesTitle = "Preferences\u{200B}…"
+
+    /// Names the app menu's item for the `Settings` scene, which has the shortcut Command-Comma.
+    func namePreferencesItem() {
+        for item in NSApp.mainMenu?.items.first?.submenu?.items ?? [] where item.keyEquivalent == "," {
+            item.title = Self.preferencesTitle
+        }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         AppModel.shared.prepareToQuit()
     }
@@ -140,7 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    /// AirFlow is a menu bar app with no Dock icon. While its window or Settings is open it
+    /// AirFlow is a menu bar app with no Dock icon. While its window or Preferences is open it
     /// becomes a regular app, so the window can be reached with Command-Tab like any other.
     @MainActor
     private func updateDockPresence(closing: NSWindow?) {

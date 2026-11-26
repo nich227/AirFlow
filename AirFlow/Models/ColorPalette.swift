@@ -1,7 +1,7 @@
 import Foundation
 
 /// The colors of AirFlow: its accent, the temperature scale, and the lines of the charts. The
-/// person chooses one in Settings.
+/// person chooses one in Preferences.
 enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
     case bliss, aurora, matrix, girlypop, synthwave, nord, catppuccin
 

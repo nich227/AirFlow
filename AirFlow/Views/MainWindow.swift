@@ -12,6 +12,7 @@ struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.openSettings) private var openSettings
     @State private var selection: SidebarItem?
     @State private var isDescribing = false
     @State private var isSettingUp = false
@@ -98,6 +99,8 @@ struct MainWindow: View {
         #if DEBUG
         // A script that records the readings column asks for it to close and open by itself.
         .task {
+            // A script that captures Preferences asks for that window by name.
+            if ProcessInfo.processInfo.environment["AIRFLOW_SHOW"]?.lowercased() == "preferences" { openSettings() }
             guard ProcessInfo.processInfo.environment["AIRFLOW_TOGGLE_READINGS"] != nil else { return }
             for _ in 0..<2 {
                 try? await Task.sleep(for: .seconds(5))

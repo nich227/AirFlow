@@ -230,6 +230,15 @@ final class FormatTests: XCTestCase {
         return 1.05 / (luminance + 0.05)
     }
 
+    @MainActor
+    func testPreferencesHasItsNameAndSmallTabIcons() {
+        XCTAssertNotEqual(AppDelegate.preferencesTitle, "Preferences…", "macOS shows that exact name as Settings…")
+        XCTAssertEqual(AppDelegate.preferencesTitle.filter { $0 != "\u{200B}" }, "Preferences…")
+        XCTAssertLessThan(IconSize.inline, SettingsView.tabIconBox, "The icon is smaller than the box the tab bar fills")
+        XCTAssertEqual(IconSize.inline, 14)
+        XCTAssertEqual(SettingsView.antArtShare, 896.0 / 1024.0)
+    }
+
     func testTheDockIconFollowsTheIconStyle() {
         XCTAssertFalse(DockIcon.showsDarkIcons(style: nil, isDarkMode: true), "The default style is light in Dark Mode too")
         XCTAssertTrue(DockIcon.showsDarkIcons(style: "RegularDark", isDarkMode: false))

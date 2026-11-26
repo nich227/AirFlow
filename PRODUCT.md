@@ -42,7 +42,7 @@ Macs Fan Control keeps one custom state in its free version and loses it when an
 - Safety: the helper clamps every target to the fan's own minimum and maximum. It accepts connections only from the signed app and returns every fan to the system when the app disconnects or quits. A temperature safeguard returns fans to the system when a sensor passes its limit.
 - AirFlow stores presets as a YAML file a person can read and edit. Presets can be exported to a `.yaml` file and imported from one. An import never replaces a preset.
 - Readings and the history chart update every second while they are on screen.
-- Settings: launch at login, Celsius or Fahrenheit, precise temperatures, what the menu bar shows, the safeguard limit, and the helper.
+- Preferences: launch at login, Celsius or Fahrenheit, precise temperatures, what the menu bar shows, the safeguard limit, and the helper.
 - AirFlow requires macOS 26. Apple Intelligence features need a Mac and a region where the model is available, and the app says so when it is not.
 - Adaptive is a built-in preset that the user specified. It detects the kind of work (light, bursty, sustained) from the Mac's power and its open apps. Its controller forecasts the temperature 15 seconds ahead and weighs heat against noise. The user chose a built-in preset, total system power from the SMC, and a forecaster fitted on the Mac with no stored readings. The user also chose Apple Intelligence that suggests what an app is known for while the person decides.
 - Updates come through Sparkle, and releases are signed with the Developer ID certificate and notarized, by the same workflow as Gailan and ClipDeck. The user asked for both.
@@ -53,7 +53,7 @@ Macs Fan Control keeps one custom state in its free version and loses it when an
 - Name: AirFlow.
 - Liquid Glass throughout: the Ant Design components are themselves glass, transparent and not flat. Ant Design supplies the components and the icons. Lottie plays drawn animations that AirFlow authors itself. The user named all of these.
 - The mark is the fan from Bootstrap Icons, which the user chose. The app icon is that fan in Liquid Glass.
-- The user chose both typefaces: Hedvig Letters Sans for text, and IBM Plex Mono for every reading (fan speeds, temperatures, and any other number that is read). Settings keeps the system's look for its numbers.
+- The user chose both typefaces: Hedvig Letters Sans for text, and IBM Plex Mono for every reading (fan speeds, temperatures, and any other number that is read). Preferences keeps the system's look for its numbers.
 - The interface must not copy the layout of Macs Fan Control. It must do the same jobs better.
 - User-facing copy follows the Apple Style Guide, as ClipDeck does.
 

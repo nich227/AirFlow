@@ -82,7 +82,7 @@ The window has no color of its own. The glass takes the color of what is behind 
 
 ### Primary
 
-- **Accent** (`Palette.accent`): the main color of the palette the person chose in Settings, not the accent from System Settings. It marks the selected row of the sidebar, the Apply button, the filled part of a fan's track, the curve's handles, the Active tag, and a selected app in the grid of apps. Each scene sets it as its tint, so the system's own controls have it too. Every palette's accent is dark enough for white text.
+- **Accent** (`Palette.accent`): the main color of the palette the person chose in Preferences, not the accent from System Settings. It marks the selected row of the sidebar, the Apply button, the filled part of a fan's track, the curve's handles, the Active tag, and a selected app in the grid of apps. Each scene sets it as its tint, so the system's own controls have it too. Every palette's accent is dark enough for white text.
 
 ### Palettes
 
@@ -140,7 +140,7 @@ Text is `.primary` or `.secondary`. Never set text to white or black.
 
 ### Named Rules
 
-**Dots by part.** In Settings a person can set Status Dots to By Part. A dot in a list of parts then has the part's own color, which says nothing about its temperature: the CPU and the GPU have the colors of their lines in the chart, and each other part has a color of its own (`ColorPalette.part`). The dot beside a curve keeps the temperature scale.
+**Dots by part.** In Preferences a person can set Status Dots to By Part. A dot in a list of parts then has the part's own color, which says nothing about its temperature: the CPU and the GPU have the colors of their lines in the chart, and each other part has a color of its own (`ColorPalette.part`). The dot beside a curve keeps the temperature scale.
 
 **The Number Rule.** A temperature color never appears alone. A dot sits beside a temperature, and the curve's ground sits under a labeled axis. VoiceOver reads the band's word.
 
@@ -167,8 +167,8 @@ The app carries both faces in `AirFlow/Resources/Fonts`, under the SIL Open Font
 Rules:
 
 - Every reading uses IBM Plex Mono. Use `readingFont` for a value that stands alone and `Text(readings:)` for a sentence that holds one.
-- Settings keeps the system's look for its numbers: they use `monospacedDigit()`.
-- AirFlow draws its own segmented control and select (`AntSegmented`, `AntSelect`), because the system's cannot use the app's typeface. What the system still draws stays in the system font: a menu's items, a table's header, a stepper's arrows, the time fields, and Settings' controls.
+- Preferences keeps the system's look for its numbers: they use `monospacedDigit()`.
+- AirFlow draws its own segmented control and select (`AntSegmented`, `AntSelect`), because the system's cannot use the app's typeface. What the system still draws stays in the system font: a menu's items, a table's header, a stepper's arrows, the time fields, and Preferences' controls.
 - No text is smaller than 11 points.
 
 ## Elevation
@@ -200,16 +200,16 @@ Rules:
 - A page's root scrolls (`ScrollView` or `Table`).
 - A rule is one sentence that a person edits in place: When [this] use [preset].
 - An empty state has a drawing, a title, and what to do next.
-- The sidebar, the toolbar, the menu bar panel, and Settings are the system's own glass.
+- The sidebar, the toolbar, the menu bar panel, and Preferences are the system's own glass.
 - The readings are a panel of AirFlow's own beside the page (`MainWindow.readingsPanel`): a material in a shape with 18 point corners, 8 points in from the window's edges and up behind the toolbar, as the sidebar is. The system's inspector is square and fills its edge. The Readings button lies inside the panel's top corner, and Apply is level with it.
 
 ## Layout and spacing
 
 - Space: `4 8 12 16 24 32 48` (`Space.xxs` through `Space.xxl`), Ant Design's steps on a 4 point grid.
 - Radius: `4 6 8` (`Radius.xs`, `sm`, `md`), 16 for a glass card (`Radius.card`), 18 for the readings panel (`Radius.panel`), and 26 for the shadow under a sheet (`Radius.sheet`). A tag is a capsule.
-- Icons: `14 16 20 28 44 72` (`IconSize.inline`, `row`, `title`, `state`, `rotor`, `illustration`).
+- Icons: `14 16 20 28 44 72` (`IconSize.inline`, `row`, `title`, `state`, `rotor`, `illustration`). The four tabs of Preferences have 14 point icons.
 - The window opens at 1200 by 760 and is at least 1120 wide: sidebar 220, readings panel 280. A page's content is at most 720 wide and is centered.
-- The menu bar panel is 340 wide. Settings is 520 wide.
+- The menu bar panel is 340 wide. Preferences is 520 wide.
 
 ## Icons
 

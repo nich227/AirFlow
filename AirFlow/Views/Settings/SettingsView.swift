@@ -4,31 +4,70 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
 
+    /// A tab's icon at 14 points. The tab bar draws every image as large as its own box, whatever
+    /// size the image has, so the icon is drawn small in the middle of an empty picture the size
+    /// of that box. The assets also differ in size: the fan is 18 points and the Ant Design icons
+    /// are 16.
+    static func tabIcon(_ name: String) -> Image {
+        guard let icon = NSImage(named: name) else { return Image(name) }
+        let box = NSSize(width: tabIconBox, height: tabIconBox)
+        let picture = NSImage(size: box, flipped: false) { rect in
+            // An Ant Design icon leaves a margin inside its own square, and the fan fills its
+            // square to the edge. The fan is drawn that much smaller, so the four look one size.
+            let side = name == "MenuBarIcon" ? IconSize.inline * antArtShare : IconSize.inline
+            icon.draw(in: NSRect(x: (rect.width - side) / 2, y: (rect.height - side) / 2, width: side, height: side))
+            return true
+        }
+        picture.isTemplate = true
+        return Image(nsImage: picture)
+    }
+
+    /// The side of the box a Preferences tab gives its image, measured on macOS 26.
+    static let tabIconBox: CGFloat = 32
+    /// The share of its square that an Ant Design icon's drawing covers (896 of 1024 units).
+    static let antArtShare: CGFloat = 0.875
+
     var body: some View {
         TabView {
             Tab {
                 GeneralSettingsPane()
             } label: {
-                Label("General", image: "ant-setting")
+                Label {
+                    Text("General")
+                } icon: {
+                    Self.tabIcon("ant-setting")
+                }
             }
             Tab {
                 FanControlSettingsPane()
             } label: {
-                Label("Fan Control", image: "MenuBarIcon")
+                Label {
+                    Text("Fan Control")
+                } icon: {
+                    Self.tabIcon("MenuBarIcon")
+                }
             }
             Tab {
                 IntelligenceSettingsPane()
             } label: {
-                Label("Intelligence", image: "ant-sparkles")
+                Label {
+                    Text("Intelligence")
+                } icon: {
+                    Self.tabIcon("ant-sparkles")
+                }
             }
             Tab {
                 AboutSettingsPane()
             } label: {
-                Label("About", image: "ant-info-circle")
+                Label {
+                    Text("About")
+                } icon: {
+                    Self.tabIcon("ant-info-circle")
+                }
             }
         }
         .frame(width: Layout.settingsWidth)
-        // Settings shows the palette's main color at once, and the Dock icon changes with it.
+        // Preferences shows the palette's main color at once, and the Dock icon changes with it.
         .tint(Palette.accent)
         .id(model.settings.lookID)
         .onChange(of: model.settings.colorPalette) {

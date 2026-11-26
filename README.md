@@ -140,8 +140,8 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 | Add a rule | Click Rules in the sidebar, then click Add Rule. Drag a rule to change its place. The first rule that matches wins. |
 | Let rules run | Turn on Autopilot on the Rules page. |
 | Turn on fan control | Click Turn On Fan Control. System Settings opens with a small AirFlow panel beside it that says what to do: turn on the switch next to AirFlow under Allow in the Background. AirFlow notices when you do. |
-| Open AirFlow at login | Choose AirFlow > Settings > General, then turn on Open at Login. |
-| Check for an update | Choose AirFlow > Check for Updates, or click Check for Updates in Settings > About. |
+| Open AirFlow at login | Choose AirFlow > Preferences > General, then turn on Open at Login. |
+| Check for an update | Choose AirFlow > Check for Updates, or click Check for Updates in Preferences > About. |
 
 ## How Adaptive decides
 
@@ -179,7 +179,7 @@ Changing fan speeds changes how your Mac cools itself. You are responsible for t
 
 ## Privacy
 
-AirFlow doesn't collect any data. Its one network connection is the check for a newer version, which reads a list of releases from GitHub and sends nothing about you or your Mac. You can turn the check off in Settings > About. Apple Intelligence runs on your Mac. Your presets and rules, the apps you told Adaptive about, and the coefficients Adaptive has learned are stored in your Library folder. You can delete them there at any time.
+AirFlow doesn't collect any data. Its one network connection is the check for a newer version, which reads a list of releases from GitHub and sends nothing about you or your Mac. You can turn the check off in Preferences > About. Apple Intelligence runs on your Mac. Your presets and rules, the apps you told Adaptive about, and the coefficients Adaptive has learned are stored in your Library folder. You can delete them there at any time.
 
 ## The presets file
 

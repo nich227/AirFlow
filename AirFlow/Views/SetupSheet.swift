@@ -15,7 +15,7 @@ enum LoginItem {
 }
 
 /// The first thing a person sees: everything AirFlow needs permission for, in one place, before
-/// the window. Each item can also be changed later in Settings.
+/// the window. Each item can also be changed later in Preferences.
 struct SetupSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -29,7 +29,7 @@ struct SetupSheet: View {
             VStack(alignment: .leading, spacing: Space.xxs) {
                 Text("Set Up AirFlow")
                     .airFont(.display)
-                Text("A few quick choices and AirFlow is ready. You can change any of them later in Settings.")
+                Text("A few quick choices and AirFlow is ready. You can change any of them later in Preferences.")
                     .airFont(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

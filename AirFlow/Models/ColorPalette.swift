@@ -82,17 +82,44 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
         }
     }
 
-    /// The lines of the fans in the fan chart. None is a color of the CPU's or the GPU's line, so
-    /// the two charts never read as one.
+    /// The colors of the fans' lines in the fan chart, for a Mac with up to three fans (see
+    /// `fan(_:of:)` for more). None is a color of the CPU's or the GPU's line, so the two charts
+    /// never read as one.
     var fans: [Shade] {
         switch self {
-        case .bliss: return [Shade(0xC76A00, 0xF5A623), Shade(0x6B7280, 0xC0C7D0), Shade(0x8F8500, 0xD9E04A)]
+        // The lake between the sky and the hill, the yellow of the flowers on the hill, and the
+        // blue of the far hills.
+        case .bliss: return [Shade(0x0B7F78, 0x3DD6C6), Shade(0x8A7A00, 0xF2D94A), Shade(0x4F63C6, 0x9DB0F5)]
         case .aurora: return [Shade(0xB45309, 0xFBBF24), Shade(0x4D7C0F, 0xA3E635), Shade(0xC2410C, 0xFB923C)]
         case .matrix: return [Shade(0x4B6B4F, 0xD4FFD0), Shade(0x0F766E, 0x2EE6C0), Shade(0x6B7A00, 0xD9F04A)]
         case .girlypop: return [Shade(0xEA580C, 0xFDBA74), Shade(0x059669, 0x6EE7B7), Shade(0xCA8A04, 0xFDE047)]
         case .synthwave: return [Shade(0xD9620A, 0xFF8B39), Shade(0x7B4FB3, 0xB893CE), Shade(0xC2182B, 0xFE4450)]
         case .nord: return [Shade(0xA85A3C, 0xD08770), Shade(0x9A7420, 0xEBCB8B), Shade(0xA3414B, 0xBF616A)]
         case .catppuccin: return [Shade(0xFE640B, 0xFAB387), Shade(0xDF8E1D, 0xF9E2AF), Shade(0x40A02B, 0xA6E3A1)]
+        }
+    }
+
+    /// The color of one fan's line among `count` fans. A Mac with no more fans than the palette
+    /// has colors for takes those colors in order. A Mac with more fans gets as many colors as it
+    /// has fans, spread evenly along the palette's colors, so no two fans share one.
+    func fan(_ index: Int, of count: Int) -> Shade {
+        let colors = fans
+        let place = max(index, 0)
+        guard count > colors.count else { return colors[place % colors.count] }
+        let position = Double(min(place, count - 1)) / Double(count - 1) * Double(colors.count - 1)
+        let lower = min(Int(position), colors.count - 2)
+        let share = position - Double(lower)
+        return Shade(
+            Self.mix(colors[lower].light, colors[lower + 1].light, share: share),
+            Self.mix(colors[lower].dark, colors[lower + 1].dark, share: share)
+        )
+    }
+
+    /// A color between two colors, channel by channel.
+    static func mix(_ first: UInt32, _ second: UInt32, share: Double) -> UInt32 {
+        [16, 8, 0].reduce(UInt32(0)) { result, shift in
+            let from = Double((first >> UInt32(shift)) & 0xFF), to = Double((second >> UInt32(shift)) & 0xFF)
+            return result | (UInt32((from + (to - from) * min(max(share, 0), 1)).rounded()) << UInt32(shift))
         }
     }
 
@@ -131,7 +158,7 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
     /// supply, and the wireless card. Each is a hue the palette's lines do not use.
     private var moreParts: [Shade] {
         switch self {
-        case .bliss: return [Shade(0x7C3AED, 0xA78BFA), Shade(0xC8321A, 0xF0563B), Shade(0x0F766E, 0x2DD4BF)]
+        case .bliss: return [Shade(0xC76A00, 0xF5A623), Shade(0xC8321A, 0xF0563B), Shade(0x5E8F00, 0xA8DD4B)]
         case .aurora: return [Shade(0x7C3AED, 0xA78BFA), Shade(0xBE123C, 0xFB7185), Shade(0x0369A1, 0x38BDF8)]
         case .matrix: return [Shade(0x003B00, 0x008F11), Shade(0x00A814, 0xE8FFE0), Shade(0x15803D, 0x4ADE80)]
         case .girlypop: return [Shade(0x7C3AED, 0xC4B5FD), Shade(0xC026D3, 0xE879F9), Shade(0xE11D48, 0xFB7185)]

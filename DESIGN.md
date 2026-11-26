@@ -114,7 +114,7 @@ One step for each band, here in Bliss. Each step has a darker Light Mode value.
 
 A reading's band depends on the part it belongs to (`TemperatureBand.thresholds`). The CPU and GPU change bands at 50, 70, 85, and 95 °C. The battery changes at 30, 35, 40, and 45 °C. Storage changes at 40, 50, 60, and 70 °C. Every other part changes at 45, 55, 65, and 80 °C.
 
-The scale appears in the status dot beside a temperature, the ground under a fan curve, the curve's own line, and the live point on the curve. The history chart's lines are not on the scale. In Bliss the CPU runs through blues and the GPU through greens, and the fan chart has one line for each fan in the palette's colors for fans (`Palette.fan`: orange, silver, and yellow in Bliss).
+The scale appears in the status dot beside a temperature, the ground under a fan curve, the curve's own line, and the live point on the curve. The history chart's lines are not on the scale. In Bliss the CPU runs through blues and the GPU through greens, and the fan chart has one line for each fan in the palette's colors for fans (`Palette.fan`). In Bliss they are the turquoise of a lake, the yellow of the flowers on the hill, and the blue of the far hills. A Mac with more than three fans gets one color for each fan, spread along the palette's three.
 
 ### What carries a reading is not flat
 

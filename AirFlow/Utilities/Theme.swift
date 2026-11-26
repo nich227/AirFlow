@@ -104,11 +104,10 @@ enum Palette {
     static var cpu: [Color] { cpu() }
     static var gpu: [Color] { gpu() }
 
-    /// The line of a fan in the fan chart, by the fan's index, in the palette's colors for fans.
-    /// A Mac with more fans than colors starts the colors again.
-    static func fan(_ index: Int) -> Color {
-        let colors = ColorPalette.current.fans
-        return Color(colors[((index % colors.count) + colors.count) % colors.count])
+    /// The line of one fan among `count` fans in the fan chart, in the palette's colors for fans.
+    /// Each fan has a color of its own, however many fans the Mac has.
+    static func fan(_ index: Int, of count: Int) -> Color {
+        Color(ColorPalette.current.fan(index, of: count))
     }
 
     /// The six colors of the rainbow, from the top down: green, yellow, orange, red, purple, blue.

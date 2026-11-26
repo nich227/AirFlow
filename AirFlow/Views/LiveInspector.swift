@@ -112,6 +112,7 @@ struct LiveInspector: View {
                     .airFont(.body)
             }
             .buttonStyle(.glass)
+            .tint(nil)
             .disabled(!availability.isAvailable)
             .help(availability.reason ?? "Apple Intelligence describes the last few minutes in plain words")
         case .working:
@@ -138,6 +139,7 @@ struct LiveInspector: View {
                         .airFont(.body)
                 }
                 .buttonStyle(.glass)
+                .tint(nil)
             }
         case .failed(let message):
             VStack(alignment: .leading, spacing: Space.xs) {
@@ -152,6 +154,7 @@ struct LiveInspector: View {
                         .airFont(.body)
                 }
                 .buttonStyle(.glass)
+                .tint(nil)
             }
         }
     }
@@ -221,7 +224,7 @@ struct HistoryChart: View {
                 if fanCount > 0 {
                 FlowLayout(spacing: Space.sm, lineSpacing: Space.xxs) {
                     ForEach(0..<fanCount, id: \.self) { index in
-                        legend(index < fanNames.count ? fanNames[index] : Fan.name(index: index, count: fanCount), color: Palette.fan(index))
+                        legend(index < fanNames.count ? fanNames[index] : Fan.name(index: index, count: fanCount), color: Palette.fan(index, of: fanCount))
                     }
                 }
                 .accessibilityHidden(true)
@@ -230,10 +233,10 @@ struct HistoryChart: View {
                     ForEach(history) { point in
                         ForEach(Array(point.fanFractions.prefix(fanCount).enumerated()), id: \.offset) { index, fraction in
                             AreaMark(x: .value("Time", point.date), y: .value("Fan Speed", fraction * 100), series: .value("Fan", index), stacking: .unstacked)
-                                .foregroundStyle(LinearGradient(colors: [Palette.fan(index).opacity(0.3), Palette.fan(index).opacity(0.03)], startPoint: .top, endPoint: .bottom))
+                                .foregroundStyle(LinearGradient(colors: [Palette.fan(index, of: fanCount).opacity(0.3), Palette.fan(index, of: fanCount).opacity(0.03)], startPoint: .top, endPoint: .bottom))
                                 .interpolationMethod(.monotone)
                             LineMark(x: .value("Time", point.date), y: .value("Fan Speed", fraction * 100), series: .value("Fan", index))
-                                .foregroundStyle(Palette.fan(index))
+                                .foregroundStyle(Palette.fan(index, of: fanCount))
                                 .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                                 .interpolationMethod(.monotone)
                         }

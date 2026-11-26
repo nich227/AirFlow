@@ -239,6 +239,26 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(SettingsView.antArtShare, 896.0 / 1024.0)
     }
 
+    func testEveryFanHasAColorOfItsOwnHoweverManyFansThereAre() {
+        for palette in ColorPalette.allCases {
+            XCTAssertEqual(palette.fan(0, of: 1), palette.fans[0])
+            XCTAssertEqual((0..<2).map { palette.fan($0, of: 2) }, Array(palette.fans.prefix(2)), "Two fans take the palette's first two colors")
+            XCTAssertEqual((0..<3).map { palette.fan($0, of: 3) }, palette.fans)
+            for count in [4, 6, 9] {
+                let colors = (0..<count).map { palette.fan($0, of: count) }
+                XCTAssertEqual(Set(colors.map(\.dark)).count, count, "\(palette.title) with \(count) fans")
+                XCTAssertEqual(Set(colors.map(\.light)).count, count, "\(palette.title) with \(count) fans")
+                XCTAssertEqual(colors.first, palette.fans.first)
+                XCTAssertEqual(colors.last, palette.fans.last)
+            }
+            XCTAssertEqual(palette.fan(-3, of: 2), palette.fans[0], "An index below zero is the first fan")
+            XCTAssertEqual(palette.fan(40, of: 6), palette.fans[2], "An index past the last fan is the last fan")
+        }
+        XCTAssertEqual(ColorPalette.mix(0x000000, 0xFF8040, share: 0.5), 0x804020)
+        XCTAssertEqual(ColorPalette.mix(0x102030, 0xFFFFFF, share: 0), 0x102030)
+        XCTAssertEqual(ColorPalette.mix(0x102030, 0xFFFFFF, share: 7), 0xFFFFFF)
+    }
+
     func testTheDockIconFollowsTheIconStyle() {
         XCTAssertFalse(DockIcon.showsDarkIcons(style: nil, isDarkMode: true), "The default style is light in Dark Mode too")
         XCTAssertTrue(DockIcon.showsDarkIcons(style: "RegularDark", isDarkMode: false))

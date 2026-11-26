@@ -177,7 +177,7 @@ struct MenuPanel: View {
     private func fanRow(_ fan: Fan) -> some View {
         let command = model.controller.plan[fan.index]
         var target: Double?
-        if model.controller.mode == .controlling, case .speed(let rpm)? = command { target = rpm }
+        if model.controller.mode == .controlling, model.controller.heldElsewhere[fan.index] == nil, case .speed(let rpm)? = command { target = rpm }
         return HStack(spacing: Space.sm) {
             Rotor(fan: fan, size: IconSize.state, isActive: isShowing)
             VStack(alignment: .leading, spacing: Space.xxs) {

@@ -137,7 +137,7 @@ struct PresetDetail: View {
 
     private var activeTag: String {
         // "Active" is true only while AirFlow controls the fans with this preset.
-        guard model.controller.mode == .controlling else { return "Current" }
+        guard model.controller.mode == .controlling, model.controller.heldElsewhere.isEmpty else { return "Current" }
         switch model.chosenBy {
         case .autopilot: return "Applied by Autopilot"
         case .user, .siri: return "Active"
@@ -170,9 +170,9 @@ struct PresetDetail: View {
 enum FanSentence {
     static func text(
         control: FanControl, command: FanCommand, sourceName: (SensorSource) -> String, format: ReadingFormat,
-        isActive: Bool, mode: FanController.Mode
+        isActive: Bool, mode: FanController.Mode, heldElsewhereAt: Double? = nil
     ) -> String {
-        let inEffect = isActive && mode == .controlling
+        let inEffect = isActive && mode == .controlling && heldElsewhereAt == nil
         var text: String
         var asked = ""
         switch control {
@@ -196,25 +196,35 @@ enum FanSentence {
             }
         }
         if isActive, !inEffect {
-            text += mode == .safeguard ? " The safeguard is on, so macOS controls the fan now." : " macOS controls the fan now."
+            text += who(mode: mode, heldElsewhereAt: heldElsewhereAt)
         }
         return text + asked
+    }
+
+    /// Who has the fan while the active preset does not: the safeguard, something that set the
+    /// fan to a speed AirFlow did not ask for, or macOS.
+    static func who(mode: FanController.Mode, heldElsewhereAt: Double?) -> String {
+        if mode == .safeguard { return " The safeguard is on, so macOS controls the fan now." }
+        if mode == .controlling, let heldElsewhereAt {
+            return " Something else holds the fan at \(ReadingFormat.rpmWithUnit(heldElsewhereAt)) now."
+        }
+        return " macOS controls the fan now."
     }
 }
 
 extension FanSentence {
     /// The sentence for a fan under the Adaptive preset.
-    static func adaptiveText(command: FanCommand, isActive: Bool, mode: FanController.Mode) -> String {
+    static func adaptiveText(command: FanCommand, isActive: Bool, mode: FanController.Mode, heldElsewhereAt: Double? = nil) -> String {
         guard case .speed(let rpm) = command else {
             return "Adaptive needs CPU and GPU temperatures. This Mac doesn't report them, so macOS controls the fan."
         }
         let speed = ReadingFormat.rpmWithUnit(rpm)
-        if isActive, mode == .controlling {
+        if isActive, mode == .controlling, heldElsewhereAt == nil {
             return "Adaptive holds it at \(speed)."
         }
         var text = "Adaptive would set it to \(speed)."
         if isActive {
-            text += mode == .safeguard ? " The safeguard is on, so macOS controls the fan now." : " macOS controls the fan now."
+            text += who(mode: mode, heldElsewhereAt: heldElsewhereAt)
         }
         return text
     }
@@ -263,17 +273,22 @@ struct FanSection: View {
 
     /// The mark on the track: the speed AirFlow is holding the fan at.
     private var heldTarget: Double? {
-        guard isActive, model.controller.mode == .controlling, case .speed(let rpm) = command else { return nil }
+        guard isActive, model.controller.mode == .controlling, heldElsewhereAt == nil, case .speed(let rpm) = command else { return nil }
         return rpm
+    }
+
+    /// The speed the fan is set to, if AirFlow did not ask for it.
+    private var heldElsewhereAt: Double? {
+        isActive ? model.controller.heldElsewhere[fan.index] : nil
     }
 
     private var sentence: String {
         if preset.kind == .adaptive {
-            return FanSentence.adaptiveText(command: command, isActive: isActive, mode: model.controller.mode)
+            return FanSentence.adaptiveText(command: command, isActive: isActive, mode: model.controller.mode, heldElsewhereAt: heldElsewhereAt)
         }
         return FanSentence.text(
             control: control, command: command, sourceName: { snapshot.name(of: $0) }, format: model.settings.format,
-            isActive: isActive, mode: model.controller.mode
+            isActive: isActive, mode: model.controller.mode, heldElsewhereAt: heldElsewhereAt
         )
     }
 

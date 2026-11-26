@@ -168,6 +168,49 @@ final class FanControllerTests: XCTestCase {
         XCTAssertEqual(recorder.calls.count, 3)
     }
 
+    func testAFanSetToAnotherSpeedIsNotedAndNotWrittenOver() async {
+        controller.isControlAllowed = true
+        await tick(Fixtures.snapshot(), quiet)
+        var stray = Fixtures.fan(0, manual: true)
+        stray.targetRPM = 5000
+        let fans = [stray, Fixtures.fan(1, manual: true)]
+        for _ in 1..<FanController.strayTicks {
+            await tick(Fixtures.snapshot(fans: fans), quiet)
+            XCTAssertTrue(controller.heldElsewhere.isEmpty, "One snapshot can be older than the command")
+        }
+        await tick(Fixtures.snapshot(fans: fans), quiet)
+        XCTAssertEqual(controller.heldElsewhere, [0: 5000])
+        XCTAssertEqual(recorder.calls.filter { $0 != .keepAlive }, [.speed(0, 2000), .speed(1, 2000)], "AirFlow does not send the speed again")
+        // A speed close to the one AirFlow sent is AirFlow's own.
+        stray.targetRPM = 2010
+        await tick(Fixtures.snapshot(fans: [stray, Fixtures.fan(1, manual: true)]), quiet)
+        XCTAssertTrue(controller.heldElsewhere.isEmpty)
+    }
+
+    func testAFanHeldElsewhereIsForgottenWithoutTheHelperAndWhenTheSystemTakesIt() async {
+        controller.isControlAllowed = true
+        await tick(Fixtures.snapshot(), quiet)
+        var stray = Fixtures.fan(0, manual: true)
+        stray.targetRPM = 5000
+        for _ in 0..<FanController.strayTicks {
+            await tick(Fixtures.snapshot(fans: [stray, Fixtures.fan(1, manual: true)]), quiet)
+        }
+        XCTAssertEqual(controller.heldElsewhere, [0: 5000])
+        // The system has the fan again, so AirFlow sets it again.
+        stray.isManual = false
+        await tick(Fixtures.snapshot(fans: [stray, Fixtures.fan(1, manual: true)]), quiet)
+        XCTAssertTrue(controller.heldElsewhere.isEmpty)
+        XCTAssertEqual(recorder.calls.last, .speed(0, 2000))
+        stray.isManual = true
+        for _ in 0..<FanController.strayTicks {
+            await tick(Fixtures.snapshot(fans: [stray, Fixtures.fan(1, manual: true)]), quiet)
+        }
+        XCTAssertEqual(controller.heldElsewhere, [0: 5000])
+        controller.isControlAllowed = false
+        await tick(Fixtures.snapshot(fans: [stray, Fixtures.fan(1, manual: true)]), quiet)
+        XCTAssertTrue(controller.heldElsewhere.isEmpty, "A copy that only monitors holds no fan")
+    }
+
     func testChangingToAutomaticGivesTheFansBack() async {
         controller.isControlAllowed = true
         await tick(Fixtures.snapshot(), quiet)

@@ -453,6 +453,32 @@ final class FanSentenceTests: XCTestCase {
         )
     }
 
+    func testAFanSetToASpeedAirFlowDidNotAskForIsNotCalledHeld() {
+        XCTAssertEqual(
+            FanSentence.text(control: .constant(rpm: 3200), command: .speed(3200), sourceName: { _ in "" }, format: format, isActive: true, mode: .controlling, heldElsewhereAt: 5349),
+            "This preset holds it at 3,200 RPM. Something else holds the fan at 5,349 RPM now."
+        )
+        XCTAssertEqual(
+            FanSentence.text(control: .sensorBased(rule), command: .speed(2010), sourceName: { _ in "CPU Average" }, format: format, isActive: true, mode: .controlling, heldElsewhereAt: 5349),
+            "This preset follows CPU Average, from 70° to full speed at 95°. Something else holds the fan at 5,349 RPM now. It would be set to 2,010 RPM."
+        )
+        XCTAssertEqual(
+            FanSentence.adaptiveText(command: .speed(1660), isActive: true, mode: .controlling, heldElsewhereAt: 5349),
+            "Adaptive would set it to 1,660 RPM. Something else holds the fan at 5,349 RPM now."
+        )
+        XCTAssertEqual(
+            FanSentence.adaptiveText(command: .speed(1660), isActive: true, mode: .safeguard, heldElsewhereAt: 5349),
+            "Adaptive would set it to 1,660 RPM. The safeguard is on, so macOS controls the fan now.",
+            "The safeguard is said first"
+        )
+        XCTAssertEqual(
+            FanSentence.adaptiveText(command: .speed(1660), isActive: false, mode: .controlling, heldElsewhereAt: 5349),
+            "Adaptive would set it to 1,660 RPM.",
+            "A preset that is not active says only what it would do"
+        )
+        XCTAssertEqual(FanSentence.who(mode: .monitoring, heldElsewhereAt: 5349), " macOS controls the fan now.")
+    }
+
     func testAPresetThatIsNotActiveSaysWhatItWouldAskFor() {
         XCTAssertEqual(
             sentence(.sensorBased(rule), .speed(2010), isActive: false, mode: .controlling),

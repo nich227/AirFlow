@@ -19,6 +19,9 @@ final class FanController {
     /// What the active preset asks of each fan right now, by fan index.
     private(set) var plan: [Int: FanCommand] = [:]
     private(set) var lastError: String?
+    /// The fans that are set to a speed AirFlow did not ask for, by fan index, with that speed.
+    /// AirFlow says so and does not write over it.
+    private(set) var heldElsewhere: [Int: Double] = [:]
 
     /// Whether the helper is installed and trusted. The app model keeps this current.
     var isControlAllowed = false
@@ -28,8 +31,13 @@ final class FanController {
     @ObservationIgnored private var sent: [Int: FanCommand] = [:]
     @ObservationIgnored private var isApplying = false
     @ObservationIgnored private var retryAfter = Date.distantPast
+    /// How many snapshots in a row each fan's speed was not the one AirFlow sent.
+    @ObservationIgnored private var strayCounts: [Int: Int] = [:]
 
     static let retryDelay: TimeInterval = 10
+    /// A fan counts as held elsewhere after this many snapshots, because a snapshot taken while
+    /// a command is on its way still shows the speed before it.
+    static let strayTicks = 3
 
     init(commander: FanCommanding) {
         self.commander = commander
@@ -53,6 +61,7 @@ final class FanController {
         guard isControlAllowed else {
             mode = .monitoring
             sent.removeAll()
+            noteStrays(in: [])
             return
         }
         mode = safeguard.isEngaged ? .safeguard : .controlling
@@ -62,6 +71,7 @@ final class FanController {
         for fan in snapshot.fans where !fan.isManual && !isApplying {
             if case .speed = sent[fan.index] { sent[fan.index] = nil }
         }
+        if !isApplying { noteStrays(in: snapshot.fans) }
 
         let changes = plan
             .filter { FanPlanner.differs($0.value, from: sent[$0.key] ?? .automatic) }
@@ -75,6 +85,20 @@ final class FanController {
         guard !isApplying, now >= retryAfter else { return }
         isApplying = true
         Task { await apply(changes) }
+    }
+
+    /// Notes each fan AirFlow set that now reads another speed than the one AirFlow sent.
+    private func noteStrays(in fans: [Fan]) {
+        var counts: [Int: Int] = [:]
+        var held: [Int: Double] = [:]
+        for fan in fans where fan.isManual {
+            guard case .speed? = sent[fan.index], FanPlanner.differs(.speed(fan.targetRPM), from: sent[fan.index]) else { continue }
+            let count = (strayCounts[fan.index] ?? 0) + 1
+            counts[fan.index] = count
+            if count >= Self.strayTicks { held[fan.index] = fan.targetRPM }
+        }
+        strayCounts = counts
+        if held != heldElsewhere { heldElsewhere = held }
     }
 
     /// Gives every fan back to the system, for example before the helper is removed.

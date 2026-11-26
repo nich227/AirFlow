@@ -97,7 +97,7 @@ One step for each band. Each step has a darker Light Mode value, which holds 4.5
 
 A reading's band depends on the part it belongs to (`TemperatureBand.thresholds`). The CPU and GPU change bands at 50, 70, 85, and 95 °C. The battery changes at 30, 35, 40, and 45 °C. Storage changes at 40, 50, 60, and 70 °C. Every other part changes at 45, 55, 65, and 80 °C.
 
-The scale appears in the status dot beside a temperature, the ground under a fan curve, the curve's own line, and the live point on the curve. It also appears in the two lines of the history chart (CPU in `hot`, GPU in `cool`).
+The scale appears in the status dot beside a temperature, the ground under a fan curve, the curve's own line, and the live point on the curve. The history chart's lines are not on the scale: the CPU runs from pink into violet (`#F472B6` to `#A78BFA` in Dark Mode) and the GPU from cyan into mint (`#22D3EE` to `#6EE7B7`), and the fan chart has one line for each fan (`Palette.fan`: the accent, then teal, pink, and amber).
 
 ### What carries a reading is not flat
 

@@ -37,7 +37,7 @@ struct LiveInspector: View {
                 sectionTitle("Last 15 Minutes")
                     .padding(.top, Space.xs)
                 GlassCard(padding: Space.sm) {
-                    HistoryChart(history: model.monitor.history, format: format)
+                    HistoryChart(history: model.monitor.history, format: format, fanNames: model.monitor.snapshot.fans.map(\.name))
                 }
                 explanationView
             }
@@ -174,6 +174,8 @@ struct LiveInspector: View {
 struct HistoryChart: View {
     let history: ArraySlice<HistoryPoint>
     let format: ReadingFormat
+    /// The fans' names by index, for the fan chart's legend. A Mac can have none, one, or several.
+    var fanNames: [String] = []
 
     var body: some View {
         if history.count < 3 {
@@ -185,17 +187,17 @@ struct HistoryChart: View {
             VStack(alignment: .leading, spacing: Space.md) {
                 let domain = Self.temperatureDomain(history, unit: format.unit)
                 HStack(spacing: Space.sm) {
-                    legend("CPU", color: Palette.temperature(.hot))
-                    legend("GPU", color: Palette.temperature(.cool))
+                    legend("CPU", colors: Palette.cpu)
+                    legend("GPU", colors: Palette.gpu)
                 }
                 .accessibilityHidden(true)
                 Chart {
                     ForEach(history) { point in
                         if let cpu = point.cpu {
-                            temperatureMarks(point.date, format.unit.value(fromCelsius: cpu), part: "CPU", color: Palette.temperature(.hot), floor: domain.lowerBound)
+                            temperatureMarks(point.date, format.unit.value(fromCelsius: cpu), part: "CPU", colors: Palette.cpu, floor: domain.lowerBound)
                         }
                         if let gpu = point.gpu {
-                            temperatureMarks(point.date, format.unit.value(fromCelsius: gpu), part: "GPU", color: Palette.temperature(.cool), floor: domain.lowerBound)
+                            temperatureMarks(point.date, format.unit.value(fromCelsius: gpu), part: "GPU", colors: Palette.gpu, floor: domain.lowerBound)
                         }
                     }
                 }
@@ -215,16 +217,27 @@ struct HistoryChart: View {
                 .frame(height: 116)
                 .accessibilityLabel("CPU and GPU temperature over the last 15 minutes")
 
-                legend("Fastest Fan", color: Palette.accent)
-                    .accessibilityHidden(true)
-                Chart(history) { point in
-                    AreaMark(x: .value("Time", point.date), y: .value("Fan Speed", (point.fanFractions.max() ?? 0) * 100))
-                        .foregroundStyle(LinearGradient(colors: [Palette.accent.opacity(0.45), Palette.accent.opacity(0.05)], startPoint: .top, endPoint: .bottom))
-                        .interpolationMethod(.monotone)
-                    LineMark(x: .value("Time", point.date), y: .value("Fan Speed", (point.fanFractions.max() ?? 0) * 100))
-                        .foregroundStyle(Palette.accent)
-                        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                        .interpolationMethod(.monotone)
+                let fanCount = history.last?.fanFractions.count ?? 0
+                if fanCount > 0 {
+                FlowLayout(spacing: Space.sm, lineSpacing: Space.xxs) {
+                    ForEach(0..<fanCount, id: \.self) { index in
+                        legend(index < fanNames.count ? fanNames[index] : Fan.name(index: index, count: fanCount), color: Palette.fan(index))
+                    }
+                }
+                .accessibilityHidden(true)
+                // One line for each fan, so a Mac with one fan, two, or more shows them all.
+                Chart {
+                    ForEach(history) { point in
+                        ForEach(Array(point.fanFractions.prefix(fanCount).enumerated()), id: \.offset) { index, fraction in
+                            AreaMark(x: .value("Time", point.date), y: .value("Fan Speed", fraction * 100), series: .value("Fan", index), stacking: .unstacked)
+                                .foregroundStyle(LinearGradient(colors: [Palette.fan(index).opacity(0.3), Palette.fan(index).opacity(0.03)], startPoint: .top, endPoint: .bottom))
+                                .interpolationMethod(.monotone)
+                            LineMark(x: .value("Time", point.date), y: .value("Fan Speed", fraction * 100), series: .value("Fan", index))
+                                .foregroundStyle(Palette.fan(index))
+                                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                                .interpolationMethod(.monotone)
+                        }
+                    }
                 }
                 .chartYScale(domain: 0...100)
                 .chartYAxis {
@@ -243,8 +256,9 @@ struct HistoryChart: View {
                             .font(AirType.caption.readingFont)
                     }
                 }
-                .frame(height: 72)
-                .accessibilityLabel("Fastest fan's speed over the last 15 minutes, as a share of its range")
+                .frame(height: 84)
+                .accessibilityLabel("Each fan's speed over the last 15 minutes, as a share of its range")
+                }
             }
         }
     }
@@ -253,11 +267,15 @@ struct HistoryChart: View {
 extension HistoryChart {
     /// A bead of the series' color beside its name.
     private func legend(_ title: String, color: Color) -> some View {
+        legend(title, colors: [color, color])
+    }
+
+    private func legend(_ title: String, colors: [Color]) -> some View {
         HStack(spacing: Space.xxs) {
             Circle()
-                .fill(color.gradient)
+                .fill(LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing))
                 .frame(width: 7, height: 7)
-                .shadow(color: color.opacity(0.7), radius: 3)
+                .shadow(color: (colors.first ?? .clear).opacity(0.7), radius: 3)
             Text(title)
                 .airFont(.caption)
                 .foregroundStyle(.secondary)
@@ -266,16 +284,18 @@ extension HistoryChart {
 
     /// One reading of a part: a fall of its color under the line, a soft light, and the line.
     @ChartContentBuilder
-    private func temperatureMarks(_ date: Date, _ value: Double, part: String, color: Color, floor: Double) -> some ChartContent {
+    private func temperatureMarks(_ date: Date, _ value: Double, part: String, colors: [Color], floor: Double) -> some ChartContent {
+        let color = colors.last ?? .primary
+        let run = LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)
         AreaMark(x: .value("Time", date), yStart: .value("Floor", floor), yEnd: .value("Temperature", value), series: .value("Part", part))
             .foregroundStyle(LinearGradient(colors: [color.opacity(0.32), color.opacity(0.02)], startPoint: .top, endPoint: .bottom))
             .interpolationMethod(.monotone)
         LineMark(x: .value("Time", date), y: .value("Temperature", value), series: .value("Part", "\(part) light"))
-            .foregroundStyle(color.opacity(0.28))
+            .foregroundStyle(run.opacity(0.28))
             .lineStyle(StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
             .interpolationMethod(.monotone)
         LineMark(x: .value("Time", date), y: .value("Temperature", value), series: .value("Part", part))
-            .foregroundStyle(color)
+            .foregroundStyle(run)
             .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
             .interpolationMethod(.monotone)
     }

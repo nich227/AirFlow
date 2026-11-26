@@ -86,6 +86,20 @@ enum Palette {
         }
     }
 
+    /// The lines of the temperature chart, each a run of two colors from left to right: pink into
+    /// violet for the CPU, and cyan into mint for the GPU. They are not steps of the temperature
+    /// scale, so a line's color never reads as how hot the part is.
+    static let cpu = [Color(light: 0xDB2777, dark: 0xF472B6), Color(light: 0x7C3AED, dark: 0xA78BFA)]
+    static let gpu = [Color(light: 0x0891B2, dark: 0x22D3EE), Color(light: 0x059669, dark: 0x6EE7B7)]
+
+    /// The line of a fan in the fan chart, by the fan's index. The first fan has the accent, and
+    /// the next ones teal, pink, and amber. A Mac with more fans starts the colors again.
+    static func fan(_ index: Int) -> Color {
+        let others = [Color(light: 0x0D9488, dark: 0x2DD4BF), Color(light: 0xDB2777, dark: 0xF472B6), Color(light: 0xB45309, dark: 0xFBBF24)]
+        let place = ((index % (others.count + 1)) + others.count + 1) % (others.count + 1)
+        return place == 0 ? accent : others[place - 1]
+    }
+
     /// The color of a kind of work, from the temperature scale: emerald for light work, amber for
     /// bursts, and orange for a long load. The word is always beside it.
     static func workload(_ regime: WorkloadRegime) -> Color {
@@ -99,6 +113,19 @@ enum Palette {
     static let success = Color("TempMild")
     static let caution = Color("TempWarm")
     static let danger = Color("TempCritical")
+}
+
+private extension Color {
+    /// A color with one value for Light Mode and one for Dark Mode, as sRGB hex.
+    init(light: UInt32, dark: UInt32) {
+        self.init(nsColor: NSColor(name: nil) { appearance in
+            let hex = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+            return NSColor(
+                srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                blue: CGFloat(hex & 0xFF) / 255, alpha: 1
+            )
+        })
+    }
 }
 
 /// The type roles. Text uses Hedvig Letters Sans. Every reading (a fan's speed with its unit, a

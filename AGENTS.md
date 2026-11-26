@@ -36,6 +36,7 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 | Toolchain | Xcode 26+, Swift 5 language mode, Rust (stable), XcodeGen |
 | Packages | SwiftPM: `Lottie` 4.6.1+, `Yams` 6+, `Sparkle` 2.8+. Cargo: `block2`, `libc`, pinned by `backend/Cargo.lock` |
 | Updates | Sparkle, through `Updates` (`Controllers/Updates.swift`). `SUFeedURL` is `updates.xml.rss` on this repository's `gh-pages` branch, and `SUPublicEDKey` is the public half of the key in the `SPARKLE_ED_PRIVATE_KEY` secret. A Debug build and a test never start the updater |
+| License | GNU Affero General Public License, version 3 only (SPDX `AGPL-3.0-only`). `LICENSE` is the FSF's text, unchanged, and the app carries it in `Contents/Resources`. `license` in `backend/Cargo.toml` and `NSHumanReadableCopyright` in `Info.plist` name it. A dependency, a font, or an icon set needs a license that AGPL-3.0 code can include: MIT, BSD, Apache 2.0, and the SIL Open Font License are fine |
 | Fonts | `AirFlow/Resources/Fonts`: Hedvig Letters Sans (one weight) and IBM Plex Mono (regular, medium), both under the SIL Open Font License. `ATSApplicationFontsPath` in `Info.plist` registers them. `AirType.textFamily` and `AirType.readingFamily` name them |
 | Frameworks | FoundationModels, AppIntents, Charts, ServiceManagement, XPC |
 | Storage | `~/Library/Application Support/AirFlow/presets.yaml`, `rules.json`, `adaptive.json` (what the forecaster learned), and `workloads.json` (what the person says an app is known for). A Debug build uses the `Debug/` folder inside it |
@@ -116,7 +117,7 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | `backend/src/sensors.rs` | Fan reads, plausible sensors only, groups and names for Apple silicon and Intel, numbers for keys with no known meaning, a sensor that goes off |
 | `backend/src/fans.rs` | Clamping, taking and returning a fan, a fan that does not exist, a speed that is not a number, equal limits, the `Ftst` handover and its failure, reset past a failing fan, Intel's bit per fan |
 | `backend/src/signing.rs`, `protocol.rs`, `ffi.rs` | The requirement string and what makes none, the header agreeing with the source, the sample reader across the C interface, null and negative arguments, text cut to fit |
-| `HelperTests.swift` | The sample Mac across the bridge, group numbers against the header, the helper and its property list inside the built app, the app's requirement, an unsigned copy reaching no helper, the appcast's address and the update key in `Info.plist`, no updater under test |
+| `HelperTests.swift` | The sample Mac across the bridge, group numbers against the header, the helper and its property list inside the built app, the app's requirement, an unsigned copy reaching no helper, the appcast's address and the update key in `Info.plist`, the license inside the app, no updater under test |
 | `HardwareTests.swift` | Group summaries and outliers, sensor sources, history length, extremes, a failed read, the one-second interval |
 | `ControlTests.swift` | Sensor rules and their limits, each control as a command, built-in and starter presets, the safeguard, the control loop (nothing without the helper, send once then keep alive, a fan taken back, automatic, failure and retry, wake) |
 | `AutomationAndStoreTests.swift` | Rule matching and order, time past midnight, temperature hysteresis, Autopilot decisions and the person's hold, rule storage, finding apps, the preset store (YAML on disk, unique names, built-ins, duplicates, import, export, an unreadable file), `AppModel` |
@@ -145,7 +146,8 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | A UserDefaults key | `AppSettings`, the pane that writes it, the Facts table |
 | A new page in the window | `SidebarItem`, `MainWindow.detail`, `MainWindow.launchSelection`, invariant 11 |
 | A sentence or a label that shows a number | `Text(readings:)` or `readingFont`, invariant 17 |
-| A dependency | `project.yml` or `Cargo.toml`, `licenses/`, the README's License section |
+| A dependency | `project.yml` or `Cargo.toml`, `licenses/`, the README's License section. Check its license against the License row in Facts first |
+| AirFlow's license | `LICENSE`, `license` in `backend/Cargo.toml`, `NSHumanReadableCopyright` in `Info.plist`, the README's License section, the License row in Facts, `testTheAppCarriesItsLicense` |
 | The update key | Never, for an app that has shipped: every installed copy refuses an update signed with another key. If it must change, `SUPublicEDKey` in `Info.plist` and the `SPARKLE_ED_PRIVATE_KEY` secret change together, and `scripts/check-sparkle-key.js` must pass |
 | Something new inside the app bundle that runs | `scripts/sign-nested.sh` or `scripts/embed-helper.sh` signs it, and the release workflow's "verify the signature" step must still pass |
 | The minimum macOS | `project.yml`, `scripts/build-backend.sh`, the README |

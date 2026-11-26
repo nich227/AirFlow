@@ -142,7 +142,7 @@ AirFlow uses Swift Package Manager and Cargo for its dependencies. [Lottie](http
 
 ## License
 
-AirFlow is available under the MIT License. See [LICENSE](LICENSE).
+AirFlow is free software under the GNU Affero General Public License, version 3. See [LICENSE](LICENSE). You can use, change, and share AirFlow. If you give anyone a copy, changed or not, you must also give them its source under the same license. AirFlow comes with no warranty.
 
 Text is set in [Hedvig Letters Sans](https://github.com/KanonFoundry/HedvigLetters) and readings in [IBM Plex Mono](https://github.com/IBM/plex), both under the SIL Open Font License 1.1. The app icon, the menu bar icon, and the turning fan use the fan from [Bootstrap Icons](https://github.com/twbs/icons), under the MIT License. Every other icon is from [Ant Design Icons](https://github.com/ant-design/ant-design-icons), under the MIT License. [Lottie](https://github.com/airbnb/lottie-ios) is licensed under Apache 2.0. [Sparkle](https://github.com/sparkle-project/Sparkle) is licensed under the MIT License. [Yams](https://github.com/jpsim/Yams), [objc2](https://github.com/madsmtm/objc2), and [libc](https://github.com/rust-lang/libc) are licensed under the MIT License. The [licenses/](licenses) folder contains each license, and the app carries a copy of that folder.
 

@@ -2,7 +2,7 @@
 name = "airflow-backend"
 version = "1.0.0"
 edition = "2021"
-license = "MIT"
+license = "AGPL-3.0-only"
 description = "The part of AirFlow that talks to the Mac: the SMC, the fans, the sensors, and the privileged helper."
 publish = false
 

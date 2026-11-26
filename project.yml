@@ -60,6 +60,9 @@ targets:
       - path: AirFlow/Resources/AppIcon.icon
         type: file
         buildPhase: resources
+      # AirFlow's own license travels inside the app, so every copy carries its terms.
+      - path: LICENSE
+        buildPhase: resources
       # The notices for the open source code and artwork the app carries travel inside it.
       - path: licenses
         type: folder

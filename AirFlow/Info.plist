@@ -35,6 +35,6 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright 2026 Kevin Chen. MIT License.</string>
+	<string>Copyright 2026 Kevin Chen. GNU Affero General Public License, version 3.</string>
 </dict>
 </plist>

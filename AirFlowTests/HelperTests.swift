@@ -115,6 +115,15 @@ final class UpdateSettingsTests: XCTestCase {
         XCTAssertEqual(info["SUEnableAutomaticChecks"] as? Bool, true)
     }
 
+    func testTheAppCarriesItsLicense() throws {
+        let url = try XCTUnwrap(Bundle.main.url(forResource: "LICENSE", withExtension: nil))
+        let text = try String(contentsOf: url, encoding: .utf8)
+        XCTAssertTrue(text.contains("GNU AFFERO GENERAL PUBLIC LICENSE"))
+        XCTAssertTrue(text.contains("Version 3, 19 November 2007"))
+        let notice = try XCTUnwrap(Bundle.main.infoDictionary?["NSHumanReadableCopyright"] as? String)
+        XCTAssertTrue(notice.contains("GNU Affero General Public License, version 3"))
+    }
+
     @MainActor
     func testACopyUnderTestNeverStartsTheUpdater() {
         Updates.shared.start()

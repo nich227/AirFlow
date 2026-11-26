@@ -286,33 +286,60 @@ extension EnvironmentValues {
 /// the blurred desktop. It holds still with Reduce Motion on and in a window that is not in front,
 /// so it costs nothing when nobody is looking.
 struct AirBackdrop: View {
-    /// True where the backdrop turns even though its window is not the key window. The menu bar
-    /// panel is such a window: it is on screen only while a person looks at it.
-    var movesWhenInactive = false
-
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.controlActiveState) private var activity
+    /// True while some part of the backdrop's window is on screen.
+    @State private var isOnScreen = true
+
+    /// The seconds the field of color takes to go once around the middle, and the seconds the
+    /// middle of it takes. The middle turns faster, which is what makes a swirl.
+    private static let turn: TimeInterval = 24
+    private static let innerTurn: TimeInterval = 10
 
     var body: some View {
         ZStack {
             Rectangle().fill(.ultraThinMaterial)
-            TimelineView(.animation(minimumInterval: 1.0 / 20, paused: reduceMotion || (!movesWhenInactive && activity == .inactive))) { timeline in
-                mesh(at: reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate)
+            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion || !isOnScreen)) { timeline in
+                swirl(at: reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate)
             }
             // More contrast asks for a calmer ground under the text.
             .opacity(contrast == .increased ? 0.3 : (scheme == .dark ? 0.72 : 0.85))
         }
+        .background(WindowVisibility(isOnScreen: $isOnScreen))
         .ignoresSafeArea()
         .accessibilityHidden(true)
     }
 
+    /// Two fields of color about one middle. The wide one goes around slowly, and a smaller one
+    /// that fades toward its edge goes around faster inside it.
+    private func swirl(at time: TimeInterval) -> some View {
+        GeometryReader { proxy in
+            // A square as wide as the window's diagonal covers the window at every angle.
+            let side = hypot(proxy.size.width, proxy.size.height)
+            ZStack {
+                mesh(at: time)
+                    .frame(width: side, height: side)
+                    .rotationEffect(Self.angle(at: time, every: Self.turn))
+                mesh(at: time + 17)
+                    .frame(width: side * 0.66, height: side * 0.66)
+                    .rotationEffect(Self.angle(at: time, every: Self.innerTurn))
+                    .mask(RadialGradient(colors: [.black, .black.opacity(0)], center: .center, startRadius: side * 0.06, endRadius: side * 0.33))
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
+        }
+    }
+
+    static func angle(at time: TimeInterval, every period: TimeInterval) -> Angle {
+        .degrees(time.truncatingRemainder(dividingBy: period) / period * 360)
+    }
+
     /// Nine fields of color a ninth of the rainbow apart. The hues move on with time, and the
-    /// points between the corners turn about the middle, so the colors swirl.
+    /// points between the corners sway, so the colors run into each other as they go around.
     private func mesh(at time: TimeInterval) -> MeshGradient {
-        let turn = time / 9
-        let drift = Float(time / 14)
+        let turn = time / 5
+        let drift = Float(time / 7)
         func hue(_ place: Int) -> Color {
             let value = (Double(place) / 9 + time / 45).truncatingRemainder(dividingBy: 1)
             return Color(hue: value, saturation: scheme == .dark ? 0.72 : 0.42, brightness: scheme == .dark ? 0.5 : 1)
@@ -327,6 +354,48 @@ struct AirBackdrop: View {
             ],
             colors: [hue(0), hue(1), hue(2), hue(7), hue(8), hue(3), hue(6), hue(5), hue(4)]
         )
+    }
+}
+
+/// Reports whether any part of the window that holds it is on screen, so a backdrop turns only
+/// where a person can see it: in a window behind another app's, but not in a hidden window or in
+/// the menu bar panel while it is closed.
+private struct WindowVisibility: NSViewRepresentable {
+    @Binding var isOnScreen: Bool
+
+    func makeNSView(context: Context) -> Probe {
+        Probe()
+    }
+
+    func updateNSView(_ probe: Probe, context: Context) {
+        probe.report = { visible in
+            if isOnScreen != visible { isOnScreen = visible }
+        }
+    }
+
+    final class Probe: NSView {
+        var report: ((Bool) -> Void)?
+        private var observer: NSObjectProtocol?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let observer { NotificationCenter.default.removeObserver(observer) }
+            observer = nil
+            guard let window else { return }
+            observer = NotificationCenter.default.addObserver(
+                forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.send() }
+            }
+            send()
+        }
+
+        private func send() {
+            guard let window else { return }
+            let visible = window.occlusionState.contains(.visible)
+            // The window's state can change during a layout pass, so the report waits a turn.
+            DispatchQueue.main.async { [weak self] in self?.report?(visible) }
+        }
     }
 }
 

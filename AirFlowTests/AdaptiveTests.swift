@@ -494,7 +494,7 @@ final class AdaptiveLoopTests: XCTestCase {
         controller.tick(snapshot: Fixtures.snapshot(cpu: 97, fans: held), preset: .adaptive, safeguardEnabled: true, safeguardLimit: 95, adaptiveFraction: 1)
         await Fixtures.settle()
         XCTAssertEqual(controller.mode, .safeguard)
-        XCTAssertEqual(Array(recorder.calls.suffix(2)), [.automatic(0), .automatic(1)])
+        XCTAssertEqual(recorder.calls.last, .resetAll)
     }
 
     func testWithNoHelperNothingIsSent() async {

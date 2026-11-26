@@ -173,7 +173,36 @@ final class FanControllerTests: XCTestCase {
         await tick(Fixtures.snapshot(), quiet)
         let held = [Fixtures.fan(0, manual: true), Fixtures.fan(1, manual: true)]
         await tick(Fixtures.snapshot(fans: held), .automatic)
-        XCTAssertEqual(Array(recorder.calls.suffix(2)), [.automatic(0), .automatic(1)])
+        XCTAssertEqual(recorder.calls, [.speed(0, 2000), .speed(1, 2000), .resetAll], "Every fan goes back in one request")
+        XCTAssertFalse(controller.holdsAnyFan)
+        XCTAssertNil(controller.lastError)
+        await tick(Fixtures.snapshot(), .automatic)
+        XCTAssertEqual(recorder.calls.count, 3, "Fans that are the system's are left alone")
+    }
+
+    func testOneFanGoesBackByItselfWhileAnotherIsHeld() async {
+        controller.isControlAllowed = true
+        await tick(Fixtures.snapshot(), quiet)
+        var mixed = Preset(name: "Mixed", icon: .sliders, fallback: .constant(rpm: 2000))
+        mixed.setControl(.automatic, for: Fixtures.fan(0))
+        await tick(Fixtures.snapshot(fans: [Fixtures.fan(0, manual: true), Fixtures.fan(1, manual: true)]), mixed)
+        XCTAssertEqual(recorder.calls.last, .automatic(0))
+        XCTAssertTrue(controller.holdsAnyFan)
+    }
+
+    func testAFailureToGiveTheFansBackIsReportedAndTriedAgain() async {
+        controller.isControlAllowed = true
+        await tick(Fixtures.snapshot(), quiet)
+        let held = [Fixtures.fan(0, manual: true), Fixtures.fan(1, manual: true)]
+        recorder.failure = HelperError.refused("The system did not take back fan 1.")
+        let now = Date()
+        await tick(Fixtures.snapshot(fans: held), .automatic, now: now)
+        XCTAssertEqual(controller.lastError, "The system did not take back fan 1.")
+        XCTAssertTrue(controller.holdsAnyFan, "A fan that was not given back still counts as held")
+        recorder.failure = nil
+        await tick(Fixtures.snapshot(fans: held), .automatic, now: Date().addingTimeInterval(FanController.retryDelay + 1))
+        XCTAssertEqual(recorder.calls.last, .resetAll)
+        XCTAssertNil(controller.lastError)
         XCTAssertFalse(controller.holdsAnyFan)
     }
 
@@ -183,7 +212,7 @@ final class FanControllerTests: XCTestCase {
         let held = [Fixtures.fan(0, manual: true), Fixtures.fan(1, manual: true)]
         await tick(Fixtures.snapshot(cpu: 97, fans: held), .fullBlast)
         XCTAssertEqual(controller.mode, .safeguard)
-        XCTAssertEqual(Array(recorder.calls.suffix(2)), [.automatic(0), .automatic(1)])
+        XCTAssertEqual(recorder.calls.last, .resetAll)
         await tick(Fixtures.snapshot(cpu: 80), .fullBlast)
         XCTAssertEqual(controller.mode, .controlling)
         XCTAssertEqual(Array(recorder.calls.suffix(2)), [.speed(0, 5000), .speed(1, 5000)])

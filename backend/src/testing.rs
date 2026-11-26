@@ -12,6 +12,13 @@ pub struct FakeSmc {
     /// While this is above zero, the system holds every fan's mode key. Each attempt to take
     /// a fan lowers it by one.
     held: RefCell<usize>,
+    /// While this is above zero, a write that gives a fan back is accepted and ignored. Each
+    /// such write lowers it by one.
+    late_releases: RefCell<usize>,
+    /// True if a fan's mode stays manual while the system's control is off (Ftst is 1).
+    keeps_modes: RefCell<bool>,
+    /// The number the SMC stores for a fan that was given back, if it is not 0.
+    system_mode: RefCell<Option<f64>>,
 }
 
 // The sample reader crosses the C interface, where one thread at a time uses it.
@@ -69,6 +76,21 @@ impl FakeSmc {
         *self.held.borrow_mut() = attempts;
     }
 
+    /// Makes the next writes that give a fan back have no effect, as an SMC that follows late.
+    pub fn ignore_releases_for(&self, writes: usize) {
+        *self.late_releases.borrow_mut() = writes;
+    }
+
+    /// Makes a fan's mode stay manual until the system has its control back.
+    pub fn keep_modes_while_overridden(&self) {
+        *self.keeps_modes.borrow_mut() = true;
+    }
+
+    /// Makes the SMC report a fan under the system's control with this number.
+    pub fn report_system_mode_as(&self, mode: f64) {
+        *self.system_mode.borrow_mut() = Some(mode);
+    }
+
     pub fn writes(&self) -> Vec<(String, Option<f64>)> {
         self.writes.borrow().clone()
     }
@@ -89,6 +111,19 @@ impl SmcAccess for FakeSmc {
         if key.ends_with("Md") && number == Some(1.0) && *self.held.borrow() > 0 {
             *self.held.borrow_mut() -= 1;
             return Err(SmcError::Rejected(0x82));
+        }
+        if key.ends_with("Md") && number == Some(0.0) {
+            if *self.late_releases.borrow() > 0 {
+                *self.late_releases.borrow_mut() -= 1;
+                return Ok(());
+            }
+            if *self.keeps_modes.borrow() && self.number("Ftst") == Some(1.0) {
+                return Ok(());
+            }
+            if let Some(mode) = *self.system_mode.borrow() {
+                self.set(key, mode, &kind);
+                return Ok(());
+            }
         }
         self.values.borrow_mut().insert(key.into(), SmcValue { kind, bytes: bytes.to_vec() });
         Ok(())

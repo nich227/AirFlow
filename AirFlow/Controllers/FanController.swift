@@ -91,6 +91,21 @@ final class FanController {
 
     private func apply(_ changes: [(key: Int, value: FanCommand)]) async {
         defer { isApplying = false }
+        // A preset that leaves every fan to the system gives them all back in one request. The
+        // helper then also gives the system its own control back, which one fan at a time cannot
+        // do until the last fan.
+        if plan.values.allSatisfy({ $0 == .automatic }) {
+            do {
+                try await commander.resetAllFans()
+                sent.removeAll()
+                lastError = nil
+            } catch {
+                lastError = error.localizedDescription
+                retryAfter = Date().addingTimeInterval(Self.retryDelay)
+                Log.control.error("Giving the fans back failed: \(error.localizedDescription, privacy: .public)")
+            }
+            return
+        }
         for (index, command) in changes {
             do {
                 switch command {

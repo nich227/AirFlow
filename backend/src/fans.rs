@@ -12,6 +12,7 @@ pub enum FanWriteError {
     InvalidLimits(usize),
     InvalidSpeed,
     ControlRefused(usize),
+    ReleaseRefused(usize),
     WriteFailed(String),
 }
 
@@ -22,6 +23,7 @@ impl fmt::Display for FanWriteError {
             Self::InvalidLimits(index) => write!(formatter, "Fan {} reports the same minimum and maximum speed.", index + 1),
             Self::InvalidSpeed => write!(formatter, "The speed is not a number."),
             Self::ControlRefused(index) => write!(formatter, "The system did not hand over fan {}.", index + 1),
+            Self::ReleaseRefused(index) => write!(formatter, "The system did not take back fan {}.", index + 1),
             Self::WriteFailed(key) => write!(formatter, "The SMC refused a write to {key}."),
         }
     }
@@ -30,6 +32,8 @@ impl fmt::Display for FanWriteError {
 /// How long to wait for the system to hand a fan over after it is asked to.
 pub const HANDOVER_ATTEMPTS: usize = 100;
 pub const HANDOVER_DELAY: Duration = Duration::from_millis(100);
+/// How many times to look for a fan that was given back to read as the system's again.
+pub const RELEASE_ATTEMPTS: usize = 30;
 
 pub struct FanWriter<S: SmcAccess> {
     smc: S,
@@ -82,14 +86,19 @@ impl<S: SmcAccess> FanWriter<S> {
         Ok(target)
     }
 
+    /// Gives the fan back to the system.
     pub fn set_automatic(&mut self, fan: i64) -> Result<(), FanWriteError> {
         let index = self.index(fan)?;
-        self.set_mode(index, false)?;
+        // The fan stops counting as held before the SMC agrees, so the last fan to be returned
+        // always gives the system its control back.
         self.manual.remove(&index);
         if self.manual.is_empty() {
+            // A fan's mode can keep reading as manual while the system's control is off, so the
+            // system gets its control back first.
+            let _ = self.set_mode(index, false);
             self.release_system_override();
         }
-        Ok(())
+        self.give_back(index)
     }
 
     /// Gives every fan back to the system. It keeps going past a fan that fails.
@@ -99,6 +108,24 @@ impl<S: SmcAccess> FanWriter<S> {
         }
         self.manual.clear();
         self.release_system_override();
+        // A fan whose mode did not change while the system's control was off is asked again.
+        for index in 0..self.fan_count() {
+            let _ = self.set_mode(index, false);
+        }
+    }
+
+    /// Asks for the fan's mode to be the system's until it reads that way. The SMC can take a
+    /// moment to follow a write.
+    fn give_back(&self, index: usize) -> Result<(), FanWriteError> {
+        for attempt in 0..RELEASE_ATTEMPTS {
+            if self.set_mode(index, false).is_ok() {
+                return Ok(());
+            }
+            if attempt + 1 < RELEASE_ATTEMPTS {
+                (self.sleep)(HANDOVER_DELAY);
+            }
+        }
+        Err(FanWriteError::ReleaseRefused(index))
     }
 
     fn take_control(&mut self, index: usize) -> Result<(), FanWriteError> {
@@ -127,15 +154,17 @@ impl<S: SmcAccess> FanWriter<S> {
     }
 
     /// Writes the fan's mode and reads it back, because the SMC can accept a write it ignores.
+    /// Manual is 1. A fan is the system's at any other number, because the SMC does not always
+    /// report 0 for a fan the system controls.
     fn set_mode(&self, index: usize, manual: bool) -> Result<(), FanWriteError> {
         let mode_key = format!("F{index}Md");
         if self.smc.has(&mode_key) {
-            let wanted = if manual { 1.0 } else { 0.0 };
-            if self.smc.number(&mode_key) == Some(wanted) {
+            let reads_as_wanted = |smc: &S| smc.number(&mode_key).is_some_and(|mode| (mode == 1.0) == manual);
+            if reads_as_wanted(&self.smc) {
                 return Ok(());
             }
-            let _ = self.smc.write_number(&mode_key, wanted);
-            return if self.smc.number(&mode_key) == Some(wanted) { Ok(()) } else { Err(FanWriteError::ControlRefused(index)) };
+            let _ = self.smc.write_number(&mode_key, if manual { 1.0 } else { 0.0 });
+            return if reads_as_wanted(&self.smc) { Ok(()) } else { Err(FanWriteError::ControlRefused(index)) };
         }
         // Intel Macs keep one bit per fan in a shared key.
         let current = self.smc.number("FS! ").ok_or(FanWriteError::ControlRefused(index))? as u32;
@@ -251,6 +280,73 @@ mod tests {
         assert_eq!(smc.number("F0Md"), Some(0.0));
         assert_eq!(smc.number("F1Md"), Some(0.0));
         assert!(writer.manual_fans().is_empty());
+    }
+
+    #[test]
+    fn a_fan_whose_mode_follows_late_is_still_given_back() {
+        let smc = FakeSmc::two_fans();
+        let mut writer = writer(&smc);
+        writer.set_target(0, 3000.0).expect("set");
+        writer.set_target(1, 3000.0).expect("set");
+        smc.ignore_releases_for(4);
+        writer.set_automatic(0).expect("automatic");
+        assert_eq!(smc.number("F0Md"), Some(0.0));
+        assert_eq!(smc.number("F1Md"), Some(1.0), "The other fan is still held");
+    }
+
+    #[test]
+    fn a_fan_that_stays_manual_while_the_systems_control_is_off_is_given_back_with_the_last_fan() {
+        let smc = FakeSmc::two_fans();
+        smc.hold_fans_for(1);
+        let mut writer = writer(&smc);
+        writer.set_target(0, 3000.0).expect("set");
+        writer.set_target(1, 3000.0).expect("set");
+        smc.keep_modes_while_overridden();
+        assert_eq!(writer.set_automatic(0), Err(FanWriteError::ReleaseRefused(0)), "The system's control is still off");
+        assert_eq!(writer.manual_fans().iter().copied().collect::<Vec<_>>(), [1], "The fan no longer counts as held");
+        writer.set_automatic(1).expect("the last fan");
+        assert_eq!(smc.number("Ftst"), Some(0.0), "The system has its control back");
+        assert_eq!(smc.number("F1Md"), Some(0.0));
+        writer.set_automatic(0).expect("the first fan, asked again");
+        assert_eq!(smc.number("F0Md"), Some(0.0));
+        assert!(writer.manual_fans().is_empty());
+    }
+
+    #[test]
+    fn a_fan_the_system_reports_with_another_number_counts_as_given_back() {
+        let smc = FakeSmc::two_fans();
+        let mut writer = writer(&smc);
+        writer.set_target(0, 3000.0).expect("set");
+        smc.report_system_mode_as(3.0);
+        writer.set_automatic(0).expect("automatic");
+        assert_eq!(smc.number("F0Md"), Some(3.0));
+        assert!(writer.manual_fans().is_empty());
+    }
+
+    #[test]
+    fn a_fan_the_system_never_takes_back_is_reported() {
+        let smc = FakeSmc::two_fans();
+        let mut writer = writer(&smc);
+        writer.set_target(0, 3000.0).expect("set");
+        smc.refuse("F0Md");
+        let error = writer.set_automatic(0).expect_err("refused");
+        assert_eq!(error, FanWriteError::ReleaseRefused(0));
+        assert_eq!(error.to_string(), "The system did not take back fan 1.");
+        assert!(writer.manual_fans().is_empty(), "The watchdog has nothing left to hold");
+    }
+
+    #[test]
+    fn reset_asks_again_for_a_fan_that_stayed_manual_while_the_systems_control_was_off() {
+        let smc = FakeSmc::two_fans();
+        smc.hold_fans_for(1);
+        let mut writer = writer(&smc);
+        writer.set_target(0, 3000.0).expect("set");
+        writer.set_target(1, 3000.0).expect("set");
+        smc.keep_modes_while_overridden();
+        writer.reset_all();
+        assert_eq!(smc.number("Ftst"), Some(0.0));
+        assert_eq!(smc.number("F0Md"), Some(0.0));
+        assert_eq!(smc.number("F1Md"), Some(0.0));
     }
 
     #[test]

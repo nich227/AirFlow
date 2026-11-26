@@ -400,5 +400,8 @@ struct SensorsView: View {
             }
         }
         .searchable(text: $search, prompt: "Search Sensors")
+        // While this page is open, every sensor is read on every sample.
+        .onAppear { model.monitor.surfacesListingEverySensor += 1 }
+        .onDisappear { model.monitor.surfacesListingEverySensor -= 1 }
     }
 }

@@ -26,6 +26,28 @@ final class ThermalMonitor {
     /// Raised by each window or panel that is showing readings, so the monitor reads more often.
     var visibleSurfaces = 0
 
+    /// The CPU and the GPU are read on every sample: the safeguard, Adaptive, and the charts
+    /// follow them.
+    static let fastGroups: Set<SensorGroup> = [.cpu, .gpu]
+    /// The other parts change slowly, so they are read on one sample in this many.
+    static let slowGroupInterval = 5
+    /// The parts a preset or a rule follows. They are read on every sample too.
+    @ObservationIgnored var followedGroups: Set<SensorGroup> = []
+    /// Raised by each page that lists every sensor. While one is open, every sensor is read on
+    /// every sample. The sensors that belong to no part are read at no other time.
+    @ObservationIgnored var surfacesListingEverySensor = 0
+    @ObservationIgnored private var sampleNumber = 0
+
+    /// The parts to read on one sample.
+    static func groups(forSample number: Int, followed: Set<SensorGroup>, listsEverySensor: Bool) -> Set<SensorGroup> {
+        if listsEverySensor { return Set(SensorGroup.allCases) }
+        var groups = fastGroups.union(followed)
+        if number % slowGroupInterval == 0 {
+            groups.formUnion(SensorGroup.allCases.filter { $0 != .other })
+        }
+        return groups
+    }
+
     @ObservationIgnored var onSnapshot: ((ThermalSnapshot) -> Void)?
     @ObservationIgnored private let sampler: HardwareSampler
     @ObservationIgnored private var loop: Task<Void, Never>?
@@ -51,8 +73,12 @@ final class ThermalMonitor {
     }
 
     func refresh() async {
+        let groups = Self.groups(
+            forSample: sampleNumber, followed: followedGroups, listsEverySensor: surfacesListingEverySensor > 0
+        )
+        sampleNumber += 1
         do {
-            ingest(try await sampler.sample())
+            ingest(try await sampler.sample(groups: groups))
         } catch {
             isAvailable = false
             hasLoaded = true

@@ -20,6 +20,8 @@ final class BackendBridgeTests: XCTestCase {
 
         let byKey = Dictionary(uniqueKeysWithValues: snapshot.sensors.map { ($0.key, $0) })
         XCTAssertEqual(snapshot.sensors.count, 7)
+        XCTAssertEqual(reader.readSensors(groups: [.cpu]).count, 7, "Every sensor comes back, whichever parts are read")
+        XCTAssertEqual(reader.readSensors(groups: []).map(\.celsius), snapshot.sensors.map(\.celsius))
         XCTAssertEqual(byKey["Tp01"]?.group, .cpu)
         XCTAssertEqual(byKey["Tp01"]?.celsius, 61)
         XCTAssertEqual(byKey["Te05"]?.name, "Efficiency Core Sensor 1")

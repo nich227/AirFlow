@@ -3,7 +3,7 @@
 //! Every function checks its pointers. None of them unwinds into Swift, as the library is built
 //! with `panic = "abort"`.
 
-use crate::sensors::{FanReading, Reader, SensorReading};
+use crate::sensors::{FanReading, Reader, SensorReading, ALL_GROUPS};
 use crate::smc::{SmcAccess, SmcConnection};
 use crate::testing::FakeSmc;
 use crate::{power, protocol, signing};
@@ -114,10 +114,23 @@ pub unsafe extern "C" fn airflow_reader_read_fans(reader: *mut AirflowReader, fa
 /// `reader` is null or an open reader, and `sensors` is null or points at `capacity` entries.
 #[no_mangle]
 pub unsafe extern "C" fn airflow_reader_read_sensors(reader: *mut AirflowReader, sensors: *mut AirflowSensor, capacity: i32) -> i32 {
+    airflow_reader_read_sensors_in(reader, sensors, capacity, ALL_GROUPS)
+}
+
+/// Every sensor, as `airflow_reader_read_sensors` gives them. Only the sensors of the groups in
+/// `groups` are read now: bit `n` is the group numbered `n`. Each other sensor has its last
+/// reading.
+///
+/// # Safety
+/// `reader` is null or an open reader, and `sensors` is null or points at `capacity` entries.
+#[no_mangle]
+pub unsafe extern "C" fn airflow_reader_read_sensors_in(
+    reader: *mut AirflowReader, sensors: *mut AirflowSensor, capacity: i32, groups: u32,
+) -> i32 {
     let (Some(reader), false, Ok(capacity)) = (reader.as_mut(), sensors.is_null(), usize::try_from(capacity)) else {
         return 0;
     };
-    let readings = reader.reader.sensors();
+    let readings = reader.reader.sensors_in(groups);
     let count = readings.len().min(capacity);
     for (offset, reading) in readings.iter().take(count).enumerate() {
         sensors.add(offset).write(sensor(reading));
@@ -182,6 +195,11 @@ mod tests {
             assert_eq!(CStr::from_ptr(sensors[0].key.as_ptr()).to_bytes().len(), 4);
 
             assert_eq!(airflow_reader_read_sensors(reader, sensors.as_mut_ptr(), 3), 3, "No more than the caller has room for");
+            assert_eq!(airflow_reader_read_sensors_in(reader, sensors.as_mut_ptr(), 16, 1), 7, "Every sensor comes back, whichever groups are read");
+            assert_eq!(airflow_reader_read_sensors_in(reader, sensors.as_mut_ptr(), 16, 0), 7);
+            assert_eq!(airflow_reader_read_sensors_in(reader, std::ptr::null_mut(), 16, 1), 0);
+            assert_eq!(airflow_reader_read_sensors_in(std::ptr::null_mut(), sensors.as_mut_ptr(), 16, 1), 0);
+            assert_eq!(airflow_reader_read_sensors_in(reader, sensors.as_mut_ptr(), -1, 1), 0);
             assert_eq!(airflow_reader_read_fans(reader, std::ptr::null_mut(), 8), 0);
             assert_eq!(airflow_reader_read_fans(reader, fans.as_mut_ptr(), -1), 0);
             assert_eq!(airflow_reader_read_fans(std::ptr::null_mut(), fans.as_mut_ptr(), 8), 0);
@@ -212,7 +230,8 @@ mod tests {
         let header = include_str!("../include/airflow.h");
         for name in [
             "airflow_reader_open(void)", "airflow_reader_open_sample(void)", "airflow_reader_close(",
-            "airflow_reader_read_fans(", "airflow_reader_read_sensors(", "airflow_reader_read_system_power(",
+            "airflow_reader_read_fans(", "airflow_reader_read_sensors(", "airflow_reader_read_sensors_in(",
+            "airflow_reader_read_system_power(",
             "airflow_power_source_is_battery(void)",
             "airflow_helper_requirement(",
         ] {

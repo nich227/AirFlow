@@ -86,7 +86,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
 
 - AirFlow reads each fan's speed, its minimum, and its maximum, and the temperature of every sensor your Mac reports.
 - The Sensors page lists each sensor with its part, its SMC key, and its current, lowest, and highest temperature since AirFlow opened. You can search the list and sort it by any column.
-- AirFlow groups sensors by part: CPU, GPU, Memory, Storage, Battery, Enclosure, Power, and Wireless. The readings panel beside the page shows one temperature for each part and charts of the last 15 minutes. The readings update every second while you look at them.
+- AirFlow groups sensors by part: CPU, GPU, Memory, Storage, Battery, Enclosure, Power, and Wireless. The readings panel beside the page shows one temperature for each part and charts of the last 15 minutes. While you look at them, the CPU, the GPU, and the fans update every second, and the other parts every five seconds. The Sensors page updates every sensor every second.
 - A dot beside each part shows how hot it is relative to its own limits. You can make the dots identify each part instead.
 - The menu bar item shows the fastest fan, the CPU temperature, the GPU temperature, the fastest fan with the CPU temperature, or the icon alone. Click it to see every fan and to change presets.
 - Temperatures use Celsius or Fahrenheit, and you can show tenths of a degree.

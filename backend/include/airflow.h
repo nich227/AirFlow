@@ -72,6 +72,11 @@ void airflow_reader_close(AirflowReader *reader);
 int32_t airflow_reader_read_fans(AirflowReader *reader, AirflowFan *fans, int32_t capacity);
 int32_t airflow_reader_read_sensors(AirflowReader *reader, AirflowSensor *sensors, int32_t capacity);
 
+// The same sensors, but only those of the groups in `groups` are read now: bit n is the group
+// numbered n above. Each other sensor has its last reading. One key takes about a tenth of a
+// millisecond to read, so a caller reads often only the groups it acts on.
+int32_t airflow_reader_read_sensors_in(AirflowReader *reader, AirflowSensor *sensors, int32_t capacity, uint32_t groups);
+
 // The power the whole Mac draws, in watts, or a negative number where the SMC does not report it.
 double airflow_reader_read_system_power(AirflowReader *reader);
 

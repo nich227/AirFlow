@@ -197,7 +197,33 @@ final class AppModel {
         client?.disconnect()
     }
 
+    /// The parts that a preset's fan or a rule follows, so the monitor reads them on every
+    /// sample. A single sensor counts as its part. One that the Mac does not report counts as
+    /// every part, because its part is not known.
+    static func followedGroups(presets: [Preset], rules: [AutomationRule], snapshot: ThermalSnapshot) -> Set<SensorGroup> {
+        var sources: [SensorSource] = rules.compactMap { rule in
+            if case .temperatureAbove(let source, _) = rule.trigger { return source }
+            return nil
+        }
+        for preset in presets {
+            for control in [preset.fallback] + preset.controls.values {
+                if case .sensorBased(let rule) = control { sources.append(rule.source) }
+            }
+        }
+        var groups: Set<SensorGroup> = []
+        for source in sources {
+            switch source {
+            case .group(let group, _): groups.insert(group)
+            case .key(let key):
+                guard let sensor = snapshot.sensor(key: key) else { return Set(SensorGroup.allCases) }
+                groups.insert(sensor.group)
+            }
+        }
+        return groups
+    }
+
     private func handle(_ snapshot: ThermalSnapshot) {
+        monitor.followedGroups = Self.followedGroups(presets: presets.presets, rules: automation.rules, snapshot: snapshot)
         if helper.status == .needsApproval || helper.status == .notInstalled { helper.refresh() }
         // The adaptive controller learns from every reading, whichever preset is active, so
         // its forecast is ready when the person chooses it.

@@ -8,6 +8,8 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct FakeSmc {
     values: RefCell<BTreeMap<String, SmcValue>>,
     writes: RefCell<Vec<(String, Option<f64>)>>,
+    /// The key of every read, in order.
+    reads: RefCell<Vec<String>>,
     refused: RefCell<BTreeSet<String>>,
     /// While this is above zero, the system holds every fan's mode key. Each attempt to take
     /// a fan lowers it by one.
@@ -94,10 +96,20 @@ impl FakeSmc {
     pub fn writes(&self) -> Vec<(String, Option<f64>)> {
         self.writes.borrow().clone()
     }
+
+    /// The key of every read since the last `clear_reads`.
+    pub fn reads(&self) -> Vec<String> {
+        self.reads.borrow().clone()
+    }
+
+    pub fn clear_reads(&self) {
+        self.reads.borrow_mut().clear();
+    }
 }
 
 impl SmcAccess for FakeSmc {
     fn read(&self, key: &str) -> Result<SmcValue, SmcError> {
+        self.reads.borrow_mut().push(key.into());
         self.values.borrow().get(key).cloned().ok_or(SmcError::Rejected(0x84))
     }
 

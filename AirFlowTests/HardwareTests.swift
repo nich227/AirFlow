@@ -76,8 +76,75 @@ final class ThermalMonitorTests: XCTestCase {
         XCTAssertEqual(monitor.history.count, 1)
     }
 
+    func testOnlyThePartsAirFlowActsOnAreReadOnEverySample() {
+        let slow: Set<SensorGroup> = [.cpu, .gpu, .memory, .storage, .battery, .enclosure, .power, .wireless]
+        XCTAssertEqual(ThermalMonitor.groups(forSample: 0, followed: [], listsEverySensor: false), slow, "The first sample reads every part")
+        for number in 1..<ThermalMonitor.slowGroupInterval {
+            XCTAssertEqual(ThermalMonitor.groups(forSample: number, followed: [], listsEverySensor: false), [.cpu, .gpu])
+        }
+        XCTAssertEqual(ThermalMonitor.groups(forSample: ThermalMonitor.slowGroupInterval, followed: [], listsEverySensor: false), slow)
+        XCTAssertEqual(ThermalMonitor.groups(forSample: 3, followed: [.battery], listsEverySensor: false), [.cpu, .gpu, .battery], "A part a preset follows is read every time")
+        XCTAssertEqual(ThermalMonitor.groups(forSample: 3, followed: [.other], listsEverySensor: false), [.cpu, .gpu, .other])
+        XCTAssertFalse(ThermalMonitor.groups(forSample: 0, followed: [], listsEverySensor: false).contains(.other), "The sensors of no part are read only for a page that lists them")
+        XCTAssertEqual(ThermalMonitor.groups(forSample: 3, followed: [], listsEverySensor: true), Set(SensorGroup.allCases))
+        XCTAssertEqual(ThermalMonitor.slowGroupInterval, 5)
+    }
+
+    func testTheMonitorAsksTheReaderForThosePartsSampleBySample() async {
+        let source = GroupRecorder()
+        let monitor = ThermalMonitor(sampler: HardwareSampler(makeSource: { source }))
+        monitor.followedGroups = [.battery]
+        for _ in 0...ThermalMonitor.slowGroupInterval { await monitor.refresh() }
+        let asked = source.asked
+        XCTAssertEqual(asked.count, ThermalMonitor.slowGroupInterval + 1)
+        XCTAssertEqual(asked.first?.count, 8)
+        XCTAssertEqual(Array(asked[1..<ThermalMonitor.slowGroupInterval]), Array(repeating: [.cpu, .gpu, .battery], count: ThermalMonitor.slowGroupInterval - 1))
+        XCTAssertEqual(asked.last?.count, 8)
+        monitor.surfacesListingEverySensor += 1
+        await monitor.refresh()
+        XCTAssertEqual(source.asked.last, Set(SensorGroup.allCases), "A page that lists every sensor has every sensor read")
+        monitor.surfacesListingEverySensor -= 1
+        await monitor.refresh()
+        XCTAssertEqual(source.asked.last, [.cpu, .gpu, .battery])
+        XCTAssertEqual(monitor.history.count, source.asked.count)
+    }
+
+    func testThePartsThatPresetsAndRulesFollowAreFound() {
+        let snapshot = Fixtures.snapshot()
+        let battery = Preset(name: "Lap", icon: .airplane, fallback: .sensorBased(SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43)))
+        var mixed = Preset(name: "Mixed", icon: .sliders, fallback: .constant(rpm: 2000))
+        mixed.setControl(.sensorBased(SensorRule(source: .key("Tg01"), startCelsius: 50, maxCelsius: 80)), for: Fixtures.fan(1))
+        XCTAssertEqual(AppModel.followedGroups(presets: [.automatic, .adaptive, .fullBlast], rules: [], snapshot: snapshot), [])
+        XCTAssertEqual(AppModel.followedGroups(presets: [battery, mixed], rules: [], snapshot: snapshot), [.battery, .gpu], "A single sensor counts as its part")
+        let rule = AutomationRule(trigger: .temperatureAbove(source: .group(.storage, .hottest), celsius: 60), presetID: battery.id)
+        let other = AutomationRule(trigger: .powerSource(.battery), presetID: battery.id)
+        XCTAssertEqual(AppModel.followedGroups(presets: [], rules: [rule, other], snapshot: snapshot), [.storage])
+        var unknown = mixed
+        unknown.setControl(.sensorBased(SensorRule(source: .key("Tzzz"), startCelsius: 50, maxCelsius: 80)), for: Fixtures.fan(0))
+        XCTAssertEqual(AppModel.followedGroups(presets: [unknown], rules: [], snapshot: snapshot), Set(SensorGroup.allCases), "A sensor the Mac does not report could be of any part")
+    }
+
     func testReadingsMoveEverySecondWhileSomethingShowsThem() {
         XCTAssertEqual(ThermalMonitor.visibleInterval, .seconds(1))
         XCTAssertGreaterThan(ThermalMonitor.backgroundInterval, ThermalMonitor.visibleInterval)
+    }
+}
+
+/// A reader that keeps the parts it was asked to read, sample by sample.
+final class GroupRecorder: SnapshotSource, @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [Set<SensorGroup>] = []
+
+    var asked: [Set<SensorGroup>] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recorded
+    }
+
+    func snapshot(at date: Date, groups: Set<SensorGroup>) -> ThermalSnapshot {
+        lock.lock()
+        recorded.append(groups)
+        lock.unlock()
+        return Fixtures.snapshot(date: date)
     }
 }

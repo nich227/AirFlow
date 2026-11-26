@@ -7,7 +7,9 @@ import Foundation
 
 /// Something that can be asked for the current readings. Tests supply their own.
 protocol SnapshotSource {
-    func snapshot(at date: Date) -> ThermalSnapshot
+    /// - Parameter groups: the parts whose sensors are read now. Each other sensor has its
+    ///   last reading.
+    func snapshot(at date: Date, groups: Set<SensorGroup>) -> ThermalSnapshot
 }
 
 /// The backend's reader of fans and temperature sensors. Reading needs no privilege.
@@ -46,8 +48,11 @@ final class BackendReader: SnapshotSource {
         }
     }
 
-    func readSensors() -> [Sensor] {
-        let count = Int(airflow_reader_read_sensors(reader, &sensorBuffer, Int32(sensorBuffer.count)))
+    /// Every sensor. Only the sensors of `groups` are read now, and each other sensor has its
+    /// last reading: one key takes about a tenth of a millisecond, and a Mac has a few hundred.
+    func readSensors(groups: Set<SensorGroup> = Set(SensorGroup.allCases)) -> [Sensor] {
+        let mask = groups.reduce(UInt32(0)) { $0 | (1 << UInt32($1.backendCode)) }
+        let count = Int(airflow_reader_read_sensors_in(reader, &sensorBuffer, Int32(sensorBuffer.count), mask))
         return sensorBuffer.prefix(count).map { raw in
             Sensor(
                 key: Self.text(raw.key),
@@ -65,8 +70,8 @@ final class BackendReader: SnapshotSource {
         return watts > 0 ? watts : nil
     }
 
-    func snapshot(at date: Date = Date()) -> ThermalSnapshot {
-        ThermalSnapshot(date: date, fans: readFans(), sensors: readSensors(), systemWatts: readSystemPower())
+    func snapshot(at date: Date = Date(), groups: Set<SensorGroup> = Set(SensorGroup.allCases)) -> ThermalSnapshot {
+        ThermalSnapshot(date: date, fans: readFans(), sensors: readSensors(groups: groups), systemWatts: readSystemPower())
     }
 
     /// A fixed C field of NUL-terminated UTF-8 as a string.
@@ -114,9 +119,9 @@ actor HardwareSampler {
         self.makeSource = makeSource
     }
 
-    func sample() throws -> ThermalSnapshot {
+    func sample(groups: Set<SensorGroup> = Set(SensorGroup.allCases)) throws -> ThermalSnapshot {
         if source == nil { source = try makeSource() }
-        return source?.snapshot(at: Date()) ?? .empty
+        return source?.snapshot(at: Date(), groups: groups) ?? .empty
     }
 
     static func openBackend() throws -> SnapshotSource {

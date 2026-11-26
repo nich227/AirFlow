@@ -30,6 +30,16 @@ pub enum Group {
     Other = 8,
 }
 
+impl Group {
+    /// The group's bit in a set of groups, as `Reader::sensors_in` takes one.
+    pub const fn bit(self) -> u32 {
+        1 << self as u8
+    }
+}
+
+/// Every group, as a set.
+pub const ALL_GROUPS: u32 = (1 << (Group::Other as u8 + 1)) - 1;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Definition {
     pub key: String,
@@ -155,23 +165,34 @@ pub struct Reader<S: SmcAccess> {
     smc: S,
     apple_silicon: bool,
     definitions: Option<Vec<Definition>>,
+    /// The last reading of each sensor, in the order of `definitions`. None for one that is off.
+    last: Vec<Option<f64>>,
+    /// Each fan's lowest and highest speed. A fan's limits do not change, so they are read once.
+    limits: Option<Vec<(f64, f64)>>,
 }
 
 impl<S: SmcAccess> Reader<S> {
     pub fn new(smc: S, apple_silicon: bool) -> Self {
-        Self { smc, apple_silicon, definitions: None }
+        Self { smc, apple_silicon, definitions: None, last: Vec::new(), limits: None }
     }
 
     /// Lists every temperature key once. The SMC holds a few thousand keys, so this walk is
     /// the one slow read, and its result is kept.
     pub fn discover(&mut self) -> &[Definition] {
         if self.definitions.is_none() {
-            let mut found: Vec<Definition> = (0..self.smc.key_count())
+            // The reading that shows a key to be a sensor is kept, so a group that is read
+            // later has a value from the start.
+            let mut read: Vec<(Definition, f64)> = (0..self.smc.key_count())
                 .filter_map(|index| self.smc.key_at(index))
                 .filter_map(|key| definition(&key, self.apple_silicon))
-                .filter(|definition| self.smc.number(&definition.key).is_some_and(|celsius| PLAUSIBLE_CELSIUS.contains(&celsius)))
+                .filter_map(|definition| {
+                    let celsius = self.smc.number(&definition.key).filter(|celsius| PLAUSIBLE_CELSIUS.contains(celsius))?;
+                    Some((definition, celsius))
+                })
                 .collect();
-            found.sort_by(|a, b| (a.group, !a.is_known, &a.name, &a.key).cmp(&(b.group, !b.is_known, &b.name, &b.key)));
+            read.sort_by(|(a, _), (b, _)| (a.group, !a.is_known, &a.name, &a.key).cmp(&(b.group, !b.is_known, &b.name, &b.key)));
+            self.last = read.iter().map(|(_, celsius)| Some(*celsius)).collect();
+            let mut found: Vec<Definition> = read.into_iter().map(|(definition, _)| definition).collect();
             // Keys with no known meaning share their group's name, so each gets a number, in
             // the order of the keys.
             let mut numbers: HashMap<String, u32> = HashMap::new();
@@ -185,15 +206,33 @@ impl<S: SmcAccess> Reader<S> {
         self.definitions.as_deref().unwrap_or_default()
     }
 
-    pub fn fans(&self) -> Vec<FanReading> {
+    /// How many fans the Mac has, with each one's limits. They are kept once every one of
+    /// them was read, because a Mac's fans and their limits do not change while it runs.
+    fn fan_limits(&mut self) -> Vec<(f64, f64)> {
+        if let Some(limits) = &self.limits {
+            return limits.clone();
+        }
         let count = self.smc.number("FNum").map_or(0, |count| count as usize);
-        (0..count)
-            .filter_map(|index| {
+        let read: Vec<(Option<f64>, Option<f64>)> = (0..count)
+            .map(|index| (self.smc.number(&format!("F{index}Mn")), self.smc.number(&format!("F{index}Mx"))))
+            .collect();
+        let limits: Vec<(f64, f64)> = read.iter().map(|(minimum, maximum)| (minimum.unwrap_or(0.0), maximum.unwrap_or(0.0))).collect();
+        if count > 0 && read.iter().all(|(minimum, maximum)| minimum.is_some() && maximum.is_some()) {
+            self.limits = Some(limits.clone());
+        }
+        limits
+    }
+
+    pub fn fans(&mut self) -> Vec<FanReading> {
+        self.fan_limits()
+            .into_iter()
+            .enumerate()
+            .filter_map(|(index, (minimum_rpm, maximum_rpm))| {
                 let current = self.smc.number(&format!("F{index}Ac"))?;
                 Some(FanReading {
                     index,
-                    minimum_rpm: self.smc.number(&format!("F{index}Mn")).unwrap_or(0.0),
-                    maximum_rpm: self.smc.number(&format!("F{index}Mx")).unwrap_or(0.0),
+                    minimum_rpm,
+                    maximum_rpm,
                     current_rpm: current.max(0.0),
                     target_rpm: self.smc.number(&format!("F{index}Tg")).unwrap_or(current),
                     is_manual: self.is_manual(index),
@@ -202,14 +241,28 @@ impl<S: SmcAccess> Reader<S> {
             .collect()
     }
 
+    /// Every sensor, each read now.
     pub fn sensors(&mut self) -> Vec<SensorReading> {
+        self.sensors_in(ALL_GROUPS)
+    }
+
+    /// Every sensor. The sensors of the groups in `groups` (see `Group::bit`) are read now, and
+    /// each other sensor has its last reading. One key costs about a tenth of a millisecond, and
+    /// a Mac has a few hundred, so a caller reads often only the groups it acts on.
+    pub fn sensors_in(&mut self, groups: u32) -> Vec<SensorReading> {
         self.discover();
         let smc = &self.smc;
-        self.definitions
+        let definitions = self.definitions.as_deref().unwrap_or_default();
+        for (definition, last) in definitions.iter().zip(self.last.iter_mut()) {
+            if groups & definition.group.bit() != 0 {
+                *last = smc.number(&definition.key).filter(|celsius| PLAUSIBLE_CELSIUS.contains(celsius));
+            }
+        }
+        definitions
             .iter()
-            .flatten()
-            .filter_map(|definition| {
-                let celsius = smc.number(&definition.key).filter(|celsius| PLAUSIBLE_CELSIUS.contains(celsius))?;
+            .zip(self.last.iter())
+            .filter_map(|(definition, last)| {
+                let celsius = (*last)?;
                 Some(SensorReading {
                     key: definition.key.clone(),
                     name: definition.name.clone(),
@@ -249,6 +302,72 @@ mod tests {
         smc.set("Tp99", 0.0, b"flt "); // a sensor that is off
         smc.set("TXXX", 400.0, b"flt "); // not a temperature
         smc
+    }
+
+    #[test]
+    fn only_the_groups_asked_for_are_read_and_the_others_keep_their_last_reading() {
+        let smc = smc_with_sensors();
+        let mut reader = Reader::new(&smc, true);
+        assert_eq!(reader.sensors_in(0).len(), 6, "The first reading of every sensor comes from finding it");
+        smc.clear_reads();
+        for (key, celsius) in [("Tp01", 70.0), ("Tg0D", 58.0), ("TB1T", 33.0), ("TH0x", 45.0)] {
+            smc.set(key, celsius, b"flt ");
+        }
+        let sensors = reader.sensors_in(Group::Cpu.bit() | Group::Gpu.bit());
+        let celsius = |sensors: &[SensorReading], key: &str| sensors.iter().find(|sensor| sensor.key == key).map(|sensor| sensor.celsius);
+        assert_eq!(celsius(&sensors, "Tp01"), Some(70.0));
+        assert_eq!(celsius(&sensors, "Tg0D"), Some(58.0));
+        assert_eq!(celsius(&sensors, "TB1T"), Some(31.0), "The battery was not read, so it has its last reading");
+        assert_eq!(celsius(&sensors, "TH0x"), Some(35.0));
+        let mut read = smc.reads();
+        read.sort_unstable();
+        assert_eq!(read, ["Te05", "Tg0D", "Tp01"], "No key of another group is read");
+
+        let sensors = reader.sensors_in(Group::Battery.bit());
+        assert_eq!(celsius(&sensors, "TB1T"), Some(33.0));
+        assert_eq!(celsius(&sensors, "TH0x"), Some(35.0));
+        assert_eq!(celsius(&sensors, "Tp01"), Some(70.0), "A group that is not read keeps what it had");
+        assert_eq!(reader.sensors().len(), 6);
+        assert_eq!(celsius(&reader.sensors(), "TH0x"), Some(45.0));
+
+        // A sensor that goes off drops out when its group is read, and not before.
+        smc.set("TB1T", 0.0, b"flt ");
+        assert_eq!(reader.sensors_in(Group::Cpu.bit()).len(), 6);
+        assert_eq!(reader.sensors_in(Group::Battery.bit()).len(), 5);
+        assert_eq!(ALL_GROUPS, 0b1_1111_1111);
+        assert_eq!(Group::Other.bit(), 0b1_0000_0000);
+    }
+
+    #[test]
+    fn a_fans_limits_and_the_number_of_fans_are_read_once() {
+        let smc = smc_with_sensors();
+        let mut reader = Reader::new(&smc, true);
+        assert_eq!(reader.fans().len(), 2);
+        smc.clear_reads();
+        smc.set("F1Ac", 3000.0, b"flt ");
+        let fans = reader.fans();
+        assert_eq!(fans[1].current_rpm, 3000.0);
+        assert_eq!((fans[1].minimum_rpm, fans[1].maximum_rpm), (1458.0, 5777.0));
+        let mut read = smc.reads();
+        read.sort_unstable();
+        assert_eq!(read, ["F0Ac", "F0Md", "F0Tg", "F1Ac", "F1Md", "F1Tg"], "The speed, the target, and the mode of each fan, and nothing else");
+
+        // Limits that could not all be read are asked for again.
+        let partial = FakeSmc::two_fans();
+        partial.remove("F1Mx");
+        let mut reader = Reader::new(&partial, true);
+        assert_eq!(reader.fans()[1].maximum_rpm, 0.0);
+        partial.set("F1Mx", 5777.0, b"flt ");
+        assert_eq!(reader.fans()[1].maximum_rpm, 5777.0);
+        // A Mac that reports no fans yet is asked again too.
+        let none = FakeSmc::default();
+        let mut reader = Reader::new(&none, true);
+        assert!(reader.fans().is_empty());
+        none.set("FNum", 1.0, b"ui8 ");
+        for key in ["F0Ac", "F0Mn", "F0Mx"] {
+            none.set(key, 1200.0, b"flt ");
+        }
+        assert_eq!(reader.fans().len(), 1);
     }
 
     #[test]

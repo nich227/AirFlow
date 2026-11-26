@@ -215,7 +215,7 @@ All use white strokes or fills, tinted at run time through `AirAnimation`. Every
 
 All AirFlow text follows Apple's conventions. Menu items, buttons, toggles, and headings use title-style capitalization (Turn On Fan Control, Sensor-Based). Sentences and messages use sentence style and address the person directly. On the Mac, people click and choose. A message that explains a consequence wraps and never truncates. An error says what failed and what to do next.
 
-Each fan has one sentence that says what it is doing: "Follows CPU Average, from 70° to full speed at 95°." A preset that is not active adds what it would do: "It would ask for 2,010 RPM now."
+Each fan has one sentence that says what it is doing: "Follows CPU Average, from 70° to full speed at 95°." A preset that is not active adds what it would do: "It would be set to 2,010 RPM."
 
 ## Accessibility
 

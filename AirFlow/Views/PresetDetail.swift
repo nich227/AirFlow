@@ -21,16 +21,16 @@ struct PresetDetail: View {
                     ControlStatusBanner()
                 }
                 if !model.monitor.hasLoaded {
-                    EmptyState(title: "Reading the Fans", message: "AirFlow is asking the Mac for its fans and sensors.")
+                    EmptyState(title: "Loading Fans…", message: "AirFlow is reading your Mac's fans and sensors.")
                         .frame(minHeight: 240)
                 } else if !model.monitor.isAvailable {
                     EmptyState(
-                        title: "Can't Read the Fans",
-                        message: "AirFlow couldn't open the Mac's system management controller. Quit AirFlow and open it again."
+                        title: "Fans Unavailable",
+                        message: "AirFlow couldn't read your Mac's fans. Quit AirFlow and open it again."
                     )
                     .frame(minHeight: 240)
                 } else if fans.isEmpty {
-                    EmptyState(title: "No Fans", message: "This Mac is cooled without fans, so there is nothing to control. Its temperatures are in the readings.")
+                    EmptyState(title: "No Fans", message: "This Mac doesn't have fans, so there's nothing to control. You can still see its temperatures.")
                         .frame(minHeight: 240)
                 } else {
                     if preset.kind == .adaptive {
@@ -132,14 +132,14 @@ struct PresetDetail: View {
 
     private var subtitle: String {
         if !preset.summary.isEmpty { return preset.summary }
-        return "Set how each fan runs. Changes are saved as you make them."
+        return "Choose how each fan runs. Changes are saved automatically."
     }
 
     private var activeTag: String {
         // "Active" is true only while AirFlow controls the fans with this preset.
-        guard model.controller.mode == .controlling else { return "Chosen" }
+        guard model.controller.mode == .controlling else { return "Current" }
         switch model.chosenBy {
-        case .autopilot: return "Active by Autopilot"
+        case .autopilot: return "Applied by Autopilot"
         case .user, .siri: return "Active"
         }
     }
@@ -192,7 +192,7 @@ enum FanSentence {
                 return text + " This Mac doesn't report that sensor, so macOS controls the fan."
             case .speed(let rpm):
                 // A constant speed is in the sentence already. A rule's speed moves, so it is added.
-                asked = inEffect ? " It asks for \(ReadingFormat.rpmWithUnit(rpm)) now." : " It would ask for \(ReadingFormat.rpmWithUnit(rpm))."
+                asked = inEffect ? " It's set to \(ReadingFormat.rpmWithUnit(rpm)) now." : " It would be set to \(ReadingFormat.rpmWithUnit(rpm))."
             }
         }
         if isActive, !inEffect {
@@ -206,13 +206,13 @@ extension FanSentence {
     /// The sentence for a fan under the Adaptive preset.
     static func adaptiveText(command: FanCommand, isActive: Bool, mode: FanController.Mode) -> String {
         guard case .speed(let rpm) = command else {
-            return "Adaptive steers by the CPU and GPU temperatures. This Mac doesn't report them, so macOS controls the fan."
+            return "Adaptive needs CPU and GPU temperatures. This Mac doesn't report them, so macOS controls the fan."
         }
         let speed = ReadingFormat.rpmWithUnit(rpm)
         if isActive, mode == .controlling {
             return "Adaptive holds it at \(speed)."
         }
-        var text = "Adaptive would ask for \(speed)."
+        var text = "Adaptive would set it to \(speed)."
         if isActive {
             text += mode == .safeguard ? " The safeguard is on, so macOS controls the fan now." : " macOS controls the fan now."
         }
@@ -401,7 +401,7 @@ struct SensorRuleEditor: View {
     @ViewBuilder
     private var steppers: some View {
         Stepper(value: start, in: SensorRule.temperatureRange.lowerBound...(rule.maxCelsius - SensorRule.minimumSpan), step: 1) {
-            Text(readings: "Starts rising at \(format.temperature(rule.startCelsius))")
+            Text(readings: "Starts speeding up at \(format.temperature(rule.startCelsius))")
         }
         .fixedSize()
         Stepper(value: full, in: (rule.startCelsius + SensorRule.minimumSpan)...SensorRule.temperatureRange.upperBound, step: 1) {

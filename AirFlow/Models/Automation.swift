@@ -23,7 +23,7 @@ enum AutomationTrigger: Equatable, Codable, Sendable {
 
         var title: String {
             switch self {
-            case .app: return "App Is Frontmost"
+            case .app: return "App Is Active"
             case .power: return "Power Source"
             case .temperature: return "Temperature Rises Above"
             case .time: return "Time of Day"

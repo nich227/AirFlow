@@ -46,7 +46,7 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 | Sampling | `ThermalMonitor` reads every second while a window or the panel shows readings, and every four seconds otherwise. History holds 15 minutes |
 | SMC keys | Fans: `FNum`, `F<n>Ac`, `F<n>Mn`, `F<n>Mx`, `F<n>Tg`, `F<n>Md`, `Ftst`. Power: `PSTR`, the whole Mac's draw in watts. Temperatures: every `T???` key with a plausible value. Names and groups are in `backend/src/sensors.rs`. A key with no known meaning gets its group's name and a number in key order, and `is_known` is false |
 | Mark | The fan from Bootstrap Icons, in `scripts/fan_geometry.py`. The app icon is `AirFlow/Resources/AppIcon.icon`, an Icon Composer document with the blades and the housing as two glass layers |
-| User-facing copy | Apple Style Guide: title-style capitalization for menu items, buttons, toggles, and headings, sentence style for messages, "click" and "choose", contractions are fine, never "please" |
+| User-facing copy | Apple Style Guide: title-style capitalization for menu items, buttons, toggles, and headings, sentence style for messages, "click" and "choose", contractions are fine, never "please". Where an Apple app says the same thing, use its words: the preset in use is "Current" (not controlling) or "Active", and it was "Applied by" Autopilot, Siri, or you. An app "is active". Fans "speed up" and run at "minimum speed" or "full speed". The helper is "the helper tool" where it is first named. Something in progress ends in an ellipsis ("Loading Sensors…"). A search with no match says "Check the spelling or try a new search." |
 
 ## Commands
 

@@ -22,7 +22,7 @@ struct AutomationView: View {
                         VStack(alignment: .leading, spacing: Space.xxs) {
                             Text("Rules")
                                 .airFont(.display)
-                            Text("A rule applies a preset when something is true. The first rule that matches wins, so drag the rules into the order you want.")
+                            Text("Rules apply a preset automatically when their conditions are met. The first matching rule is used, so drag rules to reorder them.")
                                 .airFont(.body)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -33,7 +33,7 @@ struct AutomationView: View {
                                 .airFont(.body)
                         }
                             .toggleStyle(.switch)
-                            .help("When Autopilot is on, AirFlow applies the rules by itself")
+                            .help("When Autopilot is on, AirFlow applies your rules automatically")
                     }
                     statusLine
                 }
@@ -90,7 +90,7 @@ struct AutomationView: View {
         let automation = model.automation
         if !model.settings.autopilotEnabled {
             Label {
-                Text("Autopilot is off. Rules do nothing until you turn it on.")
+                Text("Autopilot is off. Turn it on to apply your rules automatically.")
             } icon: {
                 AntIcon("ant-pause-circle", size: IconSize.inline)
             }
@@ -98,7 +98,7 @@ struct AutomationView: View {
             .foregroundStyle(.secondary)
         } else if automation.isHeldByUser {
             Label {
-                Text("You chose \(model.activePreset.name). Autopilot takes over again when a different rule matches.")
+                Text("You applied \(model.activePreset.name). Autopilot resumes when a different rule matches.")
             } icon: {
                 AntIcon("ant-pause-circle", size: IconSize.inline)
             }
@@ -106,7 +106,7 @@ struct AutomationView: View {
             .foregroundStyle(.secondary)
         } else if automation.matchedRuleID != nil {
             Label {
-                Text("A rule matches, so Autopilot is using \(model.activePreset.name).")
+                Text("Autopilot applied \(model.activePreset.name) because a rule matches.")
             } icon: {
                 AntIcon("ant-robot", size: IconSize.inline)
             }
@@ -114,7 +114,7 @@ struct AutomationView: View {
             .foregroundStyle(Palette.accent)
         } else {
             Label {
-                Text("No rule matches right now, so your own choice stays.")
+                Text("No rules match right now, so your preset stays applied.")
             } icon: {
                 AntIcon("ant-robot", size: IconSize.inline)
             }
@@ -221,7 +221,7 @@ struct RuleRow: View {
         HStack(spacing: Space.xs) {
             AntIcon("ant-holder", size: IconSize.inline)
                 .foregroundStyle(.tertiary)
-                .help("Drag to change the rule's place")
+                .help("Drag to reorder")
             Toggle("Enabled", isOn: binding(\.isEnabled))
                 .toggleStyle(.checkbox)
                 .labelsHidden()
@@ -278,7 +278,7 @@ struct RuleRow: View {
                 let app = apps.first { $0.bundleID == new }
                 save(.appIsFrontmost(bundleID: new, name: app?.name ?? name))
             }, options: appOptions(bundleID: bundleID, name: name))
-            Text("is in front")
+            Text("is active")
         case .powerSource(let source):
             Text("the Mac is on")
             AntSelect(title: "Power Source", selection: Binding {

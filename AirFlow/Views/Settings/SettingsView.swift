@@ -38,7 +38,7 @@ struct GeneralSettingsPane: View {
         @Bindable var settings = model.settings
         Form {
             Section {
-                Toggle("Open AirFlow at Login", isOn: Binding {
+                Toggle("Open at Login", isOn: Binding {
                     launchesAtLogin
                 } set: { new in
                     setLaunchAtLogin(new)
@@ -49,7 +49,7 @@ struct GeneralSettingsPane: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             } footer: {
-                Text("AirFlow opens in the menu bar, with no window.")
+                Text("AirFlow opens in the menu bar without a window.")
             }
             Section("Menu Bar") {
                 Picker("Show", selection: $settings.menuBarReadout) {
@@ -99,18 +99,18 @@ struct FanControlSettingsPane: View {
                 }
                 switch model.helper.status {
                 case .enabled:
-                    Button("Remove Helper") {
+                    Button("Remove Helper Tool") {
                         Task { await model.removeHelper() }
                     }
                 case .needsApproval:
-                    Button("Open Login Items") { model.helper.openLoginItems() }
+                    Button("Open Login Items Settings") { model.helper.openLoginItems() }
                 case .notInstalled, .failed:
                     Button("Turn On Fan Control") { model.enableFanControl() }
                 case .unsignedBuild:
                     EmptyView()
                 }
             } footer: {
-                Text("Only an administrator's program can change fan speeds, so AirFlow uses a small helper for that one job. The helper accepts requests from AirFlow alone and keeps every speed within the fan's own limits. It returns the fans to macOS when AirFlow quits or stops responding. Without it, AirFlow monitors only.")
+                Text("Changing fan speeds requires administrator privileges, so AirFlow uses a small helper tool. The helper accepts requests only from AirFlow and keeps every speed within the fan's limits. It returns control to macOS when AirFlow quits or stops responding. Without the helper, AirFlow can only monitor.")
             }
             Section {
                 Toggle("Return Fans to macOS When the Mac Runs Hot", isOn: $settings.safeguardEnabled)
@@ -159,12 +159,12 @@ struct IntelligenceSettingsPane: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             } footer: {
-                Text("AirFlow uses the model on this Mac to draft presets and rules from a description and to explain recent readings. Nothing you type and no reading leaves the Mac. The model can't change a fan: you approve every preset and rule it drafts.")
+                Text("AirFlow uses Apple Intelligence on this Mac to draft presets and rules from your descriptions and to explain recent readings. Your descriptions and readings never leave your Mac. Apple Intelligence can't change fan speeds. You approve every preset and rule it drafts.")
             }
             Section {
                 Toggle("Autopilot", isOn: $settings.autopilotEnabled)
             } footer: {
-                Text("When Autopilot is on, AirFlow applies your rules by itself. A preset you choose yourself holds until a different rule matches. You can also ask Siri to “Apply Quiet in AirFlow”.")
+                Text("When Autopilot is on, AirFlow applies your rules automatically. A preset you apply yourself stays on until a different rule matches. You can also ask Siri to “Apply Quiet in AirFlow”.")
             }
         }
         .formStyle(.grouped)

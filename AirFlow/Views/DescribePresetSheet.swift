@@ -29,7 +29,7 @@ struct DescribePresetSheet: View {
             VStack(alignment: .leading, spacing: Space.xxs) {
                 Text("Describe a Preset")
                     .airFont(.display)
-                Text("Say what you want the fans to do. Apple Intelligence drafts the preset on this Mac, and you decide whether to keep it.")
+                Text("Describe what you'd like the fans to do. Apple Intelligence drafts a preset on this Mac, and you decide whether to save it.")
                     .airFont(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -103,7 +103,7 @@ struct DescribePresetSheet: View {
             HStack(spacing: Space.sm) {
                 AirAnimation(name: Animations.spark, loops: true)
                     .frame(width: IconSize.rotor, height: IconSize.rotor)
-                Text("Drafting your preset.")
+                Text("Drafting your preset…")
                     .airFont(.body)
                     .foregroundStyle(.secondary)
             }

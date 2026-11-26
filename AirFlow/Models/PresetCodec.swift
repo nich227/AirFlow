@@ -50,7 +50,7 @@ enum PresetCodec {
             switch self {
             case .tooLarge: return "The file is too large to be a list of presets."
             case .notYAML(let detail): return "The file isn't a list of AirFlow presets. \(detail)"
-            case .newerVersion(let version): return "A newer version of AirFlow wrote the file (format \(version))."
+            case .newerVersion(let version): return "This file was created by a newer version of AirFlow (format \(version))."
             case .noPresets: return "The file has no presets."
             case .tooManyPresets: return "The file has more than \(PresetCodec.maximumPresets) presets."
             case .invalid(let preset, let reason): return "The preset “\(preset)” can't be read: \(reason)"

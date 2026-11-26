@@ -280,7 +280,7 @@ final class FanSentenceTests: XCTestCase {
         XCTAssertEqual(sentence(.constant(rpm: 3200), .speed(3200), isActive: true, mode: .controlling), "Held at 3,200 RPM.")
         XCTAssertEqual(
             sentence(.sensorBased(rule), .speed(2010), isActive: true, mode: .controlling),
-            "Follows CPU Average, from 70° to full speed at 95°. It asks for 2,010 RPM now."
+            "Follows CPU Average, from 70° to full speed at 95°. It's set to 2,010 RPM now."
         )
     }
 
@@ -292,14 +292,14 @@ final class FanSentenceTests: XCTestCase {
         )
         XCTAssertEqual(
             sentence(.sensorBased(rule), .speed(4100), isActive: true, mode: .safeguard),
-            "This preset follows CPU Average, from 70° to full speed at 95°. The safeguard is on, so macOS controls the fan now. It would ask for 4,100 RPM."
+            "This preset follows CPU Average, from 70° to full speed at 95°. The safeguard is on, so macOS controls the fan now. It would be set to 4,100 RPM."
         )
     }
 
     func testAPresetThatIsNotActiveSaysWhatItWouldAskFor() {
         XCTAssertEqual(
             sentence(.sensorBased(rule), .speed(2010), isActive: false, mode: .controlling),
-            "This preset follows CPU Average, from 70° to full speed at 95°. It would ask for 2,010 RPM."
+            "This preset follows CPU Average, from 70° to full speed at 95°. It would be set to 2,010 RPM."
         )
     }
 

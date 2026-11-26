@@ -54,7 +54,7 @@ struct MainWindow: View {
                 model.transfer.message = "AirFlow couldn't save the file. \(error.localizedDescription)"
             }
         }
-        .alert("Presets Not Imported", isPresented: transferFailed) {
+        .alert("The preset file could not be imported.", isPresented: transferFailed) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(model.transfer.message ?? "")
@@ -205,7 +205,7 @@ struct Sidebar: View {
                     Label("New Preset", image: "ant-plus")
                         .labelStyle(.iconOnly)
                 }
-                .help("Make a new preset, starting from the selected one")
+                .help("Add a preset based on the selected one")
                 Button {
                     isDescribing = true
                 } label: {

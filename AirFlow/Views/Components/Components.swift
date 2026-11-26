@@ -107,7 +107,7 @@ struct FanTrack: View {
 
     private var accessibilityValue: String {
         var value = "\(ReadingFormat.rpmWithUnit(fan.currentRPM)), \(ReadingFormat.percent(fan.fraction)) of its range"
-        if let target { value += ", asked for \(ReadingFormat.rpmWithUnit(target))" }
+        if let target { value += ", set to \(ReadingFormat.rpmWithUnit(target))" }
         return value
     }
 }
@@ -395,7 +395,7 @@ struct ControlStatusBanner: View {
 
     var body: some View {
         if let error = model.controller.lastError, model.helper.status.allowsControl {
-            StatusBanner(kind: .danger, title: "AirFlow Couldn't Set a Fan", message: error + " AirFlow will try again.", isCompact: isCompact)
+            StatusBanner(kind: .danger, title: "Couldn't Set Fan Speed", message: error + " AirFlow will try again.", isCompact: isCompact)
         } else if model.controller.safeguard.isEngaged {
             StatusBanner(kind: .caution, title: "Safeguard Is On", message: safeguardMessage, isCompact: isCompact)
         } else {
@@ -405,31 +405,31 @@ struct ControlStatusBanner: View {
                 if model.helper.justEnabled(now: max(model.monitor.snapshot.date, Date())) {
                     StatusBanner(
                         kind: .success, title: "Fan Control Is On",
-                        message: "AirFlow can now set fan speeds. Choose a preset to use it.",
+                        message: "AirFlow can now change fan speeds. Apply a preset to start.",
                         isCompact: isCompact, animation: Animations.done
                     )
                 }
             case .notInstalled:
                 StatusBanner(
                     kind: .info, title: "Monitoring Only",
-                    message: "To change fan speeds, AirFlow needs its helper. You can keep monitoring without it.",
+                    message: "To change fan speeds, AirFlow needs to install a helper tool. You can keep monitoring without it.",
                     actionTitle: "Turn On Fan Control", action: model.enableFanControl, isCompact: isCompact
                 )
             case .needsApproval:
                 StatusBanner(
-                    kind: .caution, title: "Allow AirFlow's Helper",
+                    kind: .caution, title: "Allow the Helper Tool",
                     message: "Turn on AirFlow in System Settings > General > Login Items & Extensions.",
-                    actionTitle: "Open Login Items", action: model.helper.openLoginItems, isCompact: isCompact
+                    actionTitle: "Open Login Items Settings", action: model.helper.openLoginItems, isCompact: isCompact
                 )
             case .unsignedBuild:
                 StatusBanner(
                     kind: .info, title: "Monitoring Only",
-                    message: "This copy of AirFlow isn't signed by a developer, so it can't install its helper. Presets and rules work, and take effect in a signed copy.",
+                    message: "This copy of AirFlow isn't signed by a developer, so it can't install the helper tool. Presets and rules still work, but they don't change fan speeds.",
                     isCompact: isCompact
                 )
             case .failed(let reason):
                 StatusBanner(
-                    kind: .danger, title: "The Helper Couldn't Be Installed",
+                    kind: .danger, title: "The Helper Tool Couldn't Be Installed",
                     message: reason, actionTitle: "Try Again", action: model.enableFanControl, isCompact: isCompact
                 )
             }

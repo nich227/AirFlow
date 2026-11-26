@@ -78,14 +78,14 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
 
     static let fullBlast = Preset(
         id: fullBlastID, name: "Full Blast", icon: .thunderbolt, kind: .fullBlast,
-        summary: "Every fan runs at its maximum speed."
+        summary: "Every fan runs at full speed."
     )
 
     static let adaptiveID = UUID(uuidString: "A1F10000-0000-4000-8000-000000000003") ?? UUID()
 
     static let adaptive = Preset(
         id: adaptiveID, name: "Adaptive", icon: .aim, kind: .adaptive,
-        summary: "The fans follow what the Mac is doing, and what it is about to do."
+        summary: "Fans adapt to what your Mac is doing and what it's about to do."
     )
 
     static let builtIn = [automatic, adaptive, fullBlast]
@@ -96,17 +96,17 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
             Preset(
                 name: "Quiet", icon: .coffee,
                 fallback: .sensorBased(SensorRule(source: .cpuAverage, startCelsius: 70, maxCelsius: 95)),
-                summary: "Fans stay at their minimum until the CPU is hot."
+                summary: "Fans stay at minimum speed until the CPU gets hot."
             ),
             Preset(
                 name: "Heavy Workload", icon: .rocket,
                 fallback: .sensorBased(SensorRule(source: .cpuAverage, startCelsius: 45, maxCelsius: 75)),
-                summary: "Fans rise early to hold temperatures down under a long load."
+                summary: "Fans speed up early to keep temperatures down during long tasks."
             ),
             Preset(
                 name: "Travel", icon: .compass,
                 fallback: .sensorBased(SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43)),
-                summary: "Fans follow the battery's temperature, for a Mac on your lap."
+                summary: "Fans follow the battery temperature, for a Mac on your lap."
             ),
         ]
     }

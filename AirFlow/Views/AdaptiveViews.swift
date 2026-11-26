@@ -27,7 +27,7 @@ struct AdaptiveSummary: View {
                 }
                 .accessibilityElement(children: .contain)
                 if !state.isLearned {
-                    Text("AirFlow is still learning this Mac: how much power it draws at rest and at work, and how it warms and cools. That takes a few minutes of each.")
+                    Text("AirFlow is still learning how your Mac uses power and how it heats up and cools down. This takes a few minutes of light and heavy use.")
                         .airFont(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -35,7 +35,7 @@ struct AdaptiveSummary: View {
             } else {
                 Text("Workload")
                     .airFont(.title)
-                Text("Adaptive steers by the CPU and GPU temperatures, and this Mac doesn't report them. macOS controls the fans.")
+                Text("Adaptive needs CPU and GPU temperatures, and this Mac doesn't report them. macOS controls the fans.")
                     .airFont(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -47,9 +47,9 @@ struct AdaptiveSummary: View {
     static func explanation(state: AdaptiveState, hintApp: String?, hint: WorkloadRegime?) -> String {
         var text = state.regime.explanation
         if state.watts == nil {
-            text += " This Mac doesn't report its power, so AirFlow judges the work by temperature alone."
+            text += " This Mac doesn't report power usage, so AirFlow uses temperature alone."
         } else if let hintApp, let hint, hint != .light {
-            text += " \(hintApp) is open, so AirFlow expects \(hint == .sustained ? "long, heavy work" : "short bursts") sooner."
+            text += " \(hintApp) is open, so AirFlow expects \(hint == .sustained ? "a long, heavy load" : "short bursts") sooner."
         }
         return text
     }
@@ -75,7 +75,7 @@ struct AppWorkloadsEditor: View {
         VStack(alignment: .leading, spacing: Space.sm) {
             Text("Apps")
                 .airFont(.title)
-            Text("Tell AirFlow which apps work the Mac hard. While one is open, the fans answer a rising load sooner. An app that is open and idle changes nothing.")
+            Text("Add apps that put a heavy load on your Mac. While one is open, the fans respond sooner when the load increases. An idle app changes nothing.")
                 .airFont(.body)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -117,7 +117,7 @@ struct AppWorkloadsEditor: View {
                 .buttonStyle(.glass)
                 .controlSize(.small)
                 .disabled(suggestion == .working(bundleID: workload.bundleID))
-                .help("Ask Apple Intelligence what \(workload.name) is known for")
+                .help("Ask Apple Intelligence to suggest a workload for \(workload.name)")
             }
             AntSelect(title: "\(workload.name) workload", selection: Binding {
                 workload.regime
@@ -144,14 +144,14 @@ struct AppWorkloadsEditor: View {
             HStack(spacing: Space.xs) {
                 AirAnimation(name: Animations.spark, loops: true)
                     .frame(width: IconSize.title, height: IconSize.title)
-                Text("Asking Apple Intelligence.")
+                Text("Asking Apple Intelligence…")
                     .airFont(.body)
                     .foregroundStyle(.secondary)
             }
         case .proposed(let bundleID, let name, let proposal):
             StatusBanner(
                 kind: .info, title: "Apple Intelligence Suggests \(proposal.regime.title) for \(name)",
-                message: proposal.reason.isEmpty ? "It gave no reason." : proposal.reason,
+                message: proposal.reason.isEmpty ? "No reason was given." : proposal.reason,
                 actionTitle: "Use \(proposal.regime.title)"
             ) {
                 model.adaptive.setWorkload(AppWorkload(bundleID: bundleID, name: name, regime: proposal.regime))

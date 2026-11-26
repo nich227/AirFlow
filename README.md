@@ -41,7 +41,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
     </td>
     <td width="33%">
       <a href="docs/images/rules.png">
-        <img src="docs/images/rules.png" alt="The Rules page with four rules: one for Xcode in front, one for battery power, one for a CPU above 85 degrees, and one for the hours between 22:00 and 07:00" />
+        <img src="docs/images/rules.png" alt="The Rules page with four rules: one for when Xcode is active, one for battery power, one for a CPU above 85 degrees, and one for the hours between 22:00 and 07:00" />
       </a>
     </td>
     <td width="33%">
@@ -52,7 +52,7 @@ AirFlow requires macOS 26 or later and a Mac with Apple silicon.
   </tr>
   <tr>
     <td><strong>Adaptive</strong><br />The fans follow what your Mac is doing and the temperature it expects in 15 seconds.</td>
-    <td><strong>Rules</strong><br />A preset changes when an app is in front, on battery, when a part gets hot, or at a time of day.</td>
+    <td><strong>Rules</strong><br />A preset changes when an app is active, on battery, when a part gets hot, or at a time of day.</td>
     <td><strong>Sensors</strong><br />Every temperature sensor your Mac reports shows its lowest and highest reading.</td>
   </tr>
 </table>
@@ -92,7 +92,7 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 
 ### Rules and Autopilot
 
-- Rules change presets for you: when an app is frontmost, when your Mac is on battery, when a part gets hot, or at a time of day.
+- Rules change presets for you: when an app is active, when your Mac is on battery, when a part gets hot, or at a time of day.
 - The first rule that matches wins, and you drag the rules into the order you want.
 - Rules do nothing until you turn on Autopilot. A preset that you choose yourself holds until a different rule matches.
 
@@ -130,7 +130,7 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 | Change presets | Click the fan in the menu bar, then click a preset. |
 | Open the window | Click the fan in the menu bar, then click Open AirFlow. |
 | Change how a fan runs | Select a preset you made in the sidebar. Click Automatic, Constant, or Sensor-Based under the fan. |
-| Change a fan curve | Drag either handle on the curve, or click the arrows beside "Starts rising at" and "Full speed at". |
+| Change a fan curve | Drag either handle on the curve, or click the arrows beside "Starts speeding up at" and "Full speed at". |
 | Use a preset | Select it in the sidebar, then click Apply. |
 | Make a preset | Click the Add button at the bottom of the sidebar. The new preset starts as a copy of the selected one. |
 | Describe a preset | Click the light bulb at the bottom of the sidebar. |
@@ -139,7 +139,7 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 | Add a rule | Click Rules in the sidebar, then click Add Rule. Drag a rule to change its place. The first rule that matches wins. |
 | Let rules run | Turn on Autopilot on the Rules page. |
 | Turn on fan control | Click Turn On Fan Control, then turn on AirFlow in System Settings > General > Login Items & Extensions. |
-| Open AirFlow at login | Choose AirFlow > Settings > General. |
+| Open AirFlow at login | Choose AirFlow > Settings > General, then turn on Open at Login. |
 | Check for an update | Choose AirFlow > Check for Updates, or click Check for Updates in Settings > About. |
 
 ## How Adaptive decides
@@ -163,7 +163,7 @@ Four limits hold whatever Adaptive decides:
 - The fans fall only after Adaptive has wanted a lower speed for 20 seconds, so they don't rise and fall between two prompts or two edits.
 - Adaptive never asks the fans for less than a fixed line gives at the present temperature: nothing at 80 °C, full speed at 92 °C. What Adaptive has learned can't lower it. The safeguard below still returns the fans to macOS.
 
-A copy of AirFlow that can't control fans still shows what Adaptive would ask for.
+A copy of AirFlow that can't control fans still shows the speed Adaptive would set.
 
 ## Fan control and safety
 
@@ -189,7 +189,7 @@ airflow: 1
 presets:
   - name: Quiet
     icon: coffee
-    summary: Fans stay at their minimum until the CPU is hot.
+    summary: Fans stay at minimum speed until the CPU gets hot.
     fans:
       mode: sensor
       sensor: cpu average

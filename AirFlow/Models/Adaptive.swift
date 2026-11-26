@@ -25,11 +25,11 @@ enum WorkloadRegime: Int, Codable, CaseIterable, Comparable, Sendable, Identifia
     var explanation: String {
         switch self {
         case .light:
-            return "The fans stay at their minimum until the forecast passes \(Int(AdaptivePolicy.light.engageCelsius))°."
+            return "Fans stay at minimum speed until the forecast passes \(Int(AdaptivePolicy.light.engageCelsius))°."
         case .bursty:
-            return "The Mac's own mass absorbs a short burst. The fans rise only if the load lasts."
+            return "Fans stay quiet through short bursts and speed up only if the load continues."
         case .sustained:
-            return "The fans rise before the heat arrives, and then hold steady."
+            return "Fans speed up before the heat builds, then hold steady."
         }
     }
 }

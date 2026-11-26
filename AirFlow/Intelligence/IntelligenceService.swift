@@ -138,9 +138,9 @@ enum IntelligenceError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .unavailable(let reason): return reason
-        case .emptyRequest: return "Describe what you want first."
+        case .emptyRequest: return "Enter a description first."
         case .noHistory: return "AirFlow needs a few more seconds of readings before it can explain them."
-        case .failed: return "The model couldn't draft that. Try describing it another way."
+        case .failed: return "Apple Intelligence couldn't draft that. Try describing it another way."
         }
     }
 }
@@ -162,7 +162,7 @@ final class IntelligenceService {
         }
     }
 
-    private(set) var availability: Availability = .unavailable("Checking for Apple Intelligence.")
+    private(set) var availability: Availability = .unavailable("Checking for Apple Intelligence…")
 
     static let requestLimit = 300
 
@@ -202,13 +202,13 @@ final class IntelligenceService {
         case .available:
             availability = .available
         case .unavailable(.deviceNotEligible):
-            availability = .unavailable("This Mac doesn't support Apple Intelligence.")
+            availability = .unavailable("Apple Intelligence is not supported on this Mac.")
         case .unavailable(.appleIntelligenceNotEnabled):
             availability = .unavailable("Turn on Apple Intelligence in System Settings to draft presets from a description.")
         case .unavailable(.modelNotReady):
-            availability = .unavailable("Apple Intelligence is still downloading its model. Try again in a while.")
+            availability = .unavailable("Apple Intelligence is still downloading. Try again later.")
         case .unavailable:
-            availability = .unavailable("Apple Intelligence isn't available right now.")
+            availability = .unavailable("Apple Intelligence is not currently available. Try again later.")
         }
     }
 
@@ -258,7 +258,7 @@ final class IntelligenceService {
     }
 
     private var unavailable: IntelligenceError {
-        .unavailable(availability.reason ?? "Apple Intelligence isn't available right now.")
+        .unavailable(availability.reason ?? "Apple Intelligence is not currently available. Try again later.")
     }
 
     private func checked(_ request: String) throws -> String {

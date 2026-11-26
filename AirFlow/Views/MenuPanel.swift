@@ -114,7 +114,7 @@ struct MenuPanel: View {
                 Button {
                     NSApp.terminate(nil)
                 } label: {
-                    Text("Quit")
+                    Text("Quit AirFlow")
                 }
             }
             .airFont(.label)
@@ -158,9 +158,9 @@ struct MenuPanel: View {
     private var chosenLine: String {
         if model.controller.safeguard.isEngaged { return "Paused by the safeguard" }
         switch model.chosenBy {
-        case .autopilot: return "Chosen by Autopilot"
-        case .siri: return "Chosen with Siri"
-        case .user: return model.settings.autopilotEnabled ? "Chosen by you. Autopilot is on." : "Chosen by you"
+        case .autopilot: return "Applied by Autopilot"
+        case .siri: return "Applied with Siri"
+        case .user: return model.settings.autopilotEnabled ? "Applied by you. Autopilot is on." : "Applied by you"
         }
     }
 

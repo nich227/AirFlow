@@ -22,7 +22,7 @@ struct LiveInspector: View {
             VStack(alignment: .leading, spacing: Space.md) {
                 sectionTitle("Temperatures")
                 if snapshot.summaries.isEmpty {
-                    Text(model.monitor.hasLoaded ? "This Mac reports no temperature sensors." : "Reading the sensors.")
+                    Text(model.monitor.hasLoaded ? "No temperature sensors found." : "Loading sensors…")
                         .airFont(.body)
                         .foregroundStyle(.secondary)
                 } else {
@@ -118,7 +118,7 @@ struct LiveInspector: View {
             HStack(spacing: Space.xs) {
                 AirAnimation(name: Animations.spark, loops: true)
                     .frame(width: IconSize.state, height: IconSize.state)
-                Text("Reading the last few minutes.")
+                Text("Summarizing recent readings…")
                     .airFont(.body)
                     .foregroundStyle(.secondary)
             }
@@ -128,7 +128,7 @@ struct LiveInspector: View {
                     .airFont(.body)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
-                Text("Written by Apple Intelligence on this Mac.")
+                Text("Summarized by Apple Intelligence on this Mac.")
                     .airFont(.caption)
                     .foregroundStyle(.secondary)
                 Button {
@@ -312,11 +312,11 @@ struct SensorsView: View {
         Group {
             if model.monitor.snapshot.sensors.isEmpty {
                 PageEmptyState(
-                    title: model.monitor.hasLoaded ? "No Sensors" : "Reading the Sensors",
-                    message: model.monitor.hasLoaded ? "This Mac reports no temperature sensors that AirFlow can read." : "AirFlow is asking the Mac for its sensors."
+                    title: model.monitor.hasLoaded ? "No Sensors" : "Loading Sensors…",
+                    message: model.monitor.hasLoaded ? "AirFlow can't find any temperature sensors on this Mac." : "AirFlow is reading your Mac's sensors."
                 )
             } else if rows.isEmpty {
-                PageEmptyState(title: "No Results for “\(search)”", message: "Check the spelling, or search for a part such as CPU or Battery.")
+                PageEmptyState(title: "No Results for “\(search)”", message: "Check the spelling or try a new search.")
             } else {
                 Table(rows, sortOrder: $sortOrder) {
                     TableColumn("Sensor", value: \.name) { row in

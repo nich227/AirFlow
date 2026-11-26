@@ -426,13 +426,13 @@ final class AdaptivePlanTests: XCTestCase {
         XCTAssertEqual(FanSentence.adaptiveText(command: .speed(2150), isActive: true, mode: .controlling), "Adaptive holds it at 2,150 RPM.")
         XCTAssertEqual(
             FanSentence.adaptiveText(command: .speed(2150), isActive: true, mode: .monitoring),
-            "Adaptive would ask for 2,150 RPM. macOS controls the fan now."
+            "Adaptive would set it to 2,150 RPM. macOS controls the fan now."
         )
         XCTAssertEqual(
             FanSentence.adaptiveText(command: .speed(2150), isActive: true, mode: .safeguard),
-            "Adaptive would ask for 2,150 RPM. The safeguard is on, so macOS controls the fan now."
+            "Adaptive would set it to 2,150 RPM. The safeguard is on, so macOS controls the fan now."
         )
-        XCTAssertEqual(FanSentence.adaptiveText(command: .speed(2150), isActive: false, mode: .controlling), "Adaptive would ask for 2,150 RPM.")
+        XCTAssertEqual(FanSentence.adaptiveText(command: .speed(2150), isActive: false, mode: .controlling), "Adaptive would set it to 2,150 RPM.")
         XCTAssertTrue(FanSentence.adaptiveText(command: .automatic, isActive: true, mode: .controlling).hasSuffix("so macOS controls the fan."))
     }
 }

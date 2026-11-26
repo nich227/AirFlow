@@ -19,7 +19,7 @@ enum HelperError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .unsignedBuild: return "This copy of AirFlow isn't signed, so it can only monitor."
-        case .notConnected: return "AirFlow can't reach its helper."
+        case .notConnected: return "AirFlow can't connect to its helper tool."
         case .refused(let message): return message
         }
     }

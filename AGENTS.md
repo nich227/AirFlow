@@ -16,6 +16,7 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 10. Importing never replaces a preset: `PresetStore.importText` gives each one a new identifier and a name of its own. Built-in presets (`Preset.automatic`, `Preset.adaptive`, `Preset.fullBlast`) are never stored, exported, changed, or deleted.
 11. Every page in the window's detail column has a `ScrollView` or a `Table` at its root. A page rooted in a plain stack makes the split view lay the whole window out taller than it is, so the sidebar and the page's own header leave the screen (measured on macOS 26.7). Use `PageEmptyState` for an empty page.
 12. Ant Design components are Liquid Glass: use `antGlass` and `GlassCard` (`Utilities/Theme.swift`), `StateTag`, and `StatusBanner`. Never call `glassEffect` in a view: one direct call leaves the whole page out of an off-screen drawing. Never nest one glass card in another. Do not wrap page content in `GlassEffectContainer`: it sizes to its content's ideal width and pushes the window's columns off screen.
+12a. The window's background is the blurred desktop (`.ultraThinMaterial`). Only while Adaptive is the current preset do the window and the menu bar panel sit on `AirBackdrop`. Readings are never flat: a status dot is `StatusDot`, a fan's bar is `FanTrack`, and chart and curve lines carry a soft light and a fall of their own color. A fan's bar, the fan chart, and the selected row of the sidebar have the system accent (`Palette.accent`), never a color of the app's own.
 13. Every drawn animation is a Lottie file played through `AirAnimation`, on Lottie's Core Animation engine. `scripts/make-animations.py` generates the files. Edit the script, rerun it, commit both, and list the name in `Animations.all`. Each file marks its still frame with a `reduced motion` marker. Nothing moves with Reduce Motion on or while `isActive` is false.
 14. Opening the window never puts the keyboard in a text field. A preset's name is text until the person clicks the pencil.
 15. No force unwraps, `try!`, or `as!` in `AirFlow/`. No `unwrap()` or `expect()` outside tests in `backend/src/`: clippy denies both there. Outside tests, each `unsafe` block in the backend has a `SAFETY:` comment.
@@ -45,7 +46,7 @@ AirFlow: macOS menu bar fan control. A Rust backend reads the SMC and is the pri
 | Lifecycle | SwiftUI `App`: a `Window` that does not open at launch, a `MenuBarExtra` with the window style, and `Settings`. The app has no Dock icon until its window or Settings is open (`AppDelegate.updateDockPresence`). Opening the app again shows the window (`WindowOpener`) |
 | Sampling | `ThermalMonitor` reads every second while a window or the panel shows readings, and every four seconds otherwise. History holds 15 minutes |
 | SMC keys | Fans: `FNum`, `F<n>Ac`, `F<n>Mn`, `F<n>Mx`, `F<n>Tg`, `F<n>Md`, `Ftst`. Power: `PSTR`, the whole Mac's draw in watts. Temperatures: every `T???` key with a plausible value. Names and groups are in `backend/src/sensors.rs`. A key with no known meaning gets its group's name and a number in key order, and `is_known` is false |
-| Mark | The fan from Bootstrap Icons, in `scripts/fan_geometry.py`. The app icon is `AirFlow/Resources/AppIcon.icon`, an Icon Composer document with the blades and the housing as two glass layers |
+| Mark | The fan from Bootstrap Icons, in `scripts/fan_geometry.py`. The app icon is `AirFlow/Resources/AppIcon.icon`, an Icon Composer document with the blades and the housing as two glass layers. While AirFlow runs, `DockIcon` draws the Dock's icon itself, with the blades in the system accent, and draws it again when the accent or the appearance changes. The menu bar icon is a template image: white on a dark menu bar, dark on a light one, and never the accent |
 | User-facing copy | Apple Style Guide: title-style capitalization for menu items, buttons, toggles, and headings, sentence style for messages, "click" and "choose", contractions are fine, never "please". Where an Apple app says the same thing, use its words: the preset in use is "Current" (not controlling) or "Active", and it was "Applied by" Autopilot, Siri, or you. An app "is active". Fans "speed up" and run at "minimum speed" or "full speed". The helper is "the helper tool" where it is first named. Something in progress ends in an ellipsis ("Loading Sensors…"). A search with no match says "Check the spelling or try a new search." |
 
 ## Commands
@@ -100,8 +101,8 @@ AirFlow/
 │   │                                 AppWorkloadsEditor), DescribePresetSheet, MenuPanel
 │   ├── Components/                   AirAnimation (Rotor), Components (StateTag, Statistic, FanTrack, StatusBanner, EmptyState, AntSegmented, AntSelect, FlowLayout), CurveEditor
 │   └── Settings/SettingsView.swift   General, Fan Control, Intelligence, About
-├── Utilities/                        Theme (tokens, AirType, ReadingText, antGlass, GlassCard, AntIcon), Log
-└── Resources/                        Assets.xcassets (MenuBarIcon, ant-*, Temp* colors), AppIcon.icon, Animations/, Fonts/, LaunchDaemons/
+├── Utilities/                        Theme (tokens, AirType, ReadingText, antGlass, AirBackdrop, GlassCard, AntIcon), DockIcon, Log
+└── Resources/                        Assets.xcassets (MenuBarIcon, MarkBlades, MarkHousing, ant-*, Temp* colors), AppIcon.icon, Animations/, Fonts/, LaunchDaemons/
 AirFlowTests/                         XCTest. Fixtures.swift holds CommandRecorder and made-up snapshots
 scripts/                              build.sh, test.sh, build-backend.sh, embed-helper.sh, make-animations.py, make-icons.py, fan_geometry.py,
                                       make-brand.swift, make-screenshots.sh (the README's pictures),
@@ -145,7 +146,8 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | A design token | `DESIGN.md` and `Utilities/Theme.swift` together |
 | A font | `AirFlow/Resources/Fonts`, `AirType.textFamily` or `readingFamily`, `ReadingFontTests`, `licenses/`, `DESIGN.md`, the README's License section |
 | An animation | `scripts/make-animations.py`, rerun it, `Animations` (the name and `all`), `AnimationTests`, the table in `DESIGN.md` |
-| An icon | `ANT_ICONS` in `scripts/make-icons.py`, rerun it, and `PresetIcon` if a preset can carry it |
+| An icon | `ANT_ICONS` in `scripts/make-icons.py`, rerun it, and `PresetIcon` if a preset can carry it. The sparkles (`ant-sparkles`) and the airplane (`ant-airplane`) are drawn by the script itself. The sparkles mark Adaptive and every Apple Intelligence action, and no other preset takes them |
+| A data color (the temperature scale) | The color set in `Assets.xcassets`, `Palette`, and the tables in `DESIGN.md` |
 | The mark | `scripts/fan_geometry.py`, then both scripts, `AppIcon.icon/icon.json`, and `swift scripts/make-brand.swift` |
 | A page, a banner, or a control that a README picture shows | `scripts/make-screenshots.sh` after `scripts/build.sh`, and the picture's `alt` text in `README.md` |
 | A UserDefaults key | `AppSettings`, the pane that writes it, the Facts table |

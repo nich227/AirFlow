@@ -31,7 +31,15 @@ struct MainWindow: View {
                 .toolbar { readingsItem }
         }
         // The window lets the desktop show through, so the glass components have something to bend.
-        .containerBackground(.ultraThinMaterial, for: .window)
+        // While Adaptive is on, fields of color lie over it.
+        .containerBackground(for: .window) {
+            if model.settings.activePresetID == Preset.adaptiveID {
+                AirBackdrop(band: model.monitor.snapshot.summary(of: .cpu).map { TemperatureBand.band(for: $0.average, in: .cpu) })
+                    .transition(.opacity)
+            } else {
+                Rectangle().fill(.ultraThinMaterial).ignoresSafeArea()
+            }
+        }
         // Each page has its own heading, so the title bar does not repeat it. The title still
         // names the window in the Window menu and to VoiceOver.
         .toolbar(removing: .title)
@@ -157,6 +165,22 @@ struct MainWindow: View {
     }
 }
 
+private extension View {
+    /// The selected row of the sidebar has the accent the person chose in System Settings, whether
+    /// or not the window is in front.
+    @ViewBuilder
+    func selectedInAccent(_ isSelected: Bool) -> some View {
+        if isSelected {
+            foregroundStyle(.white)
+                .listRowBackground(
+                    RoundedRectangle(cornerRadius: Radius.md).fill(Palette.accent.gradient).padding(.horizontal, Space.xs + 2)
+                )
+        } else {
+            self
+        }
+    }
+}
+
 struct Sidebar: View {
     @Environment(AppModel.self) private var model
     @Binding var selection: SidebarItem?
@@ -183,6 +207,7 @@ struct Sidebar: View {
                 }
                 .badge(model.settings.autopilotEnabled ? Text("Autopilot").font(AirType.label.font) : nil)
                 .tag(SidebarItem.rules)
+                .selectedInAccent(selection == .rules)
             } header: {
                 Text("Automation").airFont(.label)
             }
@@ -193,6 +218,7 @@ struct Sidebar: View {
                     AntIcon("ant-dashboard")
                 }
                 .tag(SidebarItem.sensors)
+                .selectedInAccent(selection == .sensors)
             } header: {
                 Text("Monitor").airFont(.label)
             }
@@ -209,7 +235,7 @@ struct Sidebar: View {
                 Button {
                     isDescribing = true
                 } label: {
-                    Label("Describe a Preset", image: "ant-bulb")
+                    Label("Describe a Preset", image: "ant-sparkles")
                         .labelStyle(.iconOnly)
                 }
                 .help(model.intelligence.availability.reason ?? "Describe a preset and let Apple Intelligence draft it")
@@ -241,13 +267,14 @@ struct Sidebar: View {
                 if isActive {
                     // The row's own text style keeps the mark visible when the row is selected.
                     AntIcon("ant-check", size: IconSize.inline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(selection == .preset(preset.id) ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
                 }
             }
         } icon: {
             AntIcon(preset.icon.assetName)
         }
         .tag(SidebarItem.preset(preset.id))
+        .selectedInAccent(selection == .preset(preset.id))
         .accessibilityLabel(isActive ? "\(preset.name), active" : preset.name)
         .contextMenu {
             Button("Apply") { model.apply(preset.id) }

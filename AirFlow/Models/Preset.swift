@@ -5,15 +5,16 @@ import Foundation
 enum PresetIcon: String, Codable, CaseIterable, Sendable, Identifiable {
     case sync, thunderbolt, coffee, rocket, compass
     case moon, sun, fire, code, videoCamera = "video-camera", experiment, laptop, desktop, home
-    case sound, car, cloud, dashboard, sliders, heart, star
-    case aim
+    case sound, car, cloud, dashboard, sliders, heart, star, airplane
+    /// Adaptive's icon, and the mark of everything Apple Intelligence does. No other preset takes it.
+    case sparkles
 
     var id: String { rawValue }
 
     var assetName: String { "ant-\(rawValue)" }
 
     /// The icons offered for a preset a person makes.
-    static let choices: [PresetIcon] = allCases.filter { $0 != .sync && $0 != .thunderbolt && $0 != .aim }
+    static let choices: [PresetIcon] = allCases.filter { $0 != .sync && $0 != .thunderbolt && $0 != .sparkles }
 }
 
 /// A named way to run the fans.
@@ -84,7 +85,7 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
     static let adaptiveID = UUID(uuidString: "A1F10000-0000-4000-8000-000000000003") ?? UUID()
 
     static let adaptive = Preset(
-        id: adaptiveID, name: "Adaptive", icon: .aim, kind: .adaptive,
+        id: adaptiveID, name: "Adaptive", icon: .sparkles, kind: .adaptive,
         summary: "Fans adapt to what your Mac is doing and what it's about to do."
     )
 
@@ -104,7 +105,7 @@ struct Preset: Identifiable, Equatable, Codable, Sendable {
                 summary: "Fans speed up early to keep temperatures down during long tasks."
             ),
             Preset(
-                name: "Travel", icon: .compass,
+                name: "Travel", icon: .airplane,
                 fallback: .sensorBased(SensorRule(source: .group(.battery, .average), startCelsius: 33, maxCelsius: 43)),
                 summary: "Fans follow the battery temperature, for a Mac on your lap."
             ),

@@ -17,7 +17,7 @@ struct SettingsView: View {
             Tab {
                 IntelligenceSettingsPane()
             } label: {
-                Label("Intelligence", image: "ant-bulb")
+                Label("Intelligence", image: "ant-sparkles")
             }
             Tab {
                 AboutSettingsPane()

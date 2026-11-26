@@ -73,6 +73,7 @@ final class WindowOpener {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var observers: [NSObjectProtocol] = []
+    private var appearance: NSKeyValueObservation?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         #if DEBUG
@@ -86,6 +87,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppModel.shared.start()
         Updates.shared.start()
         let center = NotificationCenter.default
+        // The Dock icon's blades follow the accent, and its plate follows Light and Dark Mode.
+        if !AppModel.isRunningTests {
+            DockIcon.update()
+            observers.append(center.addObserver(forName: NSColor.systemColorsDidChangeNotification, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { DockIcon.update() }
+            })
+            appearance = NSApp.observe(\.effectiveAppearance) { _, _ in
+                Task { @MainActor in DockIcon.update() }
+            }
+        }
         for name in [NSWindow.didBecomeKeyNotification, NSWindow.willCloseNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
                 let closing = note.name == NSWindow.willCloseNotification ? note.object as? NSWindow : nil

@@ -123,6 +123,11 @@ struct MenuPanel: View {
             .padding(Space.sm)
         }
         .frame(width: Layout.panelWidth)
+        .background {
+            if model.settings.activePresetID == Preset.adaptiveID {
+                AirBackdrop(band: snapshot.summary(of: .cpu).map { TemperatureBand.band(for: $0.average, in: .cpu) })
+            }
+        }
         .onAppear {
             isShowing = true
             model.monitor.visibleSurfaces += 1

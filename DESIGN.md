@@ -3,16 +3,16 @@ name: AirFlow
 description: Fan control for the Mac in Liquid Glass, with Ant Design's components and a temperature scale that always sits beside a number.
 colors:
   accent: "system accent"
-  temp-cool: "#08979C"
-  temp-cool-dark: "#36CFC9"
-  temp-mild: "#389E0D"
-  temp-mild-dark: "#73D13D"
-  temp-warm: "#AD6800"
-  temp-warm-dark: "#FFC53D"
-  temp-hot: "#D4380D"
-  temp-hot-dark: "#FF7A45"
-  temp-critical: "#CF1322"
-  temp-critical-dark: "#FF4D4F"
+  temp-cool: "#0369A1"
+  temp-cool-dark: "#38BDF8"
+  temp-mild: "#047857"
+  temp-mild-dark: "#34D399"
+  temp-warm: "#B45309"
+  temp-warm-dark: "#FBBF24"
+  temp-hot: "#C2410C"
+  temp-hot-dark: "#FB923C"
+  temp-critical: "#BE123C"
+  temp-critical-dark: "#FB7185"
 typography:
   display:
     fontFamily: "Hedvig Letters Sans"
@@ -70,7 +70,7 @@ AirFlow does not use the layout of Macs Fan Control: two flat tables and a dialo
 **Key Characteristics:**
 
 - A translucent window with glass components. No opaque panels, and no card inside a card.
-- One icon set at one weight (Ant Design's outlined icons) and one mark (the fan).
+- One icon set at one weight (Ant Design's outlined icons) and one mark (the fan). The sparkles and the airplane are AirFlow's own drawings in that weight, because the set has neither.
 - A five-step temperature scale that is the only color with meaning.
 - Two faces that the app carries: Hedvig Letters Sans for text, and IBM Plex Mono for every reading, so a number that changes never moves its neighbors.
 - Motion that shows a state: a rotor turns as fast as its fan.
@@ -81,23 +81,35 @@ The window has no color of its own. The glass takes the color of what is behind 
 
 ### Primary
 
-- **Accent** (`Color.accentColor`): the color the person picked in System Settings. It marks the selection, the Apply button, the filled part of a fan's track, the curve's handles, and the Active tag. Multicolor resolves to blue.
+- **Accent** (`Color.accentColor`): the color the person picked in System Settings. It marks the selected row of the sidebar, the Apply button, the filled part of a fan's track, the fan chart, the curve's handles, and the Active tag. Multicolor resolves to blue.
 
 ### Temperature scale
 
-Ant Design's functional colors, one step for each band. Each step has a darker Light Mode value, so that a dot or a line holds 3:1 against a light window.
+One step for each band. Each step has a darker Light Mode value, which holds 4.5:1 against a light window.
 
-| Band | Word | Light | Dark | Ant Design name |
+| Band | Word | Light | Dark | Hue |
 |---|---|---|---|---|
-| `cool` | Cool | `#08979C` | `#36CFC9` | cyan |
-| `mild` | Normal | `#389E0D` | `#73D13D` | green |
-| `warm` | Warm | `#AD6800` | `#FFC53D` | gold |
-| `hot` | Hot | `#D4380D` | `#FF7A45` | volcano |
-| `critical` | Very Hot | `#CF1322` | `#FF4D4F` | red |
+| `cool` | Cool | `#0369A1` | `#38BDF8` | sky |
+| `mild` | Normal | `#047857` | `#34D399` | emerald |
+| `warm` | Warm | `#B45309` | `#FBBF24` | amber |
+| `hot` | Hot | `#C2410C` | `#FB923C` | orange |
+| `critical` | Very Hot | `#BE123C` | `#FB7185` | rose |
 
 A reading's band depends on the part it belongs to (`TemperatureBand.thresholds`). The CPU and GPU change bands at 50, 70, 85, and 95 °C. The battery changes at 30, 35, 40, and 45 °C. Storage changes at 40, 50, 60, and 70 °C. Every other part changes at 45, 55, 65, and 80 °C.
 
-The scale appears in the status dot beside a temperature, the ground under a fan curve, and the live point on the curve. It also appears in the two lines of the history chart (CPU in `hot`, GPU in `cool`). The alerts use three of its steps: `mild` for success, `warm` for caution, and `critical` for an error.
+The scale appears in the status dot beside a temperature, the ground under a fan curve, the curve's own line, and the live point on the curve. It also appears in the two lines of the history chart (CPU in `hot`, GPU in `cool`).
+
+### What carries a reading is not flat
+
+A status dot is a bead lit from above with a little of its own light. A fan's track is filled like liquid in a tube: the accent as a gradient, a highlight along the top, and a glow. A line in a chart or on the curve sits on a soft light of its own color, over a fall of that color toward the axis.
+
+### Adaptive's look
+
+While Adaptive is the current preset, the window and the menu bar panel sit on `AirBackdrop`: soft fields of indigo, violet, and teal over the blurred desktop, with one field in the color of the CPU's band. No other preset changes the window. Sparkles mark Adaptive and everything Apple Intelligence does.
+
+### The Dock icon
+
+While AirFlow runs, the fan's blades in the Dock icon have the system accent (`DockIcon`). The menu bar icon stays a plain template image. The alerts use three of its steps: `mild` for success, `warm` for caution, and `critical` for an error.
 
 ### Neutral
 
@@ -154,8 +166,8 @@ AirFlow draws each Ant Design component in glass through `antGlass` (`Theme.swif
 | `StateTag` | Tag | Capsule, tinted | Active, Matches Now, and the kind of work on the Adaptive page |
 | `StatusBanner` | Alert | Radius 16, tinted by kind | Monitoring Only, Allow the Helper, Safeguard Is On, a failure, Fan Control Is On |
 | `Statistic` | Statistic | None | A fan's speed with its unit, in IBM Plex Mono |
-| `StatusDot` | Badge | None | A temperature's band |
-| `FanTrack` | Progress | None | The fan's range. The fill is the current speed, and the mark is the speed AirFlow asked for. |
+| `StatusDot` | Badge | None | A temperature's band, as a bead with a glow |
+| `FanTrack` | Progress | None | The fan's range. The fill is the current speed in the accent, and the mark is the speed AirFlow asked for. |
 | `CurveEditor` | (AirFlow's own) | Handles are interactive glass circles | A sensor rule as speed against temperature, with the live point |
 | `AntSegmented` | Segmented | A flat track, with a pane of accent glass under the selected segment | How a fan runs: Automatic, Constant, Sensor-Based |
 | `AntSelect` | Select | A quiet fill, as wide as the chosen option's text. The menu is the system's. | A sensor, a preset, an app, or a power source in a sentence |

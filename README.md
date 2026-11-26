@@ -133,7 +133,7 @@ The pictures show a copy of AirFlow that no developer signed. That copy monitors
 | Change a fan curve | Drag either handle on the curve, or click the arrows beside "Starts speeding up at" and "Full speed at". |
 | Use a preset | Select it in the sidebar, then click Apply. |
 | Make a preset | Click the Add button at the bottom of the sidebar. The new preset starts as a copy of the selected one. |
-| Describe a preset | Click the light bulb at the bottom of the sidebar. |
+| Describe a preset | Click the sparkles at the bottom of the sidebar. |
 | Rename a preset | Click the pencil beside its name. |
 | Export or import presets | Click the More button at the bottom of the sidebar, or choose File > Export Presets or File > Import Presets. |
 | Add a rule | Click Rules in the sidebar, then click Add Rule. Drag a rule to change its place. The first rule that matches wins. |

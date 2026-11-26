@@ -5,9 +5,15 @@ struct StatusDot: View {
     let band: TemperatureBand
 
     var body: some View {
+        // A bead lit from above, with a little of its own light around it.
+        let color = Palette.temperature(band)
         Circle()
-            .fill(Palette.temperature(band))
+            .fill(color.gradient)
+            .overlay(alignment: .top) {
+                Circle().fill(.white.opacity(0.5)).frame(width: 3, height: 2).offset(y: 1.5)
+            }
             .frame(width: Layout.statusDot, height: Layout.statusDot)
+            .shadow(color: color.opacity(0.7), radius: 3)
             .accessibilityHidden(true)
     }
 }
@@ -77,10 +83,16 @@ struct FanTrack: View {
             GeometryReader { proxy in
                 let width = proxy.size.width
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Palette.fillStrong(contrast))
+                    Capsule().fill(Palette.fillStrong(contrast)).frame(height: Layout.trackHeight)
+                    // The fill has the accent the person chose in System Settings. It is lit from
+                    // above and glows a little, like liquid in a tube.
                     Capsule()
-                        .fill(Palette.accent)
-                        .frame(width: max(Layout.trackHeight, width * fan.fraction))
+                        .fill(Palette.accent.gradient)
+                        .overlay(alignment: .top) {
+                            Capsule().fill(.white.opacity(0.4)).frame(height: 2).padding(.horizontal, 2).padding(.top, 1)
+                        }
+                        .frame(width: max(Layout.trackHeight, width * fan.fraction), height: Layout.trackHeight)
+                        .shadow(color: Palette.accent.opacity(0.6), radius: 4)
                     if let target {
                         RoundedRectangle(cornerRadius: 1)
                             .fill(Color.primary)

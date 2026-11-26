@@ -40,7 +40,7 @@ enum Layout {
     static let windowMinWidth: CGFloat = 1120
     static let panelWidth: CGFloat = 340
     static let settingsWidth: CGFloat = 520
-    static let trackHeight: CGFloat = 6
+    static let trackHeight: CGFloat = 8
     static let curveHeight: CGFloat = 168
     static let statusDot: CGFloat = 8
 }
@@ -62,7 +62,7 @@ enum Palette {
         Color.primary.opacity(contrast == .increased ? 0.40 : 0.12)
     }
 
-    /// Ant Design's functional colors as a temperature scale, one step per band.
+    /// The temperature scale, one step per band: sky, emerald, amber, orange, rose.
     static func temperature(_ band: TemperatureBand) -> Color {
         switch band {
         case .cool: return Color("TempCool")
@@ -70,6 +70,19 @@ enum Palette {
         case .warm: return Color("TempWarm")
         case .hot: return Color("TempHot")
         case .critical: return Color("TempCritical")
+        }
+    }
+
+    /// The temperature scale as a gradient across a range of temperatures, for a part's bands.
+    static func temperatureStops(for group: SensorGroup, in range: ClosedRange<Double>, opacity: Double = 1) -> [Gradient.Stop] {
+        let thresholds = TemperatureBand.thresholds(for: group)
+        let span = range.upperBound - range.lowerBound
+        // One stop in the middle of each band, so one band's color runs into the next.
+        return TemperatureBand.allCases.map { band in
+            let lower = band.rawValue == 0 ? range.lowerBound : thresholds[band.rawValue - 1]
+            let upper = band.rawValue < thresholds.count ? thresholds[band.rawValue] : range.upperBound
+            let middle = ((lower + upper) / 2 - range.lowerBound) / span
+            return Gradient.Stop(color: temperature(band).opacity(opacity), location: min(max(middle, 0), 1))
         }
     }
 
@@ -226,6 +239,48 @@ extension EnvironmentValues {
     /// True where glass cannot be drawn: an off-screen drawing has nothing behind it, and the
     /// system leaves out whatever sits on glass there. A flat fill stands in for the pane.
     @Entry var airFlatGlass = false
+}
+
+/// The look of the window while Adaptive is on: soft fields of indigo, violet, and teal over the
+/// blurred desktop. One field takes the color of the CPU's temperature band, so the window warms as
+/// the Mac does. The number that says so is always on the page as well.
+struct AirBackdrop: View {
+    /// The CPU's band, or nil before the first reading.
+    var band: TemperatureBand?
+
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let dark = scheme == .dark
+        let base = dark ? Color(red: 0.035, green: 0.043, blue: 0.11) : Color(red: 0.955, green: 0.96, blue: 1.0)
+        let indigo = dark ? Color(red: 0.19, green: 0.20, blue: 0.62) : Color(red: 0.80, green: 0.83, blue: 1.0)
+        let violet = dark ? Color(red: 0.36, green: 0.20, blue: 0.70) : Color(red: 0.90, green: 0.83, blue: 1.0)
+        let teal = dark ? Color(red: 0.04, green: 0.42, blue: 0.48) : Color(red: 0.78, green: 0.93, blue: 0.95)
+        let heat = band.map { Palette.temperature($0) } ?? teal
+        ZStack {
+            Rectangle().fill(.ultraThinMaterial)
+            MeshGradient(
+                width: 3, height: 3,
+                points: [
+                    [0, 0], [0.5, 0], [1, 0],
+                    [0, 0.45], [0.55, 0.5], [1, 0.4],
+                    [0, 1], [0.45, 1], [1, 1],
+                ],
+                colors: [
+                    indigo, base, heat.opacity(dark ? 0.55 : 0.35),
+                    base, violet, base,
+                    teal, base, indigo,
+                ]
+            )
+            // More contrast asks for a calmer ground under the text.
+            .opacity(contrast == .increased ? 0.35 : (dark ? 0.78 : 0.9))
+        }
+        .ignoresSafeArea()
+        .animation(reduceMotion ? nil : .easeInOut(duration: 1.5), value: band)
+        .accessibilityHidden(true)
+    }
 }
 
 /// Ant Design's card as a pane of glass.

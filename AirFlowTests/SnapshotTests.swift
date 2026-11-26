@@ -92,6 +92,22 @@ final class SnapshotTests: XCTestCase {
         try data.write(to: folder.appendingPathComponent("\(name).png"))
     }
 
+    func testTheDockIcon() throws {
+        let folder = try XCTUnwrap(folder)
+        for (name, accent, isDark) in [("dock-blue", NSColor.systemBlue, false), ("dock-pink-dark", NSColor.systemPink, true)] {
+            let image = DockIcon.image(accent: accent, isDark: isDark)
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: 512, pixelsHigh: 512, bitsPerSample: 8, samplesPerPixel: 4,
+                hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+            ))
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+            image.draw(in: NSRect(x: 0, y: 0, width: 512, height: 512))
+            NSGraphicsContext.restoreGraphicsState()
+            try XCTUnwrap(bitmap.representation(using: .png, properties: [:])).write(to: folder.appendingPathComponent("\(name).png"))
+        }
+    }
+
     func testThePanel() throws {
         let controlling = try model(helper: .enabled, active: "Quiet", cpu: 78)
         try draw("panel-controlling", width: Layout.panelWidth, model: controlling) { MenuPanel() }

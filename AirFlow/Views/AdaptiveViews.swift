@@ -111,7 +111,7 @@ struct AppWorkloadsEditor: View {
                 Button {
                     suggest(workload)
                 } label: {
-                    Label("Suggest", image: "ant-bulb")
+                    Label("Suggest", image: "ant-sparkles")
                         .airFont(.label)
                 }
                 .buttonStyle(.glass)

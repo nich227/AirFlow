@@ -108,7 +108,7 @@ struct LiveInspector: View {
             Button {
                 explain()
             } label: {
-                Label("Explain These Readings", image: "ant-bulb")
+                Label("Explain These Readings", image: "ant-sparkles")
                     .airFont(.body)
             }
             .buttonStyle(.glass)
@@ -183,19 +183,22 @@ struct HistoryChart: View {
                 .fixedSize(horizontal: false, vertical: true)
         } else {
             VStack(alignment: .leading, spacing: Space.md) {
+                let domain = Self.temperatureDomain(history, unit: format.unit)
+                HStack(spacing: Space.sm) {
+                    legend("CPU", color: Palette.temperature(.hot))
+                    legend("GPU", color: Palette.temperature(.cool))
+                }
+                .accessibilityHidden(true)
                 Chart {
                     ForEach(history) { point in
                         if let cpu = point.cpu {
-                            LineMark(x: .value("Time", point.date), y: .value("Temperature", format.unit.value(fromCelsius: cpu)))
-                                .foregroundStyle(by: .value("Part", "CPU"))
+                            temperatureMarks(point.date, format.unit.value(fromCelsius: cpu), part: "CPU", color: Palette.temperature(.hot), floor: domain.lowerBound)
                         }
                         if let gpu = point.gpu {
-                            LineMark(x: .value("Time", point.date), y: .value("Temperature", format.unit.value(fromCelsius: gpu)))
-                                .foregroundStyle(by: .value("Part", "GPU"))
+                            temperatureMarks(point.date, format.unit.value(fromCelsius: gpu), part: "GPU", color: Palette.temperature(.cool), floor: domain.lowerBound)
                         }
                     }
                 }
-                .chartForegroundStyleScale(["CPU": Palette.temperature(.hot), "GPU": Palette.temperature(.cool)])
                 .chartYAxis {
                     AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
                         AxisGridLine()
@@ -207,25 +210,21 @@ struct HistoryChart: View {
                     }
                 }
                 .chartXAxis(.hidden)
-                .chartLegend(position: .top, alignment: .leading)
-                .chartYScale(domain: Self.temperatureDomain(history, unit: format.unit))
+                .chartLegend(.hidden)
+                .chartYScale(domain: domain)
                 .frame(height: 116)
                 .accessibilityLabel("CPU and GPU temperature over the last 15 minutes")
 
-                HStack(spacing: Space.xxs) {
-                    Circle()
-                        .fill(Palette.accent)
-                        .frame(width: 7, height: 7)
-                    Text("Fastest Fan")
-                        .airFont(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .accessibilityHidden(true)
+                legend("Fastest Fan", color: Palette.accent)
+                    .accessibilityHidden(true)
                 Chart(history) { point in
                     AreaMark(x: .value("Time", point.date), y: .value("Fan Speed", (point.fanFractions.max() ?? 0) * 100))
-                        .foregroundStyle(Palette.accent.opacity(0.25))
+                        .foregroundStyle(LinearGradient(colors: [Palette.accent.opacity(0.45), Palette.accent.opacity(0.05)], startPoint: .top, endPoint: .bottom))
+                        .interpolationMethod(.monotone)
                     LineMark(x: .value("Time", point.date), y: .value("Fan Speed", (point.fanFractions.max() ?? 0) * 100))
                         .foregroundStyle(Palette.accent)
+                        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                        .interpolationMethod(.monotone)
                 }
                 .chartYScale(domain: 0...100)
                 .chartYAxis {
@@ -252,6 +251,35 @@ struct HistoryChart: View {
 }
 
 extension HistoryChart {
+    /// A bead of the series' color beside its name.
+    private func legend(_ title: String, color: Color) -> some View {
+        HStack(spacing: Space.xxs) {
+            Circle()
+                .fill(color.gradient)
+                .frame(width: 7, height: 7)
+                .shadow(color: color.opacity(0.7), radius: 3)
+            Text(title)
+                .airFont(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    /// One reading of a part: a fall of its color under the line, a soft light, and the line.
+    @ChartContentBuilder
+    private func temperatureMarks(_ date: Date, _ value: Double, part: String, color: Color, floor: Double) -> some ChartContent {
+        AreaMark(x: .value("Time", date), yStart: .value("Floor", floor), yEnd: .value("Temperature", value), series: .value("Part", part))
+            .foregroundStyle(LinearGradient(colors: [color.opacity(0.32), color.opacity(0.02)], startPoint: .top, endPoint: .bottom))
+            .interpolationMethod(.monotone)
+        LineMark(x: .value("Time", date), y: .value("Temperature", value), series: .value("Part", "\(part) light"))
+            .foregroundStyle(color.opacity(0.28))
+            .lineStyle(StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+            .interpolationMethod(.monotone)
+        LineMark(x: .value("Time", date), y: .value("Temperature", value), series: .value("Part", part))
+            .foregroundStyle(color)
+            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+            .interpolationMethod(.monotone)
+    }
+
     /// The temperatures in the history, widened to whole tens so the line never touches an edge.
     static func temperatureDomain(_ history: some Sequence<HistoryPoint>, unit: TemperatureUnit) -> ClosedRange<Double> {
         var coolest = Double.infinity

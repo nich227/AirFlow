@@ -131,25 +131,22 @@ struct CurveEditor: View {
 
         // The background under the line is the temperature scale for the part the rule follows, so
         // the line reads against how hot each temperature is for that part.
-        let thresholds = TemperatureBand.thresholds(for: group)
-        let span = Plot.range.upperBound - Plot.range.lowerBound
-        var stops: [Gradient.Stop] = []
-        for band in TemperatureBand.allCases {
-            let lower = band.rawValue == 0 ? Plot.range.lowerBound : thresholds[band.rawValue - 1]
-            let upper = band.rawValue < thresholds.count ? thresholds[band.rawValue] : Plot.range.upperBound
-            let color = Palette.temperature(band).opacity(contrast == .increased ? 0.34 : 0.22)
-            stops.append(Gradient.Stop(color: color, location: min(max((lower - Plot.range.lowerBound) / span, 0), 1)))
-            stops.append(Gradient.Stop(color: color, location: min(max((upper - Plot.range.lowerBound) / span, 0), 1)))
-        }
-        context.fill(area, with: .linearGradient(
-            Gradient(stops: stops),
-            startPoint: CGPoint(x: plot.frame.minX, y: 0), endPoint: CGPoint(x: plot.frame.maxX, y: 0)
-        ))
+        let start = CGPoint(x: plot.frame.minX, y: 0), end = CGPoint(x: plot.frame.maxX, y: 0)
+        let ground = Palette.temperatureStops(for: group, in: Plot.range, opacity: contrast == .increased ? 0.34 : 0.24)
+        context.fill(area, with: .linearGradient(Gradient(stops: ground), startPoint: start, endPoint: end))
 
         var line = Path()
         line.move(to: points[0])
         points.dropFirst().forEach { line.addLine(to: $0) }
-        context.stroke(line, with: .color(.primary), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+        // The line has the color of each temperature it passes, over a soft light of the same color.
+        let scale = GraphicsContext.Shading.linearGradient(
+            Gradient(stops: Palette.temperatureStops(for: group, in: Plot.range)), startPoint: start, endPoint: end
+        )
+        var glow = context
+        glow.addFilter(.blur(radius: 5))
+        glow.opacity = 0.6
+        glow.stroke(line, with: scale, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+        context.stroke(line, with: scale, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
     }
 
     private func drawLivePoint(in context: inout GraphicsContext, plot: Plot) {
@@ -161,6 +158,9 @@ struct CurveEditor: View {
         context.stroke(guide, with: .color(.secondary), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
         let band = TemperatureBand.band(for: currentCelsius, in: group)
         let dot = Path(ellipseIn: CGRect(x: point.x - 5, y: point.y - 5, width: 10, height: 10))
+        var glow = context
+        glow.addFilter(.blur(radius: 4))
+        glow.fill(dot, with: .color(Palette.temperature(band)))
         context.fill(dot, with: .color(Palette.temperature(band)))
         context.stroke(dot, with: .color(.primary), lineWidth: 1.5)
     }

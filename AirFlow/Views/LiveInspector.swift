@@ -189,13 +189,15 @@ struct HistoryChart: View {
         } else {
             VStack(alignment: .leading, spacing: Space.md) {
                 let domain = Self.temperatureDomain(history, unit: format.unit)
+                // The charts draw the history thinned to a hundred points at most.
+                let points = HistoryPoint.thinned(history)
                 HStack(spacing: Space.sm) {
                     legend("CPU", colors: Palette.cpu)
                     legend("GPU", colors: Palette.gpu)
                 }
                 .accessibilityHidden(true)
                 Chart {
-                    ForEach(history) { point in
+                    ForEach(points) { point in
                         if let cpu = point.cpu {
                             temperatureMarks(point.date, format.unit.value(fromCelsius: cpu), part: "CPU", colors: Palette.cpu, floor: domain.lowerBound)
                         }
@@ -230,7 +232,7 @@ struct HistoryChart: View {
                 .accessibilityHidden(true)
                 // One line for each fan, so a Mac with one fan, two, or more shows them all.
                 Chart {
-                    ForEach(history) { point in
+                    ForEach(points) { point in
                         ForEach(Array(point.fanFractions.prefix(fanCount).enumerated()), id: \.offset) { index, fraction in
                             AreaMark(x: .value("Time", point.date), y: .value("Fan Speed", fraction * 100), series: .value("Fan", index), stacking: .unstacked)
                                 .foregroundStyle(LinearGradient(colors: [Palette.fan(index, of: fanCount).opacity(0.3), Palette.fan(index, of: fanCount).opacity(0.03)], startPoint: .top, endPoint: .bottom))

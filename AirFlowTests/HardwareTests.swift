@@ -76,6 +76,39 @@ final class ThermalMonitorTests: XCTestCase {
         XCTAssertEqual(monitor.history.count, 1)
     }
 
+    func testAChartDrawsNoMoreThanAHundredPointsOfTheHistory() {
+        let start = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        func history(_ count: Int, every step: Double = 1) -> [HistoryPoint] {
+            (0..<count).map { index in
+                HistoryPoint(date: start.addingTimeInterval(Double(index) * step), cpu: Double(index), gpu: index % 2 == 0 ? 50 : nil, fanFractions: [Double(index) / 1000, 0.5])
+            }
+        }
+        XCTAssertEqual(HistoryPoint.thinned(history(60)), history(60), "A short history is drawn as it is")
+        XCTAssertEqual(HistoryPoint.chartInterval(forSpan: 100), 1)
+        XCTAssertEqual(HistoryPoint.chartInterval(forSpan: 101), 2)
+        XCTAssertEqual(HistoryPoint.chartInterval(forSpan: 899), 10)
+        XCTAssertEqual(HistoryPoint.chartInterval(forSpan: 1_000_000), 60, "The longest span is the last resort")
+        let full = HistoryPoint.thinned(history(900))
+        XCTAssertEqual(full.count, 90, "Fifteen minutes are ninety points of ten seconds")
+        XCTAssertLessThanOrEqual(full.count, HistoryPoint.chartLimit)
+        XCTAssertEqual(full[0].cpu, 4.5, "A point is the average of its readings")
+        XCTAssertEqual(full[0].gpu, 50, "A reading that is missing is left out of the average")
+        XCTAssertEqual(full[0].fanFractions[0], 0.0045, accuracy: 1e-12)
+        XCTAssertEqual(full[0].fanFractions[1], 0.5)
+        XCTAssertEqual(full[0].date, start.addingTimeInterval(9), "A point has the time of its last reading")
+        XCTAssertEqual(full.last?.date, start.addingTimeInterval(899), "The newest point is at the newest reading")
+        // One more reading changes only the newest point.
+        let next = HistoryPoint.thinned(history(901))
+        XCTAssertEqual(Array(next.prefix(90)), full)
+        XCTAssertEqual(next.count, 91)
+        // Readings four seconds apart, as with no window open, are not thinned below their own rate.
+        XCTAssertEqual(HistoryPoint.thinned(history(225, every: 4)).count, 90)
+        XCTAssertEqual(HistoryPoint.thinned(history(20, every: 4)).count, 20)
+        XCTAssertTrue(HistoryPoint.thinned([HistoryPoint]()).isEmpty)
+        let noGPU = HistoryPoint.thinned((0..<300).map { HistoryPoint(date: start.addingTimeInterval(Double($0)), cpu: nil, gpu: nil, fanFractions: []) })
+        XCTAssertTrue(noGPU.allSatisfy { $0.cpu == nil && $0.gpu == nil && $0.fanFractions.isEmpty })
+    }
+
     func testOnlyThePartsAirFlowActsOnAreReadOnEverySample() {
         let slow: Set<SensorGroup> = [.cpu, .gpu, .memory, .storage, .battery, .enclosure, .power, .wireless]
         XCTAssertEqual(ThermalMonitor.groups(forSample: 0, followed: [], listsEverySensor: false), slow, "The first sample reads every part")

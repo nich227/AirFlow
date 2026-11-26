@@ -101,6 +101,8 @@ struct MainWindow: View {
         .task {
             // A script that captures Preferences asks for that window by name.
             if ProcessInfo.processInfo.environment["AIRFLOW_SHOW"]?.lowercased() == "preferences" { openSettings() }
+            // A measurement of what the charts cost asks for a full history at once.
+            if ProcessInfo.processInfo.environment["AIRFLOW_FILL_HISTORY"] != nil { model.monitor.fillHistoryForMeasuring() }
             guard ProcessInfo.processInfo.environment["AIRFLOW_TOGGLE_READINGS"] != nil else { return }
             for _ in 0..<2 {
                 try? await Task.sleep(for: .seconds(5))

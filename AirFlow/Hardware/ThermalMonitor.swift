@@ -86,6 +86,22 @@ final class ThermalMonitor {
         }
     }
 
+    #if DEBUG
+    /// Fills the history with fifteen minutes of made-up readings, so a measurement of what the
+    /// charts cost does not have to wait fifteen minutes.
+    func fillHistoryForMeasuring(now: Date = Date()) {
+        let count = Int(Self.historyDuration)
+        points = (0..<count).map { index in
+            let phase = Double(index) / 40
+            return HistoryPoint(
+                date: now.addingTimeInterval(Double(index - count)),
+                cpu: 65 + 12 * sin(phase), gpu: 52 + 6 * cos(phase), fanFractions: [0.4 + 0.3 * sin(phase / 2), 0.45 + 0.3 * sin(phase / 2)]
+            )
+        }
+        firstLive = 0
+    }
+    #endif
+
     func ingest(_ new: ThermalSnapshot) {
         isAvailable = true
         hasLoaded = true

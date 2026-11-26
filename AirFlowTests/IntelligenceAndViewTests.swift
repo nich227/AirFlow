@@ -142,8 +142,9 @@ final class FormatTests: XCTestCase {
     }
 
     func testTheDockIconFollowsThePaletteAndAdaptive() {
-        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .bliss), "AppIcon", "The first palette has the app's own icon")
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .aqua), "AppIcon", "The first palette has the app's own icon")
         XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .matrix), "AppIconMatrix")
+        XCTAssertEqual(DockIcon.bundledName(isRainbow: false, palette: .cyberpunk), "AppIconCyberpunk")
         XCTAssertEqual(DockIcon.bundledName(isRainbow: true, palette: .matrix), "AppIconRainbow")
         XCTAssertEqual(DockIcon.darkName(for: "AppIconRainbow"), "DockRainbowDark")
         for name in ["AppIconRainbow"] + ColorPalette.allCases.map(\.iconName) where name != "AppIcon" {
@@ -195,9 +196,11 @@ final class FormatTests: XCTestCase {
         XCTAssertTrue(Sidebar.deleteWarning(rules: 3).hasPrefix("The 3 rules that use this preset"))
     }
 
-    func testEveryPaletteHasEveryColorAndTheFirstIsBliss() {
-        XCTAssertEqual(ColorPalette.standard, .bliss)
-        XCTAssertEqual(ColorPalette.allCases.first, .bliss)
+    func testEveryPaletteHasEveryColorAndTheFirstIsAqua() {
+        XCTAssertEqual(ColorPalette.standard, .aqua)
+        XCTAssertEqual(ColorPalette.allCases.first, .aqua)
+        XCTAssertEqual(ColorPalette.allCases.count, 8)
+        XCTAssertNil(ColorPalette(rawValue: "bliss"), "The palette that Cyberpunk replaced is gone")
         for palette in ColorPalette.allCases {
             XCTAssertEqual(palette.temperatures.count, TemperatureBand.allCases.count, palette.title)
             XCTAssertEqual(Set(palette.temperatures.map(\.dark)).count, 5, "\(palette.title) has a color of its own for each band")
@@ -282,15 +285,15 @@ final class FormatTests: XCTestCase {
         first.temperatureUnit = .fahrenheit
         first.menuBarReadout = .cpu
         first.safeguardEnabled = false
-        XCTAssertEqual(first.colorPalette, .bliss, "A new copy starts with Bliss")
+        XCTAssertEqual(first.colorPalette, .aqua, "A new copy starts with Aqua")
         first.colorPalette = .matrix
         XCTAssertEqual(ColorPalette.current, .matrix, "The drawing code reads the palette the person chose")
         defaults.set(500.0, forKey: AppSettings.Key.safeguardLimit)
         let second = AppSettings(defaults: defaults)
         XCTAssertEqual(second.colorPalette, .matrix)
-        defaults.set("no such palette", forKey: AppSettings.Key.colorPalette)
-        XCTAssertEqual(AppSettings(defaults: defaults).colorPalette, .bliss)
-        XCTAssertEqual(ColorPalette.current, .bliss)
+        defaults.set("bliss", forKey: AppSettings.Key.colorPalette)
+        XCTAssertEqual(AppSettings(defaults: defaults).colorPalette, .aqua, "A copy that had a palette that is gone gets the first one")
+        XCTAssertEqual(ColorPalette.current, .aqua)
         XCTAssertEqual(second.dotColoring, .temperature, "A dot shows a temperature until the person chooses otherwise")
         let before = second.lookID
         second.dotColoring = .part

@@ -117,7 +117,8 @@ def airplane_svg():
 # accent (ColorPalette.accent in the app), and a brighter step of it on the dark plate. The first is
 # the app's own icon. Every icon is an Icon Composer document, so macOS draws it in Liquid Glass.
 PALETTES = {
-    "": ("#245EDC", "#5AA7F2"),  # Bliss
+    "": ("#2F7DE0", "#6AABF3"),  # Aqua
+    "Cyberpunk": ("#FF003C", "#FF335F"),
     "Aurora": ("#0D9488", "#2DD4BF"), "Matrix": ("#008F11", "#00FF41"), "Girlypop": ("#DB2777", "#F472B6"),
     "Synthwave": ("#C2259B", "#FF7EDB"), "Nord": ("#4C6E96", "#88C0D0"), "Catppuccin": ("#8839EF", "#CBA6F7"),
 }

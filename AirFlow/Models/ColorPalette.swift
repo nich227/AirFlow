@@ -3,10 +3,10 @@ import Foundation
 /// The colors of AirFlow: its accent, the temperature scale, and the lines of the charts. The
 /// person chooses one in Preferences.
 enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
-    case bliss, aurora, matrix, girlypop, synthwave, nord, catppuccin
+    case aqua, cyberpunk, aurora, matrix, girlypop, synthwave, nord, catppuccin
 
     /// The palette of a copy of AirFlow in which the person has chosen none.
-    static let standard = ColorPalette.bliss
+    static let standard = ColorPalette.aqua
 
     /// One color as sRGB hex, with a value for Light Mode and one for Dark Mode.
     struct Shade: Equatable, Sendable {
@@ -23,7 +23,8 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
 
     var title: String {
         switch self {
-        case .bliss: return "Bliss"
+        case .aqua: return "Aqua"
+        case .cyberpunk: return "Cyberpunk"
         case .aurora: return "Aurora"
         case .matrix: return "Matrix"
         case .girlypop: return "Girlypop"
@@ -36,10 +37,13 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
     /// The temperature scale, one color for each band from cool to very hot.
     var temperatures: [Shade] {
         switch self {
-        case .bliss:
-            // A green hill under a blue sky: sky, grass, the sunlit side of the hill, then the
-            // orange and the red of a window's own buttons from the same years.
-            return [Shade(0x1F64C8, 0x6CB4F5), Shade(0x3F7D1A, 0x7CC243), Shade(0x8F8500, 0xD9E04A), Shade(0xC76A00, 0xF5A623), Shade(0xC8321A, 0xF0563B)]
+        case .aqua:
+            // The Mac's own look of 2001: the blue of a gel button, then the green, the yellow, and
+            // the red of a window's three buttons, with an orange between the last two.
+            return [Shade(0x1C5FB8, 0x6AABF3), Shade(0x3E8E1E, 0x58B52F), Shade(0xA86F00, 0xFFAE00), Shade(0xB85A1F, 0xE0742F), Shade(0xC22D23, 0xFF3B30)]
+        case .cyberpunk:
+            // Neon on black: cyan, green, the yellow of the game's name, orange, and red.
+            return [Shade(0x008C99, 0x00F0FF), Shade(0x008F5A, 0x05FFA1), Shade(0x8F8600, 0xFCEE0A), Shade(0xC25A00, 0xFF7700), Shade(0xD1002F, 0xFF003C)]
         case .aurora:
             return [Shade(0x0369A1, 0x38BDF8), Shade(0x047857, 0x34D399), Shade(0xB45309, 0xFBBF24), Shade(0xC2410C, 0xFB923C), Shade(0xBE123C, 0xFB7185)]
         case .matrix:
@@ -59,7 +63,8 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
     /// The two colors the CPU's line runs between in the temperature chart.
     var cpu: [Shade] {
         switch self {
-        case .bliss: return [Shade(0x245EDC, 0x8CC4FA), Shade(0x0F3FA8, 0x4A90E2)]
+        case .aqua: return [Shade(0x2F7DE0, 0x6AABF3), Shade(0x1C5FB8, 0x2F7DE0)]
+        case .cyberpunk: return [Shade(0x8F8600, 0xFCEE0A), Shade(0xC25A00, 0xFF7700)]
         case .aurora: return [Shade(0xDB2777, 0xF472B6), Shade(0x7C3AED, 0xA78BFA)]
         case .matrix: return [Shade(0x008F11, 0x00FF41), Shade(0x003B00, 0x008F11)]
         case .girlypop: return [Shade(0xDB2777, 0xF472B6), Shade(0x7C3AED, 0xC4B5FD)]
@@ -72,7 +77,8 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
     /// The two colors the GPU's line runs between.
     var gpu: [Shade] {
         switch self {
-        case .bliss: return [Shade(0x3F7D1A, 0x7CC243), Shade(0x6E8F00, 0xC3D94E)]
+        case .aqua: return [Shade(0x3E8E1E, 0x58B52F), Shade(0x2A9A00, 0x35CB00)]
+        case .cyberpunk: return [Shade(0x008C99, 0x00F0FF), Shade(0x1A66C4, 0x2080F0)]
         case .aurora: return [Shade(0x0891B2, 0x22D3EE), Shade(0x059669, 0x6EE7B7)]
         case .matrix: return [Shade(0x4F8A10, 0xA4F644), Shade(0x2F8F5B, 0x5EC986)]
         case .girlypop: return [Shade(0x0284C7, 0x7DD3FC), Shade(0xC026D3, 0xF0ABFC)]
@@ -87,9 +93,10 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
     /// never read as one.
     var fans: [Shade] {
         switch self {
-        // The lake between the sky and the hill, the yellow of the flowers on the hill, and the
-        // blue of the far hills.
-        case .bliss: return [Shade(0x0B7F78, 0x3DD6C6), Shade(0x8A7A00, 0xF2D94A), Shade(0x4F63C6, 0x9DB0F5)]
+        // A pink, the yellow of a window's middle button, and an orange: no blue and no green,
+        // which are the CPU's and the GPU's.
+        case .aqua: return [Shade(0xB3235A, 0xE02F6B), Shade(0xA86F00, 0xFFAE00), Shade(0xB85A1F, 0xE0742F)]
+        case .cyberpunk: return [Shade(0xA800C7, 0xD800FF), Shade(0x008F5A, 0x05FFA1), Shade(0xD1002F, 0xFF003C)]
         case .aurora: return [Shade(0xB45309, 0xFBBF24), Shade(0x4D7C0F, 0xA3E635), Shade(0xC2410C, 0xFB923C)]
         case .matrix: return [Shade(0x4B6B4F, 0xD4FFD0), Shade(0x0F766E, 0x2EE6C0), Shade(0x6B7A00, 0xD9F04A)]
         case .girlypop: return [Shade(0xEA580C, 0xFDBA74), Shade(0x059669, 0x6EE7B7), Shade(0xCA8A04, 0xFDE047)]
@@ -128,7 +135,9 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
     /// in both appearances for white text to be read on it.
     var accent: Shade {
         switch self {
-        case .bliss: return Shade(0x245EDC, 0x3B82F6)
+        case .aqua: return Shade(0x2F7DE0, 0x4A90EC)
+        // The game's yellow is too light for white text, so the accent is its red.
+        case .cyberpunk: return Shade(0xD1002F, 0xFF003C)
         case .aurora: return Shade(0x0D9488, 0x0FA394)
         case .matrix: return Shade(0x008F11, 0x00A828)
         case .girlypop: return Shade(0xDB2777, 0xEC4899)
@@ -158,7 +167,8 @@ enum ColorPalette: String, CaseIterable, Identifiable, Codable, Sendable {
     /// supply, and the wireless card. Each is a hue the palette's lines do not use.
     private var moreParts: [Shade] {
         switch self {
-        case .bliss: return [Shade(0xC76A00, 0xF5A623), Shade(0xC8321A, 0xF0563B), Shade(0x5E8F00, 0xA8DD4B)]
+        case .aqua: return [Shade(0x3263A8, 0x4B81B6), Shade(0xC22D23, 0xFF3B30), Shade(0x5A6472, 0x7D8694)]
+        case .cyberpunk: return [Shade(0xC25A00, 0xFF7700), Shade(0x1A66C4, 0x2080F0), Shade(0x555D6E, 0xE8ECF2)]
         case .aurora: return [Shade(0x7C3AED, 0xA78BFA), Shade(0xBE123C, 0xFB7185), Shade(0x0369A1, 0x38BDF8)]
         case .matrix: return [Shade(0x003B00, 0x008F11), Shade(0x00A814, 0xE8FFE0), Shade(0x15803D, 0x4ADE80)]
         case .girlypop: return [Shade(0x7C3AED, 0xC4B5FD), Shade(0xC026D3, 0xE879F9), Shade(0xE11D48, 0xFB7185)]

@@ -86,11 +86,12 @@ The window has no color of its own. The glass takes the color of what is behind 
 
 ### Palettes
 
-A palette (`ColorPalette`) holds every color AirFlow has: the accent, the temperature scale, two colors for the CPU's line, two for the GPU's, and three for the fans' lines. A new copy starts with Bliss: a green hill under a blue sky.
+A palette (`ColorPalette`) holds every color AirFlow has: the accent, the temperature scale, two colors for the CPU's line, two for the GPU's, and three for the fans' lines. A new copy starts with Aqua: the blue of a gel button from the Mac of 2001, with the green, the yellow, and the red of a window's three buttons.
 
 | Palette | Accent (Light, Dark) | The scale from cool to very hot (Dark) | From |
 |---|---|---|---|
-| Bliss | `#245EDC`, `#3B82F6` | sky `#6CB4F5`, grass `#7CC243`, sunlit `#D9E04A`, orange `#F5A623`, red `#F0563B` | AirFlow's own |
+| Aqua | `#2F7DE0`, `#4A90EC` | gel blue `#6AABF3`, green `#58B52F`, yellow `#FFAE00`, orange `#E0742F`, red `#FF3B30` | Two rebuilds of the Mac OS X interface of 2001: Aqua (igorfelipeduca) and macOS-X-clone (Binxy111) |
+| Cyberpunk | `#D1002F`, `#FF003C` | cyan `#00F0FF`, green `#05FFA1`, yellow `#FCEE0A`, orange `#FF7700`, red `#FF003C` | The Cyberpunk 2077 theme for Omarchy (hongyangchun). The yellow is too light for white text, so the accent is the red |
 | Aurora | `#0D9488`, `#0FA394` | `#38BDF8`, `#34D399`, `#FBBF24`, `#FB923C`, `#FB7185` | Tailwind's colors |
 | Matrix | `#008F11`, `#00A828` | `#008F11`, `#00C030`, `#00FF41`, `#A4F644`, `#E8FFE0` | The film's greens |
 | Girlypop | `#DB2777`, `#EC4899` | `#7DD3FC`, `#C4B5FD`, `#F9A8D4`, `#E879F9`, `#FB7185` | Tailwind's colors |
@@ -102,19 +103,19 @@ The Light Mode values are darker steps of the same hues, in `ColorPalette.swift`
 
 ### Temperature scale
 
-One step for each band, here in Bliss. Each step has a darker Light Mode value.
+One step for each band, here in Aqua. Each step has a darker Light Mode value.
 
 | Band | Word | Light | Dark | Hue |
 |---|---|---|---|---|
-| `cool` | Cool | `#1F64C8` | `#6CB4F5` | sky |
-| `mild` | Normal | `#3F7D1A` | `#7CC243` | grass |
-| `warm` | Warm | `#8F8500` | `#D9E04A` | sunlit yellow |
-| `hot` | Hot | `#C76A00` | `#F5A623` | orange |
-| `critical` | Very Hot | `#C8321A` | `#F0563B` | red |
+| `cool` | Cool | `#1C5FB8` | `#6AABF3` | gel blue |
+| `mild` | Normal | `#3E8E1E` | `#58B52F` | green |
+| `warm` | Warm | `#A86F00` | `#FFAE00` | yellow |
+| `hot` | Hot | `#B85A1F` | `#E0742F` | orange |
+| `critical` | Very Hot | `#C22D23` | `#FF3B30` | red |
 
 A reading's band depends on the part it belongs to (`TemperatureBand.thresholds`). The CPU and GPU change bands at 50, 70, 85, and 95 °C. The battery changes at 30, 35, 40, and 45 °C. Storage changes at 40, 50, 60, and 70 °C. Every other part changes at 45, 55, 65, and 80 °C.
 
-The scale appears in the status dot beside a temperature, the ground under a fan curve, the curve's own line, and the live point on the curve. The history chart's lines are not on the scale. In Bliss the CPU runs through blues and the GPU through greens, and the fan chart has one line for each fan in the palette's colors for fans (`Palette.fan`). In Bliss they are the turquoise of a lake, the yellow of the flowers on the hill, and the blue of the far hills. A Mac with more than three fans gets one color for each fan, spread along the palette's three.
+The scale appears in the status dot beside a temperature, the ground under a fan curve, the curve's own line, and the live point on the curve. The history chart's lines are not on the scale. In Aqua the CPU runs through blues and the GPU through greens, and the fan chart has one line for each fan in the palette's colors for fans (`Palette.fan`). In Aqua they are a pink, the yellow of a window's middle button, and an orange. In Cyberpunk the CPU runs from yellow to orange and the GPU from cyan to blue, and the fans are magenta, green, and red. A Mac with more than three fans gets one color for each fan, spread along the palette's three.
 
 ### What carries a reading is not flat
 

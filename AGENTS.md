@@ -57,6 +57,8 @@ scripts/test.sh                  # cargo test, then the AirFlowTests unit tests
 (cd backend && cargo test && cargo clippy --all-targets -- -D warnings)
 python3 scripts/make-animations.py                      # regenerates AirFlow/Resources/Animations/*.json
 python3 scripts/make-icons.py <ant-design-icons checkout>   # the mark and the Ant Design icons
+swift scripts/make-brand.swift                          # docs/images/airflow-brand.png and airflow-brand-dark.png, for the README
+scripts/make-screenshots.sh                             # the README's screenshots into docs/images, from the Debug build, without taking the keyboard
 TEST_RUNNER_AIRFLOW_SNAPSHOTS=/tmp/airflow-shots scripts/test.sh   # draws each surface with made-up readings
 open -g --env AIRFLOW_SHOW=rules build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: opens the window on a page (rules, sensors, or a preset's name) without taking the keyboard
 open -g --env AIRFLOW_SHOW=Quiet --env AIRFLOW_APPEARANCE=light build/DerivedData/Build/Products/Debug/AirFlow.app   # Debug only: the same, in Light Mode (or dark)
@@ -102,9 +104,11 @@ AirFlow/
 └── Resources/                        Assets.xcassets (MenuBarIcon, ant-*, Temp* colors), AppIcon.icon, Animations/, Fonts/, LaunchDaemons/
 AirFlowTests/                         XCTest. Fixtures.swift holds CommandRecorder and made-up snapshots
 scripts/                              build.sh, test.sh, build-backend.sh, embed-helper.sh, make-animations.py, make-icons.py, fan_geometry.py,
+                                      make-brand.swift, make-screenshots.sh (the README's pictures),
                                       and for a release: import-certificate.sh, sign-nested.sh, make-dmg.sh, check-sparkle-key.js,
                                       sign-release.js, update-appcast.js
 .github/workflows/                    test.yml, release.yml (a tag push), check-secrets.yml (by hand)
+docs/                                 images/ (the README's brand image and screenshots), release-notes/<version>.md
 licenses/                             One file per dependency and icon set. The app carries the folder
 PRODUCT.md, DESIGN.md                 What the product is, and how it looks and moves
 ```
@@ -137,12 +141,13 @@ PRODUCT.md, DESIGN.md                 What the product is, and how it looks and 
 | The helper's identifier or service name | `protocol.rs`, `airflow.h`, `helper-Info.plist`, the launchd property list, `scripts/embed-helper.sh`, `HelperManager.daemonPlistName` |
 | A kind of fan control | `FanControl`, `FanPlanner`, `PresetCodec` (both directions), `FanSection`, `ProposalPreview`, the README's table |
 | The presets file's format | `PresetCodec.version`, a test that reads the older format, the README's example |
-| A number of the adaptive controller (a threshold, a weight, a slew rate, a hold) | `AdaptivePolicy`, `RegimeDetector`, or `AdaptiveController`, the README's Adaptive section, and `AdaptiveControllerTests`, which must still pass against the made-up Mac |
+| A number of the adaptive controller (a threshold, a weight, a slew rate, a hold) | `AdaptivePolicy`, `RegimeDetector`, or `AdaptiveController`, the README's "How Adaptive decides" section and its Adaptive features, and `AdaptiveControllerTests`, which must still pass against the made-up Mac |
 | A design token | `DESIGN.md` and `Utilities/Theme.swift` together |
 | A font | `AirFlow/Resources/Fonts`, `AirType.textFamily` or `readingFamily`, `ReadingFontTests`, `licenses/`, `DESIGN.md`, the README's License section |
 | An animation | `scripts/make-animations.py`, rerun it, `Animations` (the name and `all`), `AnimationTests`, the table in `DESIGN.md` |
 | An icon | `ANT_ICONS` in `scripts/make-icons.py`, rerun it, and `PresetIcon` if a preset can carry it |
-| The mark | `scripts/fan_geometry.py`, then both scripts, and `AppIcon.icon/icon.json` |
+| The mark | `scripts/fan_geometry.py`, then both scripts, `AppIcon.icon/icon.json`, and `swift scripts/make-brand.swift` |
+| A page, a banner, or a control that a README picture shows | `scripts/make-screenshots.sh` after `scripts/build.sh`, and the picture's `alt` text in `README.md` |
 | A UserDefaults key | `AppSettings`, the pane that writes it, the Facts table |
 | A new page in the window | `SidebarItem`, `MainWindow.detail`, `MainWindow.launchSelection`, invariant 11 |
 | A sentence or a label that shows a number | `Text(readings:)` or `readingFont`, invariant 17 |

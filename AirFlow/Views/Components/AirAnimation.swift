@@ -231,9 +231,10 @@ struct Rotor: View {
                 .mask {
                     ZStack {
                         AirAnimation(name: Animations.rotor, loops: true, isActive: isActive, speed: Self.turnsPerSecond(for: fan), tint: .white)
-                        // The hub is filled in, so the middle is one disc with no dot of its own.
-                        Circle().frame(width: size * 0.25, height: size * 0.25)
+                        // The dot in the middle is cut out, so the rainbow fan has an open hub.
+                        Circle().frame(width: size * 0.2, height: size * 0.2).blendMode(.destinationOut)
                     }
+                    .compositingGroup()
                 }
                 .frame(width: size, height: size)
         } else {

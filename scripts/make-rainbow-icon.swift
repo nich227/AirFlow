@@ -25,9 +25,10 @@ for name in ["housing.svg", "blades.svg"] {
     guard let part = NSImage(contentsOf: parts.appendingPathComponent(name)) else { fatalError("no \(name)") }
     part.draw(in: rect)
 }
-// The hub is filled in, so the middle of the rainbow fan is one disc with no dot of its own.
-NSColor.black.setFill()
-NSBezierPath(ovalIn: NSRect(x: side / 2 - 128, y: side / 2 - 128, width: 256, height: 256)).fill()
+// The dot in the middle of the mark is cut out, so the rainbow fan has an open hub. The blades
+// begin 128 points from the middle, and the dot is 64 points across from its middle.
+context.cgContext.setBlendMode(.clear)
+context.cgContext.fillEllipse(in: CGRect(x: side / 2 - 100, y: side / 2 - 100, width: 200, height: 200))
 // The wheel of colors is drawn through the fan, so only the fan takes it.
 context.cgContext.setBlendMode(.sourceIn)
 let wheel = CAGradientLayer()

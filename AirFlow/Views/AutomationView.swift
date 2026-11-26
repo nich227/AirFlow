@@ -139,6 +139,7 @@ struct AutomationView: View {
                         .airFont(.body)
                 }
                 .buttonStyle(.glass)
+                .tint(nil)
                 .fixedSize()
 
                 TextField("Describe a rule, such as “Use Quiet on battery”", text: $request)
@@ -159,6 +160,7 @@ struct AutomationView: View {
                             .labelStyle(.iconOnly)
                     }
                     .buttonStyle(.glass)
+                    .tint(nil)
                     .disabled(!model.intelligence.availability.isAvailable || request.trimmingCharacters(in: .whitespaces).isEmpty)
                     .help("Draft the rule")
                 }

@@ -202,6 +202,7 @@ struct StatusBanner: View {
                     .airFont(.body)
             }
             .buttonStyle(.glass)
+            .tint(nil)
         }
     }
 }

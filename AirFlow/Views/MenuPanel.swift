@@ -119,6 +119,7 @@ struct MenuPanel: View {
             }
             .airFont(.label)
             .buttonStyle(.glass)
+            .tint(nil)
             .controlSize(.small)
             .padding(Space.sm)
         }

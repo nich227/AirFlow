@@ -50,6 +50,7 @@ struct DescribePresetSheet: View {
                         draft()
                     }
                     .buttonStyle(.glass)
+                    .tint(nil)
                     .controlSize(.small)
                     .disabled(state == .drafting)
                 }

@@ -54,6 +54,8 @@ enum Layout {
 
 enum Palette {
     /// The main color of the palette the person chose. It marks what is selected and what acts.
+    /// Each scene sets it as its tint. A plain glass button sets its own tint to none, or it
+    /// would be filled with this color in a window that is in front.
     static var accent: Color { Color(ColorPalette.current.accent) }
 
     /// Fills on the window background. They use the label color, so they darken a light

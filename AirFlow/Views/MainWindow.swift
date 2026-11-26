@@ -361,6 +361,7 @@ struct Sidebar: View {
                 Spacer()
             }
             .buttonStyle(.glass)
+            .tint(nil)
             .padding(Space.sm)
         }
     }

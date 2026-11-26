@@ -166,6 +166,7 @@ struct AppWorkloadsEditor: View {
                         .airFont(.label)
                 }
                 .buttonStyle(.glass)
+                .tint(nil)
                 .controlSize(.small)
                 .disabled(suggestion == .working(bundleID: workload.bundleID))
                 .help("Ask Apple Intelligence to suggest a workload for \(workload.name)")

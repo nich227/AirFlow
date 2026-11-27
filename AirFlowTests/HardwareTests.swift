@@ -79,8 +79,12 @@ final class ThermalMonitorTests: XCTestCase {
     func testAChartDrawsNoMoreThanAHundredPointsOfTheHistory() {
         let start = Date(timeIntervalSinceReferenceDate: 1_000_000)
         func history(_ count: Int, every step: Double = 1) -> [HistoryPoint] {
-            (0..<count).map { index in
-                HistoryPoint(date: start.addingTimeInterval(Double(index) * step), cpu: Double(index), gpu: index % 2 == 0 ? 50 : nil, fanFractions: [Double(index) / 1000, 0.5])
+            (0..<count).map { (index: Int) -> HistoryPoint in
+                let value = Double(index)
+                let date: Date = start.addingTimeInterval(value * step)
+                let gpu: Double? = index % 2 == 0 ? 50 : nil
+                let fans: [Double] = [value / 1000, 0.5]
+                return HistoryPoint(date: date, cpu: value, gpu: gpu, fanFractions: fans)
             }
         }
         XCTAssertEqual(HistoryPoint.thinned(history(60)), history(60), "A short history is drawn as it is")

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>AirFlow</title>
+    <link>https://github.com/nich227/AirFlow</link>
+    <description>AirFlow updates</description>
+    <language>en</language>
+    <!-- items -->
+    <item>
+      <title>1.0.0</title>
+      <pubDate>Fri, 27 Nov 2026 01:38:49 GMT</pubDate>
+      <sparkle:version>10000</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <description>
+        <![CDATA[
+      <h3>AirFlow 1.0.0</h3>
+      <p>The first version of AirFlow.</p>
+      <ul>
+      <li>See every fan and temperature sensor in your Mac, grouped by part.</li>
+      <li>Run each fan automatically, at a constant speed, or by a sensor's temperature.</li>
+      <li>Keep as many presets as you want, and change between them from the menu bar.</li>
+      <li>Let rules change presets by app, power source, temperature, or time of day.</li>
+      <li>Describe a preset or a rule, and Apple Intelligence drafts it on your Mac.</li>
+      <li>Apply a preset with Siri, Spotlight, or Shortcuts.</li>
+      <li>Export presets to a YAML file, and import them on another Mac.</li>
+      </ul>
+      <p>AirFlow requires macOS 26 or later and a Mac with Apple silicon.</p>
+      <h3>Installing</h3>
+      <p>Open the disk image and drag AirFlow to the Applications folder. Requires macOS 26 or later.</p>
+      <p>
+        <a href="https://github.com/nich227/AirFlow/releases/tag/v1.0.0">All the details for 1.0.0</a>
+      </p>
+        ]]>
+      </description>
+      <enclosure url="https://github.com/nich227/AirFlow/releases/download/v1.0.0/AirFlow-1.0.0.zip" length="36443339" type="application/octet-stream" sparkle:edSignature="t9kzgVI2zRSOk1wD0AjOUMc9//NxfoIZyd8oDKW2VTisc3MZiaLbg1Noee94BqTBG9Rj0ImMxT/O4ByeeuHjBQ=="/>
+    </item>
+  </channel>
+</rss>
